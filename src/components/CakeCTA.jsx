@@ -34,12 +34,12 @@ export default function CakeCTA({ onOpen }) {
           </h2>
           <p className="lead" style={{ marginTop: '1.4rem' }}>
             Configuratore guidato passo per passo: scegli tipo, gusti, base, decorazioni
-            e scritta — e <strong>vedi la tua torta prendere forma in tempo reale</strong>.
+            e scritta — noi la prepariamo a mano per te.
             Niente stress, solo dolcezza.
           </p>
 
           <div className="cake-cta-features">
-            <span><Sparkles size={14} color="var(--violet-deep)" /> Anteprima live</span>
+            <span><Sparkles size={14} color="var(--violet-deep)" /> Tutto personalizzato</span>
             <span><Cake size={14} color="var(--violet-deep)" /> 8 passaggi</span>
             <span><Clock size={14} color="var(--violet-deep)" /> Min. 24h preavviso</span>
             <span>✻ Senza glutine disponibile</span>

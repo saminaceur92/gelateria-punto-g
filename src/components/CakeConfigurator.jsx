@@ -359,7 +359,7 @@ function StepBase({ config, set }) {
 function StepDecoration({ config, set }) {
   return (
     <>
-      <StepHeader num={5} title="Decorazione" lead="Lo stile che vedi sopra. Le immagini sono indicative — ogni torta è decorata a mano." />
+      <StepHeader num={5} title="Decorazione" lead="Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff." />
       <div className="opt-grid cols-3">
         {cakeDecorations.map((d) => (
           <button
@@ -386,12 +386,12 @@ function StepMessage({ config, set }) {
   ];
   return (
     <>
-      <StepHeader num={6} title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo in cialda alimentare e la posiamo sulla torta." />
+      <StepHeader num={6} title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo su cialda alimentare e la posiamo sulla torta." />
 
       <div className="cfg-field">
-        <label>Foto sulla torta (opzionale)</label>
+        <label>Foto da stampare (opzionale)</label>
         <PhotoUploader value={config.photo} onChange={(p) => set({ photo: p })} />
-        <p className="hint">JPG o PNG, max 4 MB. Vedi subito come starà sulla torta. Stampata su cialda alimentare commestibile.</p>
+        <p className="hint">JPG o PNG, max 4 MB. Stampata su cialda alimentare commestibile.</p>
       </div>
 
       <div className="cfg-field">
@@ -403,7 +403,7 @@ function StepMessage({ config, set }) {
           value={config.message}
           onChange={(e) => set({ message: e.target.value })}
         />
-        <p className="hint">{config.message.length}/30 — vedi l'anteprima sulla torta ✨</p>
+        <p className="hint">{config.message.length}/30 caratteri</p>
       </div>
 
       {config.message && (
@@ -433,30 +433,6 @@ function StepMessage({ config, set }) {
                 </button>
               ))}
             </div>
-          </div>
-
-          <div className="cfg-field">
-            <label>Rotazione: {config.messageRotation}°</label>
-            <div className="rotation-row">
-              <input
-                type="range"
-                min="-45"
-                max="45"
-                step="1"
-                value={config.messageRotation}
-                onChange={(e) => set({ messageRotation: Number(e.target.value) })}
-                className="rotation-slider"
-              />
-              <button
-                type="button"
-                className="toggle-pill"
-                onClick={() => set({ messageRotation: 0 })}
-                style={{ flexShrink: 0 }}
-              >
-                Reset
-              </button>
-            </div>
-            <p className="hint">Inclina la scritta come preferisci.</p>
           </div>
         </>
       )}
