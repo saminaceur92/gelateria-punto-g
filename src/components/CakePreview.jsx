@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 /**
@@ -8,8 +9,9 @@ import { motion } from 'framer-motion';
  * - Decorazione → topping
  * - Scritta → testo sopra
  * - Candelina → fiamma animata
+ * - Drag per ruotare 360° + autorotate quando idle
  */
-export default function CakePreview({ config }) {
+export default function CakePreview({ config, interactive = true }) {
   const {
     type = 'semifreddo',
     sizeId = '8',
@@ -38,14 +40,69 @@ export default function CakePreview({ config }) {
   const layerH = 52;
   const baseW = 230 * scale;
 
+  // === Rotazione 3D (drag + autorotate) ===
+  const [rotY, setRotY] = useState(-15);
+  const dragRef = useRef({ active: false, lastX: 0, lastT: 0, lastUserAt: Date.now(), velocity: 0 });
+  const wrapperRef = useRef(null);
+
+  // Autorotate: se l'utente non interagisce da >2.5s, ruota lentamente
+  useEffect(() => {
+    if (!interactive) return;
+    let raf;
+    const tick = () => {
+      const now = Date.now();
+      if (!dragRef.current.active && now - dragRef.current.lastUserAt > 2500) {
+        setRotY((r) => r + 0.25);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [interactive]);
+
+  const onPointerDown = (e) => {
+    if (!interactive) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    dragRef.current.active = true;
+    dragRef.current.lastX = e.clientX;
+    dragRef.current.lastT = Date.now();
+    dragRef.current.lastUserAt = Date.now();
+  };
+  const onPointerMove = (e) => {
+    if (!dragRef.current.active) return;
+    const dx = e.clientX - dragRef.current.lastX;
+    setRotY((r) => r + dx * 0.6);
+    dragRef.current.lastX = e.clientX;
+    dragRef.current.lastT = Date.now();
+    dragRef.current.lastUserAt = Date.now();
+  };
+  const onPointerUp = () => {
+    dragRef.current.active = false;
+    dragRef.current.lastUserAt = Date.now();
+  };
+
   return (
-    <motion.svg
-      viewBox="0 0 400 400"
-      width="100%"
-      height="100%"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+    <div
+      ref={wrapperRef}
+      className={`cake-3d ${interactive ? 'interactive' : ''}`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onPointerLeave={onPointerUp}
+      style={{ touchAction: 'none' }}
+    >
+      <div
+        className="cake-3d-inner"
+        style={{ transform: `rotateX(8deg) rotateY(${rotY}deg)` }}
+      >
+        <motion.svg
+          viewBox="0 0 400 400"
+          width="100%"
+          height="100%"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
       style={{ filter: 'drop-shadow(0 25px 35px rgba(96,46,158,0.18))' }}
     >
       <defs>
@@ -185,7 +242,18 @@ export default function CakePreview({ config }) {
           </g>
         );
       })()}
-    </motion.svg>
+        </motion.svg>
+      </div>
+      {interactive && (
+        <div className="cake-3d-hint" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12a9 9 0 0 1 15-6.7" /><path d="M21 4v5h-5" />
+            <path d="M21 12a9 9 0 0 1-15 6.7" /><path d="M3 20v-5h5" />
+          </svg>
+          Trascina per ruotare
+        </div>
+      )}
+    </div>
   );
 }
 

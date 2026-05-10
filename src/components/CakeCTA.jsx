@@ -60,21 +60,7 @@ export default function CakeCTA({ onOpen }) {
           transition={{ ...reveal.transition, delay: 0.2 }}
           className="cake-cta-visual"
         >
-          {/* Preview demo cliccabile */}
-          <button
-            onClick={onOpen}
-            aria-label="Apri il configuratore torte"
-            style={{
-              width: '100%',
-              height: '100%',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            <CakePreview config={demoConfig} />
-          </button>
+          <CakePreview config={demoConfig} />
         </motion.div>
       </div>
     </section>
