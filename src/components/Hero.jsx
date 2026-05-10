@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Sparkles, Leaf, MapPin } from 'lucide-react';
+import { Sparkles, Cake } from 'lucide-react';
 
 const fade = (delay = 0) => ({
   initial: { opacity: 0, y: 30 },
@@ -7,7 +7,7 @@ const fade = (delay = 0) => ({
   transition: { duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] },
 });
 
-export default function Hero() {
+export default function Hero({ onOpenConfigurator }) {
   return (
     <section id="top" className="hero">
       <div className="container hero-grid">
@@ -34,9 +34,9 @@ export default function Hero() {
             <a className="btn btn-primary" href="#menu">
               Scopri i gusti <Sparkles size={18} />
             </a>
-            <a className="btn btn-ghost" href="#contatti">
-              <MapPin size={18} /> Vieni a trovarci
-            </a>
+            <button className="btn btn-ghost" onClick={onOpenConfigurator}>
+              <Cake size={18} /> Crea la tua torta
+            </button>
           </motion.div>
 
           <motion.div className="hero-stats" {...fade(0.75)}>
@@ -71,7 +71,7 @@ export default function Hero() {
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <Leaf size={14} /> Vegan friendly
+            ✻ Vegan friendly
           </motion.div>
           <motion.div
             className="hero-badge b2"

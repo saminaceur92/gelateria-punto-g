@@ -6,11 +6,12 @@ const links = [
   { href: '#about', label: 'La nostra storia' },
   { href: '#servizi', label: 'Servizi' },
   { href: '#menu', label: 'Gusti' },
+  { href: '#torte', label: 'Crea la torta' },
   { href: '#gallery', label: 'Gallery' },
   { href: '#contatti', label: 'Contatti' },
 ];
 
-export default function Navbar() {
+export default function Navbar({ onOpenConfigurator }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -54,9 +55,9 @@ export default function Navbar() {
           </nav>
 
           <div className="nav-cta">
-            <a href="https://api.whatsapp.com/send?phone=393203306009" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-              Ordina ora
-            </a>
+            <button className="btn btn-primary" onClick={onOpenConfigurator}>
+              Crea la tua torta
+            </button>
             <button className="nav-toggle" aria-label="Apri menu" onClick={() => setOpen(true)}>
               <MenuIcon size={20} />
             </button>
@@ -87,12 +88,13 @@ export default function Navbar() {
             ))}
             <a
               className="cta"
-              href="https://api.whatsapp.com/send?phone=393203306009"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setOpen(false)}
+              href="#torte"
+              onClick={() => {
+                setOpen(false);
+                if (onOpenConfigurator) setTimeout(onOpenConfigurator, 350);
+              }}
             >
-              Ordina su WhatsApp
+              Crea la tua torta
             </a>
           </motion.div>
         )}
