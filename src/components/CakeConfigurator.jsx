@@ -26,6 +26,7 @@ const initialConfig = {
   messageRotation: 0,
   candle: false,
   occasion: '',
+  photo: null, // dataURL della foto da mettere sulla torta
   pickupDate: '',
   name: '',
   phone: '',
@@ -102,6 +103,7 @@ export default function CakeConfigurator({ open, onClose }) {
       `*Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
       `*Decorazione:* ${deco?.name}`,
       config.message ? `*Scritta:* "${config.message}"` : '',
+      config.photo ? `*Foto sulla torta:* sì (verrà inviata a parte)` : '',
       config.candle ? `*Candelina:* sì` : '',
       config.occasion ? `*Occasione:* ${config.occasion}` : '',
       ``,
@@ -384,7 +386,13 @@ function StepMessage({ config, set }) {
   ];
   return (
     <>
-      <StepHeader num={6} title="Scritta e candelina" lead="Una frase importante? Divertente, romantica, dolce, scherzosa…" />
+      <StepHeader num={6} title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo in cialda alimentare e la posiamo sulla torta." />
+
+      <div className="cfg-field">
+        <label>Foto sulla torta (opzionale)</label>
+        <PhotoUploader value={config.photo} onChange={(p) => set({ photo: p })} />
+        <p className="hint">JPG o PNG, max 4 MB. Vedi subito come starà sulla torta. Stampata su cialda alimentare commestibile.</p>
+      </div>
 
       <div className="cfg-field">
         <label>Scritta sulla torta (max 30 caratteri)</label>
@@ -594,5 +602,69 @@ function SuccessView({ name, onClose }) {
         Torna al sito
       </button>
     </div>
+  );
+}
+
+function PhotoUploader({ value, onChange }) {
+  const onFile = (file) => {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      alert('Foto troppo grande (max 4 MB).');
+      return;
+    }
+    // Ridimensiona/comprimi per anteprima leggera
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 600;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        // Maschera circolare per l'anteprima
+        ctx.drawImage(img, 0, 0, w, h);
+        onChange(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (value) {
+    return (
+      <div className="photo-preview">
+        <img src={value} alt="Foto torta" />
+        <button type="button" className="toggle-pill" onClick={() => onChange(null)}>
+          Rimuovi foto
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <label
+      className="photo-drop"
+      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('drag'); }}
+      onDragLeave={(e) => e.currentTarget.classList.remove('drag')}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag');
+        onFile(e.dataTransfer.files?.[0]);
+      }}
+    >
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => onFile(e.target.files?.[0])}
+        style={{ display: 'none' }}
+      />
+      <span className="photo-drop-icon" aria-hidden="true">🖼️</span>
+      <span className="photo-drop-label">Tocca per caricare una foto</span>
+      <span className="photo-drop-hint">o trascinala qui</span>
+    </label>
   );
 }
