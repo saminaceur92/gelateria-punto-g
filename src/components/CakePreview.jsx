@@ -1,16 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 
 /**
- * Anteprima 3D-look della torta che si aggiorna live.
- * - Dimensione → larghezza/altezza
- * - Numero piani: 2 sempre, 3 se cake type "piani"
- * - Strati gelato → colori dei layer
- * - Decorazione → topping
- * - Scritta → testo sopra
- * - Candelina → fiamma animata
- * - Drag per ruotare 360° + autorotate quando idle
+ * Vera torta 3D in CSS:
+ * - Ogni strato = cilindro composto da N pannelli radiali + disco top/bottom
+ * - Decorazioni 3D
+ * - Candelina cilindrica con fiamma animata
+ * - Scritta su un piano che giace orizzontale sulla calotta
+ * - Drag su due assi (yaw + pitch) + autorotate
  */
+const PANEL_COUNT = 28;
+const SIZE_MAP = { '6': 0.78, '8': 0.86, '10': 0.92, '12': 1, '16': 1.08, '20': 1.14 };
+
 export default function CakePreview({ config, interactive = true }) {
   const {
     type = 'semifreddo',
@@ -23,36 +24,37 @@ export default function CakePreview({ config, interactive = true }) {
     messageRotation = 0,
   } = config;
 
-  // Larghezza scala in base alla dimensione
-  const sizeMap = { '6': 0.78, '8': 0.86, '10': 0.92, '12': 1, '16': 1.08, '20': 1.14 };
-  const scale = sizeMap[sizeId] ?? 0.9;
+  const scale = SIZE_MAP[sizeId] ?? 0.9;
+  const layersN = type === 'piani' ? 3 : 2;
 
-  // Colori strati: usa i gusti scelti, riempi con default
   const defaultColor = '#fff8e6';
-  const layers = type === 'piani' ? 3 : 2;
-  const layerColors = Array.from({ length: layers }, (_, i) =>
+  const layerColors = Array.from({ length: layersN }, (_, i) =>
     flavors[i]?.color || flavors[flavors.length - 1]?.color || defaultColor
   );
 
-  // Geometria
-  const cx = 200;
-  const baseY = 320;
-  const layerH = 52;
-  const baseW = 230 * scale;
+  const layerH = 44;
+  const baseRadius = 130 * scale;
 
-  // === Rotazione 3D (drag + autorotate) ===
-  const [rotY, setRotY] = useState(-15);
-  const dragRef = useRef({ active: false, lastX: 0, lastT: 0, lastUserAt: Date.now(), velocity: 0 });
-  const wrapperRef = useRef(null);
+  const layers = layerColors.map((color, i) => ({
+    color,
+    radius: baseRadius * (1 - i * 0.08),
+    height: layerH,
+    yOffset: i * layerH,
+  }));
+  const totalHeight = layersN * layerH;
+  const topRadius = layers[layers.length - 1].radius;
 
-  // Autorotate: se l'utente non interagisce da >2.5s, ruota lentamente
+  // Rotazione (yaw + pitch)
+  const [rot, setRot] = useState({ x: -18, y: -22 });
+  const dragRef = useRef({ active: false, lastX: 0, lastY: 0, lastUserAt: Date.now() });
+
   useEffect(() => {
     if (!interactive) return;
     let raf;
     const tick = () => {
       const now = Date.now();
       if (!dragRef.current.active && now - dragRef.current.lastUserAt > 2500) {
-        setRotY((r) => r + 0.25);
+        setRot((r) => ({ ...r, y: r.y + 0.25 }));
       }
       raf = requestAnimationFrame(tick);
     };
@@ -65,15 +67,19 @@ export default function CakePreview({ config, interactive = true }) {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     dragRef.current.active = true;
     dragRef.current.lastX = e.clientX;
-    dragRef.current.lastT = Date.now();
+    dragRef.current.lastY = e.clientY;
     dragRef.current.lastUserAt = Date.now();
   };
   const onPointerMove = (e) => {
     if (!dragRef.current.active) return;
     const dx = e.clientX - dragRef.current.lastX;
-    setRotY((r) => r + dx * 0.6);
+    const dy = e.clientY - dragRef.current.lastY;
+    setRot((r) => ({
+      x: clamp(r.x - dy * 0.4, -85, 30),
+      y: r.y + dx * 0.5,
+    }));
     dragRef.current.lastX = e.clientX;
-    dragRef.current.lastT = Date.now();
+    dragRef.current.lastY = e.clientY;
     dragRef.current.lastUserAt = Date.now();
   };
   const onPointerUp = () => {
@@ -83,7 +89,6 @@ export default function CakePreview({ config, interactive = true }) {
 
   return (
     <div
-      ref={wrapperRef}
       className={`cake-3d ${interactive ? 'interactive' : ''}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -93,157 +98,51 @@ export default function CakePreview({ config, interactive = true }) {
       style={{ touchAction: 'none' }}
     >
       <div
-        className="cake-3d-inner"
-        style={{ transform: `rotateX(8deg) rotateY(${rotY}deg)` }}
+        className="cake-3d-scene"
+        style={{ transform: `translateY(20px) rotateX(${rot.x}deg) rotateY(${rot.y}deg)` }}
       >
-        <motion.svg
-          viewBox="0 0 400 400"
-          width="100%"
-          height="100%"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-      style={{ filter: 'drop-shadow(0 25px 35px rgba(96,46,158,0.18))' }}
-    >
-      <defs>
-        {layerColors.map((c, i) => (
-          <linearGradient key={i} id={`layerGrad-${i}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lighten(c, 0.18)} />
-            <stop offset="100%" stopColor={darken(c, 0.1)} />
-          </linearGradient>
+        {/* Ombra a terra */}
+        <div
+          className="cake-shadow"
+          style={{
+            width: baseRadius * 2.4,
+            height: baseRadius * 0.6,
+            transform: `translate(-50%, -50%) translateY(20px) rotateX(90deg)`,
+          }}
+        />
+
+        {/* Sotto-torta dorato (board) */}
+        <BoardPlate radius={baseRadius * 1.1} y={-2} />
+
+        {/* Strati */}
+        {layers.map((l, i) => (
+          <Cylinder
+            key={i}
+            radius={l.radius}
+            height={l.height}
+            yBase={l.yOffset}
+            color={l.color}
+          />
         ))}
-        <radialGradient id="plate" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#fff" />
-          <stop offset="100%" stopColor="#e8d8c0" />
-        </radialGradient>
-        <linearGradient id="board" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#d4b89a" />
-          <stop offset="100%" stopColor="#a07c5a" />
-        </linearGradient>
-        <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.2" />
-        </filter>
-      </defs>
 
-      {/* Tovaglia / piatto (ombra) */}
-      <ellipse cx={cx} cy={baseY + 14} rx={baseW * 0.95} ry="14" fill="rgba(60,20,100,0.18)" />
+        {/* Decorazione sopra */}
+        <Decoration kind={decoration} radius={topRadius} y={totalHeight + 2} />
 
-      {/* Sotto-torta dorato */}
-      <ellipse cx={cx} cy={baseY + 6} rx={baseW * 0.92} ry="14" fill="url(#board)" />
-      <ellipse cx={cx} cy={baseY} rx={baseW * 0.92} ry="14" fill="#f0d9b8" />
+        {/* Candelina */}
+        {candle && <Candle y={totalHeight + 4} />}
 
-      {/* Strati */}
-      {layerColors.map((_, i) => {
-        const idx = layerColors.length - 1 - i; // dal basso verso l'alto
-        const y = baseY - i * layerH - 8;
-        const w = baseW * (1 - i * 0.08);
-        return (
-          <g key={idx}>
-            {/* lato curvo */}
-            <path
-              d={`M ${cx - w} ${y} a ${w} 12 0 0 0 ${w * 2} 0 L ${cx + w} ${y - layerH} a ${w} 12 0 0 1 -${w * 2} 0 Z`}
-              fill={`url(#layerGrad-${idx})`}
-            />
-            {/* top */}
-            <ellipse cx={cx} cy={y - layerH} rx={w} ry="12" fill={lighten(layerColors[idx], 0.1)} />
-            {/* gocciolina di crema sul bordo */}
-            {Array.from({ length: 6 }).map((_, k) => {
-              const angle = (k / 6) * Math.PI;
-              const dx = Math.cos(angle) * w * 0.92;
-              return (
-                <ellipse
-                  key={k}
-                  cx={cx + dx}
-                  cy={y - 2}
-                  rx="6"
-                  ry="9"
-                  fill={lighten(layerColors[idx], 0.22)}
-                  opacity="0.85"
-                />
-              );
-            })}
-          </g>
-        );
-      })}
-
-      {/* Decorazione sopra */}
-      <Decoration kind={decoration} cx={cx} y={baseY - layers * layerH - 18} w={baseW * (1 - (layers - 1) * 0.08)} />
-
-      {/* Candelina */}
-      {candle && (
-        <g>
-          <rect
-            x={cx - 5}
-            y={baseY - layers * layerH - 70}
-            width="10"
-            height="48"
-            rx="2"
-            fill="#fff"
-            stroke="#b651e4"
-            strokeWidth="2"
+        {/* Scritta sul top */}
+        {message && (
+          <CakeText
+            text={message}
+            font={messageFont}
+            rotation={messageRotation}
+            radius={topRadius}
+            y={totalHeight + 0.6}
           />
-          {/* righe candelina */}
-          <line x1={cx - 5} y1={baseY - layers * layerH - 60} x2={cx + 5} y2={baseY - layers * layerH - 60} stroke="#b651e4" strokeWidth="2" />
-          <line x1={cx - 5} y1={baseY - layers * layerH - 48} x2={cx + 5} y2={baseY - layers * layerH - 48} stroke="#b651e4" strokeWidth="2" />
-          <line x1={cx - 5} y1={baseY - layers * layerH - 36} x2={cx + 5} y2={baseY - layers * layerH - 36} stroke="#b651e4" strokeWidth="2" />
-          {/* fiamma */}
-          <motion.path
-            d={`M ${cx} ${baseY - layers * layerH - 78} q -7 -8 0 -18 q 7 10 0 18 Z`}
-            fill="#eb911e"
-            animate={{ scale: [1, 1.1, 1], opacity: [0.9, 1, 0.9] }}
-            transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ transformOrigin: `${cx}px ${baseY - layers * layerH - 70}px` }}
-          />
-          <motion.circle
-            cx={cx}
-            cy={baseY - layers * layerH - 82}
-            r="3"
-            fill="#fff200"
-            animate={{ opacity: [0.6, 1, 0.6] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-          />
-        </g>
-      )}
-
-      {/* Scritta SOPRA la torta (con prospettiva, ruotabile) */}
-      {message && (() => {
-        const topY = baseY - layers * layerH - 12;
-        const topW = baseW * (1 - (layers - 1) * 0.08);
-        const fontMap = {
-          caveat: { family: "'Caveat', cursive", size: 30, weight: 700 },
-          fraunces: { family: "'Fraunces', serif", size: 22, weight: 700, italic: true },
-          inter: { family: "'Inter', sans-serif", size: 18, weight: 700, upper: true },
-        };
-        const font = fontMap[messageFont] || fontMap.caveat;
-        const maxChars = Math.floor(topW / 5);
-        const text = message.length > maxChars ? message.slice(0, maxChars) + '…' : message;
-        const display = font.upper ? text.toUpperCase() : text;
-        const dynSize = Math.min(font.size, (topW * 1.6) / Math.max(display.length * 0.55, 6));
-        // Concateno trasformazioni: translate al centro top → comprimi Y (prospettiva) → ruota
-        const transform = `translate(${cx} ${topY}) scale(1 0.42) rotate(${messageRotation})`;
-        return (
-          <g transform={transform}>
-            <ellipse cx={0} cy={0} rx={Math.max(display.length * dynSize * 0.34, 40)} ry={dynSize * 1.4} fill="rgba(255,255,255,0.5)" />
-            <text
-              x={0}
-              y={dynSize * 0.35}
-              textAnchor="middle"
-              fontFamily={font.family}
-              fontSize={dynSize}
-              fontWeight={font.weight}
-              fontStyle={font.italic ? 'italic' : 'normal'}
-              fill="#602e9e"
-              stroke="#fff9ed"
-              strokeWidth="0.5"
-              style={{ paintOrder: 'stroke', letterSpacing: font.upper ? '0.08em' : 'normal' }}
-            >
-              {display}
-            </text>
-          </g>
-        );
-      })()}
-        </motion.svg>
+        )}
       </div>
+
       {interactive && (
         <div className="cake-3d-hint" aria-hidden="true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -257,80 +156,369 @@ export default function CakePreview({ config, interactive = true }) {
   );
 }
 
-function Decoration({ kind, cx, y, w }) {
+/* ====================== Primitives 3D ====================== */
+
+function BoardPlate({ radius, y }) {
+  return (
+    <>
+      {/* Top dorato */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: radius * 2,
+          height: radius * 2,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle at 40% 35%, #f5e0b8, #d4b07a 70%, #a07c5a)',
+          transform: `translate(-50%, -50%) translateY(${-y}px) rotateX(90deg)`,
+          boxShadow: 'inset 0 0 30px rgba(0,0,0,0.15)',
+        }}
+      />
+      {/* Bordo laterale (cilindro sottile) */}
+      {Array.from({ length: PANEL_COUNT }).map((_, i) => {
+        const angle = (i * 360) / PANEL_COUNT;
+        const w = 2 * radius * Math.sin(Math.PI / PANEL_COUNT) + 0.5;
+        const lightFactor = 0.5 + 0.5 * Math.cos(((angle - 30) * Math.PI) / 180);
+        const c = mix('#a07c5a', '#5a3520', 1 - lightFactor);
+        return (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: w,
+              height: 6,
+              background: `linear-gradient(180deg, ${lighten(c, 0.1)}, ${c}, ${darken(c, 0.15)})`,
+              transform: `translate(-50%, -50%) translateY(${-(y - 3)}px) rotateY(${angle}deg) translateZ(${radius}px)`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function Cylinder({ radius, height, yBase, color }) {
+  const panels = useMemo(() => {
+    const arr = [];
+    const panelW = 2 * radius * Math.sin(Math.PI / PANEL_COUNT) + 0.6;
+    for (let i = 0; i < PANEL_COUNT; i++) {
+      const angle = (i * 360) / PANEL_COUNT;
+      const lightFactor = 0.5 + 0.5 * Math.cos(((angle - 30) * Math.PI) / 180);
+      const bg = mix(color, '#ffffff', lightFactor * 0.32);
+      const shadow = mix(color, '#000000', (1 - lightFactor) * 0.22);
+      arr.push({ angle, panelW, color: mix(bg, shadow, 0.4) });
+    }
+    return arr;
+  }, [radius, color]);
+
+  return (
+    <>
+      {/* Pannelli laterali */}
+      {panels.map((p, i) => (
+        <div
+          key={`side-${i}`}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: p.panelW,
+            height: height,
+            background: `linear-gradient(180deg, ${lighten(p.color, 0.1)}, ${p.color} 50%, ${darken(p.color, 0.12)})`,
+            transform: `translate(-50%, -50%) translateY(${-(yBase + height / 2)}px) rotateY(${p.angle}deg) translateZ(${radius}px)`,
+          }}
+        />
+      ))}
+      {/* Disco superiore */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: radius * 2,
+          height: radius * 2,
+          borderRadius: '50%',
+          background: `radial-gradient(circle at 40% 35%, ${lighten(color, 0.22)}, ${color} 55%, ${darken(color, 0.1)})`,
+          transform: `translate(-50%, -50%) translateY(${-(yBase + height)}px) rotateX(90deg)`,
+          boxShadow: `inset 0 0 25px ${darken(color, 0.18)}55`,
+        }}
+      />
+      {/* Goccioline di crema sul bordo */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const a = (i * 360) / 12;
+        return (
+          <div
+            key={`drop-${i}`}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: 16,
+              height: 22,
+              borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+              background: `radial-gradient(circle at 35% 30%, ${lighten(color, 0.3)}, ${color})`,
+              transform: `translate(-50%, -50%) translateY(${-(yBase + height - 4)}px) rotateY(${a}deg) translateZ(${radius - 1}px)`,
+              boxShadow: `inset -2px -3px 4px ${darken(color, 0.2)}`,
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function Candle({ y }) {
+  return (
+    <>
+      {/* Cilindro candelina */}
+      {Array.from({ length: 14 }).map((_, i) => {
+        const a = (i * 360) / 14;
+        const r = 5;
+        const w = 2 * r * Math.sin(Math.PI / 14) + 0.4;
+        return (
+          <div
+            key={`candle-${i}`}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: w,
+              height: 38,
+              background: `linear-gradient(180deg, #fff 0%, #f0f0f0 50%, #d0d0d0 100%)`,
+              transform: `translate(-50%, -50%) translateY(${-(y + 19)}px) rotateY(${a}deg) translateZ(${r}px)`,
+            }}
+          />
+        );
+      })}
+      {/* Disco top candela */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          background: '#fff',
+          transform: `translate(-50%, -50%) translateY(${-(y + 38)}px) rotateX(90deg)`,
+        }}
+      />
+      {/* Stoppino */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 1.5,
+          height: 6,
+          background: '#3a2418',
+          transform: `translate(-50%, -50%) translateY(${-(y + 41)}px)`,
+        }}
+      />
+      {/* Fiamma */}
+      <motion.div
+        animate={{ scale: [1, 1.12, 0.95, 1.08, 1] }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 14,
+          height: 24,
+          borderRadius: '50% 50% 50% 50% / 70% 70% 30% 30%',
+          background: 'radial-gradient(ellipse at 50% 70%, #fff200, #eb911e 55%, rgba(235,145,30,0) 100%)',
+          transform: `translate(-50%, -50%) translateY(${-(y + 54)}px)`,
+          filter: 'blur(0.4px)',
+          boxShadow: '0 0 28px rgba(235,145,30,0.7)',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Glow sulla torta */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(235,145,30,0.28), transparent 70%)',
+          transform: `translate(-50%, -50%) translateY(${-(y + 6)}px) rotateX(90deg)`,
+          pointerEvents: 'none',
+        }}
+      />
+    </>
+  );
+}
+
+function Decoration({ kind, radius, y }) {
   if (kind === 'minimal') {
-    return (
-      <g>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <text key={i} x={cx + (i - 1) * 22} y={y - 6} textAnchor="middle" fontSize="14" fill="#b651e4">✻</text>
-        ))}
-      </g>
-    );
+    return Array.from({ length: 5 }).map((_, i) => {
+      const a = (i * 360) / 5;
+      const r = radius * 0.55;
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 16,
+            height: 16,
+            color: '#b651e4',
+            fontSize: 16,
+            lineHeight: '16px',
+            textAlign: 'center',
+            transform: `translate(-50%, -50%) translateY(${-(y + 1)}px) rotateX(90deg) translate(${Math.cos(a * Math.PI / 180) * r}px, ${Math.sin(a * Math.PI / 180) * r}px)`,
+          }}
+        >
+          ✻
+        </div>
+      );
+    });
   }
   if (kind === 'frutta') {
-    const fruits = ['#e84a6e', '#f5e26a', '#7ea15a', '#eb911e', '#c94a6b'];
-    return (
-      <g>
-        {fruits.map((c, i) => (
-          <circle key={i} cx={cx + (i - 2) * 18} cy={y} r="7" fill={c} />
-        ))}
-      </g>
-    );
+    const fruits = ['#e84a6e', '#f5e26a', '#7ea15a', '#eb911e', '#c94a6b', '#b651e4'];
+    return fruits.map((c, i) => {
+      const a = (i * 360) / fruits.length;
+      const r = radius * 0.55;
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: `radial-gradient(circle at 35% 30%, ${lighten(c, 0.3)}, ${c} 65%, ${darken(c, 0.2)})`,
+            transform: `translate(-50%, -50%) translateY(${-(y + 9)}px) translate(${Math.cos(a * Math.PI / 180) * r}px, ${Math.sin(a * Math.PI / 180) * r}px)`,
+            boxShadow: `0 3px 8px ${darken(c, 0.3)}77`,
+          }}
+        />
+      );
+    });
   }
   if (kind === 'cioccolato') {
-    return (
-      <g>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <ellipse
-            key={i}
-            cx={cx + (i - 3.5) * 14}
-            cy={y - (i % 2 === 0 ? 4 : 0)}
-            rx="6"
-            ry="3"
-            fill={i % 2 ? '#3a2418' : '#5a3520'}
-            transform={`rotate(${(i - 3.5) * 8} ${cx + (i - 3.5) * 14} ${y})`}
-          />
-        ))}
-      </g>
-    );
+    return Array.from({ length: 14 }).map((_, i) => {
+      const a = (i * 360) / 14;
+      const r = radius * 0.55;
+      const c = i % 2 ? '#3a2418' : '#5a3520';
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 14,
+            height: 6,
+            borderRadius: 3,
+            background: `linear-gradient(180deg, ${lighten(c, 0.2)}, ${c})`,
+            transform: `translate(-50%, -50%) translateY(${-(y + 3)}px) rotateX(90deg) translate(${Math.cos(a * Math.PI / 180) * r}px, ${Math.sin(a * Math.PI / 180) * r}px) rotate(${a + 90}deg)`,
+            boxShadow: `0 1px 2px ${darken(c, 0.4)}`,
+          }}
+        />
+      );
+    });
   }
   if (kind === 'panna') {
-    return (
-      <g>
-        {Array.from({ length: 7 }).map((_, i) => (
-          <path
-            key={i}
-            d={`M ${cx + (i - 3) * 20} ${y + 4} q -6 -10 0 -18 q 6 8 0 18 Z`}
-            fill="#fffdf5"
-            stroke="#e8d8c0"
-            strokeWidth="0.8"
-          />
-        ))}
-      </g>
-    );
+    return Array.from({ length: 9 }).map((_, i) => {
+      const a = (i * 360) / 9;
+      const r = radius * 0.7;
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 20,
+            height: 24,
+            borderRadius: '50% 50% 50% 50% / 70% 70% 30% 30%',
+            background: 'radial-gradient(circle at 35% 30%, #fff, #e8d8c0)',
+            transform: `translate(-50%, -50%) translateY(${-(y + 12)}px) translate(${Math.cos(a * Math.PI / 180) * r}px, ${Math.sin(a * Math.PI / 180) * r}px)`,
+            boxShadow: 'inset -3px -3px 4px rgba(0,0,0,0.08)',
+          }}
+        />
+      );
+    });
   }
   if (kind === 'fantasy') {
     const colors = ['#b651e4', '#eb911e', '#7ea15a', '#e84a6e', '#a5cdcb', '#f5e26a'];
-    return (
-      <g>
-        {Array.from({ length: 14 }).map((_, i) => (
-          <rect
-            key={i}
-            x={cx - w * 0.7 + (i / 14) * w * 1.4}
-            y={y - 8 - (i % 3) * 4}
-            width="3"
-            height="9"
-            fill={colors[i % colors.length]}
-            transform={`rotate(${(i % 5) * 25} ${cx - w * 0.7 + (i / 14) * w * 1.4} ${y})`}
-          />
-        ))}
-      </g>
-    );
+    return Array.from({ length: 24 }).map((_, i) => {
+      const a = (i * 360) / 24;
+      const r = radius * (0.3 + (i % 3) * 0.18);
+      const c = colors[i % colors.length];
+      return (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 4,
+            height: 12,
+            borderRadius: 2,
+            background: c,
+            transform: `translate(-50%, -50%) translateY(${-(y + 6)}px) translate(${Math.cos(a * Math.PI / 180) * r}px, ${Math.sin(a * Math.PI / 180) * r}px) rotate(${a * 2}deg)`,
+          }}
+        />
+      );
+    });
   }
   return null;
 }
 
-// Color helpers
+function CakeText({ text, font, rotation, radius, y }) {
+  const fontMap = {
+    caveat: { family: "'Caveat', cursive", size: 28, weight: 700 },
+    fraunces: { family: "'Fraunces', serif", size: 20, weight: 700, italic: true },
+    inter: { family: "'Inter', sans-serif", size: 16, weight: 700, upper: true },
+  };
+  const f = fontMap[font] || fontMap.caveat;
+  const display = f.upper ? text.toUpperCase() : text;
+  const dynSize = Math.min(f.size, (radius * 1.7) / Math.max(display.length * 0.55, 5));
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: '50%',
+        width: radius * 2,
+        height: 60,
+        display: 'grid',
+        placeItems: 'center',
+        transform: `translate(-50%, -50%) translateY(${-(y + 1)}px) rotateX(90deg) rotate(${rotation}deg)`,
+        pointerEvents: 'none',
+      }}
+    >
+      <span
+        style={{
+          fontFamily: f.family,
+          fontSize: dynSize,
+          fontWeight: f.weight,
+          fontStyle: f.italic ? 'italic' : 'normal',
+          letterSpacing: f.upper ? '0.1em' : 'normal',
+          color: '#602e9e',
+          padding: '3px 12px',
+          background: 'rgba(255,255,255,0.55)',
+          borderRadius: 999,
+          backdropFilter: 'blur(2px)',
+          whiteSpace: 'nowrap',
+          textShadow: '0 0 6px rgba(255,249,237,0.9)',
+        }}
+      >
+        {display}
+      </span>
+    </div>
+  );
+}
+
+/* ===================== Color helpers ===================== */
 function hexToRgb(hex) {
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
@@ -348,3 +536,8 @@ function darken(hex, amt) {
   const { r, g, b } = hexToRgb(hex);
   return rgbToHex({ r: r * (1 - amt), g: g * (1 - amt), b: b * (1 - amt) });
 }
+function mix(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  return rgbToHex({ r: A.r + (B.r - A.r) * t, g: A.g + (B.g - A.g) * t, b: A.b + (B.b - A.b) * t });
+}
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }

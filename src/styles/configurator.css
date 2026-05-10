@@ -232,21 +232,38 @@
 .cake-3d {
   width: 100%;
   height: 100%;
-  perspective: 1100px;
-  perspective-origin: 50% 55%;
+  perspective: 900px;
+  perspective-origin: 50% 45%;
   position: relative;
   cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .cake-3d.interactive { cursor: grab; }
 .cake-3d.interactive:active { cursor: grabbing; }
 
-.cake-3d-inner {
-  width: 100%;
-  height: 100%;
+.cake-3d-scene {
+  position: absolute;
+  inset: 0;
   transform-style: preserve-3d;
   transition: transform 0.05s linear;
   will-change: transform;
+}
+
+.cake-3d-scene > div {
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+}
+
+.cake-shadow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(60,20,100,0.35), rgba(60,20,100,0) 70%);
+  pointer-events: none;
+  filter: blur(6px);
 }
 
 .cake-3d-hint {
