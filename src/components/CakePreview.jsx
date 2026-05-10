@@ -17,6 +17,8 @@ export default function CakePreview({ config }) {
     decoration = 'minimal',
     message = '',
     candle = false,
+    messageFont = 'caveat',
+    messageRotation = 0,
   } = config;
 
   // Larghezza scala in base alla dimensione
@@ -146,22 +148,43 @@ export default function CakePreview({ config }) {
         </g>
       )}
 
-      {/* Scritta sulla torta */}
-      {message && (
-        <text
-          x={cx}
-          y={baseY - layers * layerH + 28}
-          textAnchor="middle"
-          fontFamily="'Caveat', cursive"
-          fontSize="22"
-          fill="#fff"
-          stroke="#602e9e"
-          strokeWidth="0.6"
-          style={{ paintOrder: 'stroke' }}
-        >
-          {message.length > 22 ? message.slice(0, 22) + '…' : message}
-        </text>
-      )}
+      {/* Scritta SOPRA la torta (con prospettiva, ruotabile) */}
+      {message && (() => {
+        const topY = baseY - layers * layerH - 12;
+        const topW = baseW * (1 - (layers - 1) * 0.08);
+        const fontMap = {
+          caveat: { family: "'Caveat', cursive", size: 30, weight: 700 },
+          fraunces: { family: "'Fraunces', serif", size: 22, weight: 700, italic: true },
+          inter: { family: "'Inter', sans-serif", size: 18, weight: 700, upper: true },
+        };
+        const font = fontMap[messageFont] || fontMap.caveat;
+        const maxChars = Math.floor(topW / 5);
+        const text = message.length > maxChars ? message.slice(0, maxChars) + '…' : message;
+        const display = font.upper ? text.toUpperCase() : text;
+        const dynSize = Math.min(font.size, (topW * 1.6) / Math.max(display.length * 0.55, 6));
+        // Concateno trasformazioni: translate al centro top → comprimi Y (prospettiva) → ruota
+        const transform = `translate(${cx} ${topY}) scale(1 0.42) rotate(${messageRotation})`;
+        return (
+          <g transform={transform}>
+            <ellipse cx={0} cy={0} rx={Math.max(display.length * dynSize * 0.34, 40)} ry={dynSize * 1.4} fill="rgba(255,255,255,0.5)" />
+            <text
+              x={0}
+              y={dynSize * 0.35}
+              textAnchor="middle"
+              fontFamily={font.family}
+              fontSize={dynSize}
+              fontWeight={font.weight}
+              fontStyle={font.italic ? 'italic' : 'normal'}
+              fill="#602e9e"
+              stroke="#fff9ed"
+              strokeWidth="0.5"
+              style={{ paintOrder: 'stroke', letterSpacing: font.upper ? '0.08em' : 'normal' }}
+            >
+              {display}
+            </text>
+          </g>
+        );
+      })()}
     </motion.svg>
   );
 }

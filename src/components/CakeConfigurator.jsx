@@ -22,6 +22,8 @@ const initialConfig = {
   baseId: 'classica',
   decoration: 'minimal',
   message: '',
+  messageFont: 'caveat',
+  messageRotation: 0,
   candle: false,
   occasion: '',
   pickupDate: '',
@@ -375,6 +377,11 @@ function StepDecoration({ config, set }) {
 }
 
 function StepMessage({ config, set }) {
+  const fonts = [
+    { id: 'caveat', label: 'Calligrafica', preview: 'Auguri!', family: "'Caveat', cursive", size: '1.4rem' },
+    { id: 'fraunces', label: 'Elegante', preview: 'Auguri!', family: "'Fraunces', serif", size: '1.15rem', italic: true },
+    { id: 'inter', label: 'Moderna', preview: 'AUGURI!', family: "'Inter', sans-serif", size: '1rem', weight: 700, letterSpacing: '0.08em' },
+  ];
   return (
     <>
       <StepHeader num={6} title="Scritta e candelina" lead="Una frase importante? Divertente, romantica, dolce, scherzosa…" />
@@ -388,8 +395,63 @@ function StepMessage({ config, set }) {
           value={config.message}
           onChange={(e) => set({ message: e.target.value })}
         />
-        <p className="hint">{config.message.length}/30 — appare in anteprima a sinistra ✨</p>
+        <p className="hint">{config.message.length}/30 — vedi l'anteprima sulla torta ✨</p>
       </div>
+
+      {config.message && (
+        <>
+          <div className="cfg-field">
+            <label>Stile della scritta</label>
+            <div className="font-grid">
+              {fonts.map((f) => (
+                <button
+                  key={f.id}
+                  className={`font-card ${config.messageFont === f.id ? 'selected' : ''}`}
+                  onClick={() => set({ messageFont: f.id })}
+                >
+                  <span
+                    className="font-preview"
+                    style={{
+                      fontFamily: f.family,
+                      fontSize: f.size,
+                      fontStyle: f.italic ? 'italic' : 'normal',
+                      fontWeight: f.weight || 600,
+                      letterSpacing: f.letterSpacing || 'normal',
+                    }}
+                  >
+                    {f.preview}
+                  </span>
+                  <span className="font-label">{f.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="cfg-field">
+            <label>Rotazione: {config.messageRotation}°</label>
+            <div className="rotation-row">
+              <input
+                type="range"
+                min="-45"
+                max="45"
+                step="1"
+                value={config.messageRotation}
+                onChange={(e) => set({ messageRotation: Number(e.target.value) })}
+                className="rotation-slider"
+              />
+              <button
+                type="button"
+                className="toggle-pill"
+                onClick={() => set({ messageRotation: 0 })}
+                style={{ flexShrink: 0 }}
+              >
+                Reset
+              </button>
+            </div>
+            <p className="hint">Inclina la scritta come preferisci.</p>
+          </div>
+        </>
+      )}
 
       <div className="cfg-field">
         <label>Candelina</label>

@@ -579,6 +579,95 @@
 }
 .cfg-btn-send:hover { background: #1eb858; transform: translateY(-2px); }
 
+/* Font picker */
+.font-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+
+.font-card {
+  background: #fff;
+  border: 1.5px solid rgba(42,26,62,0.1);
+  border-radius: var(--radius-sm);
+  padding: 0.9rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  min-height: 80px;
+  justify-content: center;
+}
+
+.font-card:hover { border-color: var(--violet); transform: translateY(-2px); }
+
+.font-card.selected {
+  border-color: var(--violet-deep);
+  background: linear-gradient(135deg, rgba(182,81,228,0.08), rgba(96,46,158,0.05));
+  box-shadow: 0 6px 20px -8px rgba(96,46,158,0.3);
+}
+
+.font-card .font-preview {
+  color: var(--violet-deep);
+  line-height: 1;
+}
+
+.font-card .font-label {
+  font-size: 0.7rem;
+  color: var(--grey);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Rotation slider */
+.rotation-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.rotation-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, rgba(96,46,158,0.15), rgba(182,81,228,0.4), rgba(96,46,158,0.15));
+  outline: none;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+}
+
+.rotation-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--violet-deep);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(96,46,158,0.4);
+  cursor: grab;
+  transition: transform 0.2s ease;
+}
+
+.rotation-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.rotation-slider::-webkit-slider-thumb:active { cursor: grabbing; }
+
+.rotation-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--violet-deep);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(96,46,158,0.4);
+  cursor: grab;
+}
+
 /* Success */
 .cfg-success {
   text-align: center;
