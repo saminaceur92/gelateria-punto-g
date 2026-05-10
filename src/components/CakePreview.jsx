@@ -116,16 +116,15 @@ export default function CakePreview({ config, interactive = true }) {
         {/* Foto bordino decorativo (se presente) */}
         {photo && <PhotoFrame radius={topRadius} y={totalHeight + 0.4} />}
 
-        {/* Decorazione sopra (solo se non c'è foto, oppure decoration sul bordo) */}
-        {!photo && (
+        {/* Decorazione: se c'è messaggio o foto, va sul perimetro (lascia spazio al centro) */}
+        {photo || message ? (
+          <DecorationRing kind={decoration} radius={topRadius} y={totalHeight + 2} />
+        ) : (
           <Decoration kind={decoration} radius={topRadius} y={totalHeight + 2} topColor={layerColors[layerColors.length - 1]} />
         )}
-        {photo && (
-          <DecorationRing kind={decoration} radius={topRadius} y={totalHeight + 2} />
-        )}
 
-        {/* Candelina */}
-        {candle && <Candle y={totalHeight + 4} />}
+        {/* Candelina (di lato se c'è messaggio per non coprirlo) */}
+        {candle && <Candle y={totalHeight + 4} offsetX={message ? topRadius * 0.65 : 0} offsetZ={message ? -topRadius * 0.2 : 0} />}
 
         {/* Scritta sul top */}
         {message && (
@@ -272,7 +271,9 @@ function Cylinder({ radius, height, yBase, color, topImage = null }) {
   );
 }
 
-function Candle({ y }) {
+function Candle({ y, offsetX = 0, offsetZ = 0 }) {
+  const ox = offsetX;
+  const oz = offsetZ;
   return (
     <>
       {/* Cilindro candelina */}
@@ -290,7 +291,7 @@ function Candle({ y }) {
               width: w,
               height: 38,
               background: `linear-gradient(180deg, #fff 0%, #f0f0f0 50%, #d0d0d0 100%)`,
-              transform: `translate(-50%, -50%) translateY(${-(y + 19)}px) rotateY(${a}deg) translateZ(${r}px)`,
+              transform: `translate(-50%, -50%) translateY(${-(y + 19)}px) translate3d(${ox}px, 0, ${oz}px) rotateY(${a}deg) translateZ(${r}px)`,
             }}
           />
         );
@@ -305,7 +306,7 @@ function Candle({ y }) {
           height: 10,
           borderRadius: '50%',
           background: '#fff',
-          transform: `translate(-50%, -50%) translateY(${-(y + 38)}px) rotateX(90deg)`,
+          transform: `translate(-50%, -50%) translateY(${-(y + 38)}px) translate3d(${ox}px, 0, ${oz}px) rotateX(90deg)`,
         }}
       />
       {/* Stoppino */}
@@ -317,7 +318,7 @@ function Candle({ y }) {
           width: 1.5,
           height: 6,
           background: '#3a2418',
-          transform: `translate(-50%, -50%) translateY(${-(y + 41)}px)`,
+          transform: `translate(-50%, -50%) translateY(${-(y + 41)}px) translate3d(${ox}px, 0, ${oz}px)`,
         }}
       />
       {/* Fiamma */}
@@ -332,7 +333,7 @@ function Candle({ y }) {
           height: 24,
           borderRadius: '50% 50% 50% 50% / 70% 70% 30% 30%',
           background: 'radial-gradient(ellipse at 50% 70%, #fff200, #eb911e 55%, rgba(235,145,30,0) 100%)',
-          transform: `translate(-50%, -50%) translateY(${-(y + 54)}px)`,
+          transform: `translate(-50%, -50%) translateY(${-(y + 54)}px) translate3d(${ox}px, 0, ${oz}px)`,
           filter: 'blur(0.4px)',
           boxShadow: '0 0 28px rgba(235,145,30,0.7)',
           pointerEvents: 'none',
@@ -348,7 +349,7 @@ function Candle({ y }) {
           height: 100,
           borderRadius: '50%',
           background: 'radial-gradient(circle, rgba(235,145,30,0.28), transparent 70%)',
-          transform: `translate(-50%, -50%) translateY(${-(y + 6)}px) rotateX(90deg)`,
+          transform: `translate(-50%, -50%) translateY(${-(y + 6)}px) translate3d(${ox}px, 0, ${oz}px) rotateX(90deg)`,
           pointerEvents: 'none',
         }}
       />
@@ -909,24 +910,51 @@ function Macaron({ x, z, y, color }) {
 
 function CakeText({ text, font, rotation, radius, y, topColor, onPhoto }) {
   const fontMap = {
-    caveat: { family: "'Caveat', cursive", baseSize: 56, weight: 700 },
-    fraunces: { family: "'Fraunces', serif", baseSize: 40, weight: 700, italic: true },
-    inter: { family: "'Inter', sans-serif", baseSize: 32, weight: 800, upper: true },
+    caveat: { family: "'Caveat', cursive", weight: 700, lineH: 0.85, charW: 0.42 },
+    fraunces: { family: "'Fraunces', serif", weight: 700, italic: true, lineH: 1, charW: 0.5 },
+    inter: { family: "'Inter', sans-serif", weight: 800, upper: true, lineH: 1.05, charW: 0.62 },
   };
   const f = fontMap[font] || fontMap.caveat;
-  const display = f.upper ? text.toUpperCase() : text;
-  // Riempi la torta: ~85% del diametro
-  const targetWidth = radius * 1.7;
-  const charW = f.upper ? 0.65 : 0.5;
-  const dynSize = Math.min(f.baseSize, targetWidth / Math.max(display.length * charW, 4));
+  const display = (f.upper ? text.toUpperCase() : text).trim();
 
-  // Colore intelligente: se la superficie è scura → bianco crema; se chiara → cioccolato fondente
+  // Spezza in righe per riempire la torta a forma circolare
+  // Diametro utile ~ 1.7 * radius. Se la frase è lunga, andiamo su 2 righe.
+  const words = display.split(/\s+/);
+  const targetWidth = radius * 1.75;
+  const maxWidth = radius * 1.85;
+
+  // Trova la migliore divisione in 1 o 2 righe per massimizzare la dimensione carattere
+  const candidates = [];
+  // 1 riga
+  candidates.push([display]);
+  // 2 righe (cerca il punto di rottura migliore tra le parole)
+  if (words.length > 1) {
+    for (let i = 1; i < words.length; i++) {
+      const a = words.slice(0, i).join(' ');
+      const b = words.slice(i).join(' ');
+      candidates.push([a, b]);
+    }
+  }
+
+  let best = { lines: [display], size: 0 };
+  for (const lines of candidates) {
+    const longest = Math.max(...lines.map((l) => l.length));
+    // dimensione in modo che la riga più lunga occupi targetWidth
+    const sizeByWidth = targetWidth / Math.max(longest * f.charW, 3);
+    // limite altezza: 2 righe non devono uscire dal disco (riserva diametro)
+    const sizeByHeight = (radius * 1.4) / (lines.length * f.lineH);
+    const size = Math.min(sizeByWidth, sizeByHeight);
+    if (size > best.size) best = { lines, size };
+  }
+
+  // Limite massimo assoluto
+  const dynSize = Math.min(best.size, 90);
+
+  // Colore intelligente
   const lum = onPhoto ? 0.6 : luminance(topColor);
   const isDark = lum < 0.55;
   const inkColor = isDark ? '#fff8e6' : '#3a1f10';
-  const accentShadow = isDark
-    ? '0 1px 0 rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.6)'
-    : '0 1px 0 rgba(255,255,255,0.6), 0 2px 4px rgba(58,31,16,0.35)';
+  const stroke = isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.7)';
 
   return (
     <div
@@ -934,12 +962,13 @@ function CakeText({ text, font, rotation, radius, y, topColor, onPhoto }) {
         position: 'absolute',
         left: '50%',
         top: '50%',
-        width: radius * 2,
-        height: 80,
+        width: maxWidth,
+        height: maxWidth,
         display: 'grid',
         placeItems: 'center',
         transform: `translate(-50%, -50%) translateY(${-(y + 1)}px) rotateX(90deg) rotate(${rotation}deg)`,
         pointerEvents: 'none',
+        textAlign: 'center',
       }}
     >
       <span
@@ -948,18 +977,17 @@ function CakeText({ text, font, rotation, radius, y, topColor, onPhoto }) {
           fontSize: dynSize,
           fontWeight: f.weight,
           fontStyle: f.italic ? 'italic' : 'normal',
-          letterSpacing: f.upper ? '0.08em' : 'normal',
+          letterSpacing: f.upper ? '0.06em' : 'normal',
           color: inkColor,
-          whiteSpace: 'nowrap',
-          textShadow: accentShadow,
-          lineHeight: 1,
-          // Effetto scrittura "in pasta di zucchero" / glassa
+          lineHeight: f.lineH,
+          whiteSpace: 'pre-line',
+          textShadow: `1px 1px 0 ${stroke}, -1px 1px 0 ${stroke}, 1px -1px 0 ${stroke}, -1px -1px 0 ${stroke}, 0 2px 6px rgba(0,0,0,0.35)`,
           filter: isDark
-            ? 'drop-shadow(0 1px 0 rgba(0,0,0,0.4))'
-            : 'drop-shadow(0 1px 0 rgba(255,255,255,0.4))',
+            ? 'drop-shadow(0 2px 1px rgba(0,0,0,0.5))'
+            : 'drop-shadow(0 1px 0 rgba(255,255,255,0.5))',
         }}
       >
-        {display}
+        {best.lines.join('\n')}
       </span>
     </div>
   );
