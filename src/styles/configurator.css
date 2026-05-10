@@ -217,74 +217,198 @@
 
 .cfg-preview-stage {
   width: 100%;
-  max-width: 360px;
-  aspect-ratio: 1;
+  max-width: 340px;
   display: grid;
   place-items: center;
   position: relative;
 }
 
 @media (max-width: 900px) {
-  .cfg-preview-stage { max-width: 240px; }
+  .cfg-preview-stage { max-width: 280px; }
 }
 
-/* 3D rotating cake */
-.cake-3d {
+/* Cake card preview (editorial) */
+.cake-card {
+  width: 100%;
+  background: linear-gradient(180deg, #fffdf6 0%, #fff5e2 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(96,46,158,0.12);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    0 14px 30px -16px rgba(96,46,158,0.35);
+  padding: 1.4rem 1.3rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cake-card::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(96,46,158,0.2);
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+.cake-card-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-script, 'Caveat', cursive);
+  font-size: 1rem;
+  color: var(--violet-deep);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.6rem;
+  position: relative;
+  z-index: 1;
+}
+
+.cake-card-ribbon .dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--orange, #eb911e);
+}
+
+.cake-card-body {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.cake-card-photo {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  margin: 0.4rem auto 1rem;
+}
+
+.cake-card-photo img {
   width: 100%;
   height: 100%;
-  perspective: 900px;
-  perspective-origin: 50% 45%;
-  position: relative;
-  cursor: default;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.cake-3d.interactive { cursor: grab; }
-.cake-3d.interactive:active { cursor: grabbing; }
-
-.cake-3d-scene {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transition: transform 0.05s linear;
-  will-change: transform;
-}
-
-.cake-3d-scene > div {
-  transform-style: preserve-3d;
-  backface-visibility: visible;
-}
-
-.cake-shadow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  object-fit: cover;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(60,20,100,0.35), rgba(60,20,100,0) 70%);
-  pointer-events: none;
-  filter: blur(6px);
+  border: 4px solid #d4b07a;
+  box-shadow: 0 6px 18px -6px rgba(0,0,0,0.35);
 }
 
-.cake-3d-hint {
+.cake-card-photo-tag {
   position: absolute;
-  bottom: -2px;
+  bottom: -4px;
   left: 50%;
   transform: translateX(-50%);
+  background: var(--violet-deep);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+}
+
+.cake-card-type {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.1;
+}
+
+.cake-card-size {
+  font-size: 0.88rem;
+  color: var(--grey);
+  margin: 0.2rem 0 1rem;
+}
+
+.cake-card-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--violet);
+  margin-bottom: 0.4rem;
+}
+
+.cake-card-flavors { margin: 0.8rem 0; }
+
+.flavor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.flavor-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  color: var(--violet-deep);
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(6px);
-  padding: 0.35rem 0.7rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(96,46,158,0.12);
   border-radius: 999px;
-  pointer-events: none;
-  opacity: 0.7;
-  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.flavor-chip-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.25);
+}
+
+.cake-card-base {
+  font-size: 0.82rem;
+  color: var(--grey);
+  margin: 0.6rem 0 0.8rem;
+}
+
+.cake-card-message {
+  margin: 1rem 0 0.8rem;
+  padding: 0.9rem 0.8rem;
+  background: rgba(255,255,255,0.7);
+  border-top: 1px solid rgba(96,46,158,0.12);
+  border-bottom: 1px solid rgba(96,46,158,0.12);
+}
+
+.cake-card-message p {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--violet-deep);
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+.cake-card-icons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.cake-card-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ink);
+  background: rgba(255,255,255,0.6);
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+}
+
+.cake-card-footer {
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed rgba(96,46,158,0.2);
+  text-align: center;
+  font-family: var(--font-script, 'Caveat', cursive);
+  font-size: 0.95rem;
+  color: var(--grey);
+  position: relative;
+  z-index: 1;
 }
 
 .cfg-preview-info {
