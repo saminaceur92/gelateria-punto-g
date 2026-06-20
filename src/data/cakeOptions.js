@@ -1,95 +1,20 @@
-// Catalogo opzioni configuratore torte
-// Prezzi indicativi: vanno confermati con il proprietario
+// Sorgente delle opzioni del configuratore torte.
+// I dati arrivano da Airtable: scaricati in fase di build da scripts/build-data.mjs
+// e salvati in ./generated/cake.json. Se mancano o non sono validi, si usa la
+// copia di sicurezza in ./fallback/cakeOptions.js.
+// Per i componenti la forma dei dati è identica a prima.
 
-export const cakeTypes = [
-  {
-    id: 'semifreddo',
-    name: 'Semifreddo',
-    desc: 'Soffice, vellutato, perfetto a fine pasto',
-    basePrice: 24,
-    img: '/torte.jpg',
-    color: '#b651e4',
-  },
-  {
-    id: 'gelato',
-    name: 'Torta Gelato',
-    desc: 'Strati di gelato artigianale dei tuoi gusti preferiti',
-    basePrice: 26,
-    img: '/gelato.jpg',
-    color: '#602e9e',
-  },
-  {
-    id: 'crock',
-    name: 'CROCK',
-    desc: 'Base croccante + semifreddo: la nostra firma',
-    basePrice: 28,
-    img: '/semifreddi.jpg',
-    color: '#eb911e',
-  },
-  {
-    id: 'piani',
-    name: 'A piani',
-    desc: 'Per occasioni speciali — scenografica e golosa',
-    basePrice: 38,
-    img: '/torte.jpg',
-    color: '#a5cdcb',
-  },
-];
+import generatedCake from './generated/cake.json';
+import * as fallback from './fallback/cakeOptions';
 
-export const cakeSizes = [
-  { id: '6', label: '6 persone', diameter: 18, priceDelta: 0 },
-  { id: '8', label: '8 persone', diameter: 20, priceDelta: 6, popular: true },
-  { id: '10', label: '10 persone', diameter: 22, priceDelta: 12 },
-  { id: '12', label: '12 persone', diameter: 24, priceDelta: 18 },
-  { id: '16', label: '16 persone', diameter: 28, priceDelta: 28 },
-  { id: '20', label: '20 persone', diameter: 30, priceDelta: 38 },
-];
+const g = generatedCake && typeof generatedCake === 'object' ? generatedCake : {};
 
-// Selezione gusti — riusiamo gli stessi colori del menù
-export const cakeFlavors = [
-  { name: 'Fior di latte', color: '#fff8e6' },
-  { name: 'Crema', color: '#f5d97a' },
-  { name: 'Stracciatella', color: '#f5f0dd' },
-  { name: 'Yogurt bianco', color: '#fafafa' },
-  { name: 'Cheesecake frutti rossi', color: '#c94a6b' },
-  { name: 'Pistacchio', color: '#7ea15a' },
-  { name: 'Nocciola', color: '#8a5a3b' },
-  { name: 'Cioccolato fondente', color: '#2a160e' },
-  { name: 'Cioccolato al latte', color: '#6b4226' },
-  { name: 'Nutella', color: '#3d2114' },
-  { name: 'Bacio', color: '#3a2519' },
-  { name: 'Caffè', color: '#4a2e1f' },
-  { name: 'Caramello salato', color: '#c8842b' },
-  { name: 'Pino pinguino', color: '#3a2418' },
-  { name: 'Punto Gi', color: '#b651e4' },
-  { name: 'Fragola', color: '#e84a6e' },
-  { name: 'Limone', color: '#f5e26a' },
-  { name: 'Mango', color: '#f3a72d' },
-  { name: 'Cocco', color: '#fafafa' },
-  { name: 'After Eight', color: '#1e3a2b' },
-];
+// Usa la lista generata solo se è un array non vuoto, altrimenti il fallback.
+const pick = (list, fb) => (Array.isArray(list) && list.length > 0 ? list : fb);
 
-export const cakeBases = [
-  { id: 'classica', name: 'Classica', desc: 'Pan di Spagna sottile', priceDelta: 0 },
-  { id: 'crock', name: 'Crock croccante', desc: 'Base biscottata e croccante', priceDelta: 3 },
-  { id: 'cacao', name: 'Frolla al cacao', desc: 'Friabile, intensa', priceDelta: 3 },
-  { id: 'glutenfree', name: 'Senza glutine', desc: 'Per intolleranze', priceDelta: 4 },
-];
-
-export const cakeDecorations = [
-  { id: 'minimal', name: 'Minimal', desc: 'Pulita ed elegante', emoji: '✻' },
-  { id: 'frutta', name: 'Frutta fresca', desc: 'Colorata e di stagione', emoji: '🍓' },
-  { id: 'cioccolato', name: 'Cioccolato', desc: 'Riccioli e gocce', emoji: '🍫' },
-  { id: 'panna', name: 'Ciuffi di panna', desc: 'Classica, romantica', emoji: '🌸' },
-  { id: 'fantasy', name: 'Fantasy', desc: 'Colori, glassa, sprinkles', emoji: '🌈' },
-];
-
-export const cakeOccasions = [
-  'Compleanno',
-  'Anniversario',
-  'Laurea',
-  'Battesimo',
-  'Comunione',
-  'Festa di famiglia',
-  'Solo per coccolarmi',
-];
+export const cakeTypes = pick(g.cakeTypes, fallback.cakeTypes);
+export const cakeSizes = pick(g.cakeSizes, fallback.cakeSizes);
+export const cakeFlavors = pick(g.cakeFlavors, fallback.cakeFlavors);
+export const cakeBases = pick(g.cakeBases, fallback.cakeBases);
+export const cakeDecorations = pick(g.cakeDecorations, fallback.cakeDecorations);
+export const cakeOccasions = pick(g.cakeOccasions, fallback.cakeOccasions);

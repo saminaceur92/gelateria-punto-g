@@ -15,12 +15,18 @@ const STEPS = ['type', 'size', 'flavors', 'base', 'decoration', 'message', 'deta
 const MAX_FLAVORS = 4;
 const WHATSAPP = '393203306009';
 
+// Default calcolati dai dati disponibili: così restano validi anche se il
+// proprietario disattiva la dimensione/base/decorazione usata di default.
+const defaultSizeId = (cakeSizes.find((s) => s.popular) || cakeSizes[0])?.id || '';
+const defaultBaseId = cakeBases[0]?.id || '';
+const defaultDecoration = cakeDecorations[0]?.id || '';
+
 const initialConfig = {
   type: '',
-  sizeId: '8',
+  sizeId: defaultSizeId,
   flavors: [], // [{name,color}]
-  baseId: 'classica',
-  decoration: 'minimal',
+  baseId: defaultBaseId,
+  decoration: defaultDecoration,
   message: '',
   messageFont: 'caveat',
   messageRotation: 0,
