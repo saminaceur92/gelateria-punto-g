@@ -1,6 +1,13 @@
 // Catalogo opzioni configuratore torte
 // Prezzi indicativi: vanno confermati con il proprietario
 
+export const cakeShapes = [
+  { id: 'tonda', name: 'Tonda', desc: 'Classica, perfetta per ogni occasione', emoji: '⬤', priceDelta: 0 },
+  { id: 'cuore', name: 'Cuore', desc: 'Romantica, per dichiarazioni e ricorrenze', emoji: '❤', priceDelta: 4 },
+  { id: 'quadrata', name: 'Quadrata', desc: 'Moderna, ideale per più persone', emoji: '◼', priceDelta: 2 },
+  { id: 'rettangolare', name: 'Rettangolare', desc: 'Per buffet e tagli generosi', emoji: '▭', priceDelta: 3 },
+];
+
 export const cakeTypes = [
   {
     id: 'semifreddo',
@@ -45,43 +52,67 @@ export const cakeSizes = [
   { id: '20', label: '20 persone', diameter: 30, priceDelta: 38 },
 ];
 
-// Selezione gusti — riusiamo gli stessi colori del menù
+// tags possibili: 'gelato' | 'semifreddo' | 'sorbetto' | 'vegano' | 'sg'
 export const cakeFlavors = [
-  { name: 'Fior di latte', color: '#fff8e6' },
-  { name: 'Crema', color: '#f5d97a' },
-  { name: 'Stracciatella', color: '#f5f0dd' },
-  { name: 'Yogurt bianco', color: '#fafafa' },
-  { name: 'Cheesecake frutti rossi', color: '#c94a6b' },
-  { name: 'Pistacchio', color: '#7ea15a' },
-  { name: 'Nocciola', color: '#8a5a3b' },
-  { name: 'Cioccolato fondente', color: '#2a160e' },
-  { name: 'Cioccolato al latte', color: '#6b4226' },
-  { name: 'Nutella', color: '#3d2114' },
-  { name: 'Bacio', color: '#3a2519' },
-  { name: 'Caffè', color: '#4a2e1f' },
-  { name: 'Caramello salato', color: '#c8842b' },
-  { name: 'Pino pinguino', color: '#3a2418' },
-  { name: 'Punto Gi', color: '#b651e4' },
-  { name: 'Fragola', color: '#e84a6e' },
-  { name: 'Limone', color: '#f5e26a' },
-  { name: 'Mango', color: '#f3a72d' },
-  { name: 'Cocco', color: '#fafafa' },
-  { name: 'After Eight', color: '#1e3a2b' },
+  { name: 'Fior di latte', color: '#fff8e6', tags: ['gelato'] },
+  { name: 'Crema', color: '#f5d97a', tags: ['gelato'] },
+  { name: 'Stracciatella', color: '#f5f0dd', tags: ['gelato'] },
+  { name: 'Yogurt bianco', color: '#fafafa', tags: ['gelato', 'sg'] },
+  { name: 'Cheesecake frutti rossi', color: '#c94a6b', tags: ['semifreddo'] },
+  { name: 'Pistacchio', color: '#7ea15a', tags: ['gelato', 'sg'] },
+  { name: 'Nocciola', color: '#8a5a3b', tags: ['gelato'] },
+  { name: 'Cioccolato fondente', color: '#2a160e', tags: ['gelato', 'vegano'] },
+  { name: 'Cioccolato al latte', color: '#6b4226', tags: ['gelato'] },
+  { name: 'Nutella', color: '#3d2114', tags: ['gelato'] },
+  { name: 'Bacio', color: '#3a2519', tags: ['gelato'] },
+  { name: 'Caffè', color: '#4a2e1f', tags: ['gelato'] },
+  { name: 'Caramello salato', color: '#c8842b', tags: ['gelato'] },
+  { name: 'Pino pinguino', color: '#3a2418', tags: ['gelato'] },
+  { name: 'Punto Gi', color: '#b651e4', tags: ['gelato'] },
+  { name: 'Fragola', color: '#e84a6e', tags: ['sorbetto', 'vegano', 'sg'] },
+  { name: 'Limone', color: '#f5e26a', tags: ['sorbetto', 'vegano', 'sg'] },
+  { name: 'Mango', color: '#f3a72d', tags: ['sorbetto', 'vegano', 'sg'] },
+  { name: 'Cocco', color: '#fafafa', tags: ['gelato', 'sg'] },
+  { name: 'After Eight', color: '#1e3a2b', tags: ['gelato'] },
 ];
 
 export const cakeBases = [
-  { id: 'classica', name: 'Classica', desc: 'Pan di Spagna sottile', priceDelta: 0 },
-  { id: 'crock', name: 'Crock croccante', desc: 'Base biscottata e croccante', priceDelta: 3 },
-  { id: 'cacao', name: 'Frolla al cacao', desc: 'Friabile, intensa', priceDelta: 3 },
-  { id: 'glutenfree', name: 'Senza glutine', desc: 'Per intolleranze', priceDelta: 4 },
+  { id: 'classica', name: 'Classica', desc: 'Pan di Spagna sottile', priceDelta: 0, color: '#e8d2a8' },
+  { id: 'crock', name: 'Crock croccante', desc: 'Base biscottata e croccante', priceDelta: 3, color: '#b88c5a' },
+  { id: 'cacao', name: 'Frolla al cacao', desc: 'Friabile, intensa', priceDelta: 3, color: '#5a3520' },
+  { id: 'glutenfree', name: 'Senza glutine', desc: 'Per intolleranze', priceDelta: 4, color: '#d8c098' },
 ];
 
+// Farciture (variegato/cuore tra gli strati)
+export const cakeFillings = [
+  { id: 'nessuna', name: 'Nessuna', desc: 'Strati puri', priceDelta: 0, color: null },
+  { id: 'cremino', name: 'Variegato cremino', desc: 'Nocciola e cioccolato', priceDelta: 2, color: '#5a3520' },
+  { id: 'caramello', name: 'Salsa caramello salato', desc: 'Dolce e sapida', priceDelta: 2, color: '#c8842b' },
+  { id: 'frutti-rossi', name: 'Cuore frutti rossi', desc: 'Lampone e ribes', priceDelta: 2, color: '#c93060' },
+  { id: 'amarena', name: 'Amarena', desc: 'Classica, intensa', priceDelta: 2, color: '#8c1e3a' },
+  { id: 'ganache', name: 'Ganache fondente', desc: 'Cioccolato puro', priceDelta: 2, color: '#2a160e' },
+  { id: 'biscotto', name: 'Biscotto sbriciolato', desc: 'Croccantezza extra', priceDelta: 2, color: '#b88c5a' },
+  { id: 'granella', name: 'Granella di nocciole', desc: 'Tostate del Piemonte', priceDelta: 2, color: '#8a5a3b' },
+  { id: 'pistacchio', name: 'Crema pistacchio', desc: 'Bronte, vellutata', priceDelta: 3, color: '#7ea15a' },
+];
+
+// Copertura / glassa esterna
+export const cakeCoverings = [
+  { id: 'panna', name: 'Panna montata', desc: 'Soffice, classica', priceDelta: 0, color: '#fff8e6' },
+  { id: 'meringa', name: 'Meringa fiammeggiata', desc: 'Effetto scenografico', priceDelta: 4, color: '#fffaf0' },
+  { id: 'ganache-cop', name: 'Ganache fondente', desc: 'Lucida e intensa', priceDelta: 3, color: '#2a160e' },
+  { id: 'glassa-specchio', name: 'Glassa a specchio', desc: 'Effetto wow', priceDelta: 5, color: '#b651e4' },
+  { id: 'frutta-cop', name: 'Copertura di frutta', desc: 'Fresca, di stagione', priceDelta: 4, color: '#e84a6e' },
+  { id: 'naked', name: 'Naked cake', desc: 'Bordi a vista, rustica', priceDelta: 0, color: null },
+  { id: 'cioccolato-cop', name: 'Copertura cioccolato', desc: 'Fondente o latte', priceDelta: 3, color: '#3d2114' },
+];
+
+// Topping: granelle croccanti sopra la torta
 export const cakeDecorations = [
-  { id: 'minimal', name: 'Minimal', desc: 'Pulita ed elegante', emoji: '✻' },
-  { id: 'frutta', name: 'Frutta fresca', desc: 'Colorata e di stagione', emoji: '🍓' },
-  { id: 'cioccolato', name: 'Cioccolato', desc: 'Riccioli e gocce', emoji: '🍫' },
-  { id: 'panna', name: 'Ciuffi di panna', desc: 'Classica, romantica', emoji: '🌸' },
-  { id: 'fantasy', name: 'Fantasy', desc: 'Colori, glassa, sprinkles', emoji: '🌈' },
+  { id: 'nessuna', name: 'Nessuna', desc: 'Top liscio, senza granella', emoji: '∅' },
+  { id: 'granella-nocciola-pistacchio', name: 'Granella nocciola e pistacchio', desc: 'Croccante e tostata', emoji: '🌰' },
+  { id: 'zuccherini', name: 'Zuccherini colorati', desc: 'Allegri e golosi', emoji: '🌈' },
+  { id: 'granella-frutta-secca', name: 'Granella di frutta secca', desc: 'Mandorla, nocciola, noce', emoji: '🥜' },
 ];
 
 export const cakeOccasions = [
@@ -92,4 +123,48 @@ export const cakeOccasions = [
   'Comunione',
   'Festa di famiglia',
   'Solo per coccolarmi',
+];
+
+// Ricette suggerite ("Sorprendimi!")
+export const cakeRecipes = [
+  {
+    name: 'Estate piena',
+    shape: 'tonda',
+    flavors: ['Limone', 'Fragola'],
+    filling: 'frutti-rossi',
+    covering: 'frutta-cop',
+    decoration: 'zuccherini',
+  },
+  {
+    name: 'Cioccolato lover',
+    shape: 'tonda',
+    flavors: ['Cioccolato fondente', 'Nocciola'],
+    filling: 'ganache',
+    covering: 'ganache-cop',
+    decoration: 'granella-nocciola-pistacchio',
+  },
+  {
+    name: 'Romantica',
+    shape: 'cuore',
+    flavors: ['Cheesecake frutti rossi', 'Yogurt bianco'],
+    filling: 'amarena',
+    covering: 'panna',
+    decoration: 'granella-frutta-secca',
+  },
+  {
+    name: 'Classica',
+    shape: 'tonda',
+    flavors: ['Crema', 'Nocciola'],
+    filling: 'cremino',
+    covering: 'panna',
+    decoration: 'granella-nocciola-pistacchio',
+  },
+  {
+    name: 'Punto G! signature',
+    shape: 'tonda',
+    flavors: ['Pistacchio', 'Punto Gi'],
+    filling: 'pistacchio',
+    covering: 'meringa',
+    decoration: 'zuccherini',
+  },
 ];

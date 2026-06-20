@@ -920,3 +920,98 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   border: 3px solid #d4b07a;
 }
+
+/* ===== Cake 3D scene ===== */
+.cake3d-stage {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 320px;
+  margin: 0 auto 0.4rem;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.cake3d-stage:active { cursor: grabbing; }
+.cake3d-stage canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+.cake3d-spin-toggle {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.34rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--violet-deep, #4a1f78);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(96, 46, 158, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px -3px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+  transition: background 0.15s ease, transform 0.1s ease;
+  touch-action: manipulation;
+}
+.cake3d-spin-toggle:hover { background: #fff; }
+.cake3d-spin-toggle:active { transform: translateX(-50%) scale(0.95); }
+
+.cake3d-loading {
+  cursor: default;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 62%, rgba(96,46,158,0.16) 0%, rgba(96,46,158,0) 62%);
+  animation: cake3dPulse 1.4s ease-in-out infinite;
+}
+@keyframes cake3dPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cake3d-loading { animation: none; }
+}
+
+/* SVG cake stage dentro la card (deprecato — sostituito da .cake3d-stage) */
+.cake-svg-stage {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto 0.4rem;
+}
+.cake-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+@media (prefers-reduced-motion: reduce) {
+  .cake-svg-spin .cake-rotate { animation: none; }
+}
+
+/* Combinazioni counter */
+.combo-counter {
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  color: var(--grey);
+  margin-bottom: 0.3rem;
+}
+.combo-counter strong { color: var(--violet-deep); font-weight: 700; }
+
+/* Flavor tags (badge dietetici) */
+.flavor-tags {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+.flavor-tag {
+  font-size: 0.7rem;
+  padding: 0 0.3rem;
+  border-radius: 4px;
+  background: rgba(182,81,228,0.1);
+  color: var(--violet-deep);
+}
