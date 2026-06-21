@@ -144,6 +144,21 @@
     "description": "Solo frutta, niente latte. Naturalmente vegan",
     "flavors": [
       {
+        "name": "Fragola",
+        "color": "#e84a6e",
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
+      },
+      {
         "name": "Limone",
         "color": "#f5e26a",
         "tag": null,

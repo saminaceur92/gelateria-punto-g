@@ -53,12 +53,28 @@
 
   .cake3d-stage { max-width: 240px; height: 240px; margin-bottom: 0.2rem; }
 
-  /* Info preview sotto: nascondi nome (� gi� nella card), mostra solo prezzo */
-  .cfg-preview-info { margin-top: 0.4rem; }
+  /* Info preview sotto: solo prezzo. Combos in alto, Sorprendimi in barra. */
+  .cfg-preview-info { margin-top: 0.3rem; }
   .cfg-preview-info h3 { display: none; }
   .cfg-preview-info p:not(.combo-counter) { display: none; }
-  .cfg-preview-info .combo-counter { font-size: 0.66rem; margin: 0; }
-  .cfg-preview-info .price { font-size: 1.5rem; margin-top: 0.15rem; }
+  .cfg-preview-info .combo-counter { display: none; }
+  .cfg-preview-info .cfg-btn { display: none; } /* Sorprendimi spostato nella barra */
+  .cfg-preview-info .price { font-size: 1.4rem; margin-top: 0; }
+
+  /* combos in alto, sopra la torta (non collide con il 3D) */
+  .combo-counter-top {
+    display: block;
+    text-align: center;
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
+    color: var(--grey);
+    margin: 0.1rem 0 0.2rem;
+  }
+  .combo-counter-top strong { color: var(--violet-deep); font-weight: 700; }
+
+  /* barra: niente totale (è già sotto la torta), c'è Sorprendimi */
+  .cfg-footer .price-tag { display: none; }
+  .cfg-footer .cfg-btn-surprise { display: inline-flex; }
 
   /* Body scrollabile a tutta larghezza */
   .cfg-body {

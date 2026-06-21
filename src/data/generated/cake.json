@@ -108,6 +108,9 @@
       "color": "#fff8e6",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte"
       ]
     },
     {
@@ -115,6 +118,10 @@
       "color": "#f5d97a",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "uova"
       ]
     },
     {
@@ -122,6 +129,10 @@
       "color": "#f5f0dd",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "soia"
       ]
     },
     {
@@ -130,6 +141,9 @@
       "tags": [
         "gelato",
         "sg"
+      ],
+      "allergeni": [
+        "latte"
       ]
     },
     {
@@ -137,6 +151,10 @@
       "color": "#c94a6b",
       "tags": [
         "semifreddo"
+      ],
+      "allergeni": [
+        "latte",
+        "glutine"
       ]
     },
     {
@@ -145,6 +163,10 @@
       "tags": [
         "gelato",
         "sg"
+      ],
+      "allergeni": [
+        "latte",
+        "frutta a guscio"
       ]
     },
     {
@@ -152,6 +174,10 @@
       "color": "#8a5a3b",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "frutta a guscio"
       ]
     },
     {
@@ -160,6 +186,9 @@
       "tags": [
         "gelato",
         "vegano"
+      ],
+      "allergeni": [
+        "soia"
       ]
     },
     {
@@ -167,6 +196,10 @@
       "color": "#6b4226",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "soia"
       ]
     },
     {
@@ -174,6 +207,11 @@
       "color": "#3d2114",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "frutta a guscio",
+        "soia"
       ]
     },
     {
@@ -181,6 +219,11 @@
       "color": "#3a2519",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "frutta a guscio",
+        "soia"
       ]
     },
     {
@@ -188,6 +231,9 @@
       "color": "#4a2e1f",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte"
       ]
     },
     {
@@ -195,6 +241,9 @@
       "color": "#c8842b",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte"
       ]
     },
     {
@@ -202,6 +251,11 @@
       "color": "#3a2418",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "frutta a guscio",
+        "soia"
       ]
     },
     {
@@ -209,6 +263,10 @@
       "color": "#b651e4",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "frutta a guscio"
       ]
     },
     {
@@ -218,7 +276,8 @@
         "sorbetto",
         "vegano",
         "sg"
-      ]
+      ],
+      "allergeni": []
     },
     {
       "name": "Limone",
@@ -227,7 +286,8 @@
         "sorbetto",
         "vegano",
         "sg"
-      ]
+      ],
+      "allergeni": []
     },
     {
       "name": "Mango",
@@ -236,7 +296,8 @@
         "sorbetto",
         "vegano",
         "sg"
-      ]
+      ],
+      "allergeni": []
     },
     {
       "name": "Cocco",
@@ -244,6 +305,9 @@
       "tags": [
         "gelato",
         "sg"
+      ],
+      "allergeni": [
+        "latte"
       ]
     },
     {
@@ -251,6 +315,10 @@
       "color": "#1e3a2b",
       "tags": [
         "gelato"
+      ],
+      "allergeni": [
+        "latte",
+        "soia"
       ]
     }
   ],
@@ -260,28 +328,41 @@
       "name": "Classica",
       "desc": "Pan di Spagna sottile",
       "priceDelta": 0,
-      "color": "#e8d2a8"
+      "color": "#e8d2a8",
+      "allergeni": [
+        "glutine",
+        "uova"
+      ]
     },
     {
       "id": "crock",
       "name": "Crock croccante",
       "desc": "Base biscottata e croccante",
       "priceDelta": 3,
-      "color": "#b88c5a"
+      "color": "#b88c5a",
+      "allergeni": [
+        "glutine",
+        "soia"
+      ]
     },
     {
       "id": "cacao",
       "name": "Frolla al cacao",
       "desc": "Friabile, intensa",
       "priceDelta": 3,
-      "color": "#5a3520"
+      "color": "#5a3520",
+      "allergeni": [
+        "glutine",
+        "uova"
+      ]
     },
     {
       "id": "glutenfree",
       "name": "Senza glutine",
       "desc": "Per intolleranze",
       "priceDelta": 4,
-      "color": "#d8c098"
+      "color": "#d8c098",
+      "allergeni": []
     }
   ],
   "cakeFillings": [
@@ -290,63 +371,88 @@
       "name": "Nessuna",
       "desc": "Strati puri",
       "priceDelta": 0,
-      "color": null
+      "color": null,
+      "allergeni": []
     },
     {
       "id": "cremino",
       "name": "Variegato cremino",
       "desc": "Nocciola e cioccolato",
       "priceDelta": 2,
-      "color": "#5a3520"
+      "color": "#5a3520",
+      "allergeni": [
+        "latte",
+        "frutta a guscio",
+        "soia"
+      ]
     },
     {
       "id": "caramello",
       "name": "Salsa caramello salato",
       "desc": "Dolce e sapida",
       "priceDelta": 2,
-      "color": "#c8842b"
+      "color": "#c8842b",
+      "allergeni": [
+        "latte"
+      ]
     },
     {
       "id": "frutti-rossi",
       "name": "Cuore frutti rossi",
       "desc": "Lampone e ribes",
       "priceDelta": 2,
-      "color": "#c93060"
+      "color": "#c93060",
+      "allergeni": []
     },
     {
       "id": "amarena",
       "name": "Amarena",
       "desc": "Classica, intensa",
       "priceDelta": 2,
-      "color": "#8c1e3a"
+      "color": "#8c1e3a",
+      "allergeni": []
     },
     {
       "id": "ganache",
       "name": "Ganache fondente",
       "desc": "Cioccolato puro",
       "priceDelta": 2,
-      "color": "#2a160e"
+      "color": "#2a160e",
+      "allergeni": [
+        "latte",
+        "soia"
+      ]
     },
     {
       "id": "biscotto",
       "name": "Biscotto sbriciolato",
       "desc": "Croccantezza extra",
       "priceDelta": 2,
-      "color": "#b88c5a"
+      "color": "#b88c5a",
+      "allergeni": [
+        "glutine"
+      ]
     },
     {
       "id": "granella",
       "name": "Granella di nocciole",
       "desc": "Tostate del Piemonte",
       "priceDelta": 2,
-      "color": "#8a5a3b"
+      "color": "#8a5a3b",
+      "allergeni": [
+        "frutta a guscio"
+      ]
     },
     {
       "id": "pistacchio",
       "name": "Crema pistacchio",
       "desc": "Bronte, vellutata",
       "priceDelta": 3,
-      "color": "#7ea15a"
+      "color": "#7ea15a",
+      "allergeni": [
+        "latte",
+        "frutta a guscio"
+      ]
     }
   ],
   "cakeCoverings": [
@@ -355,49 +461,68 @@
       "name": "Panna montata",
       "desc": "Soffice, classica",
       "priceDelta": 0,
-      "color": "#fff8e6"
+      "color": "#fff8e6",
+      "allergeni": [
+        "latte"
+      ]
     },
     {
       "id": "meringa",
       "name": "Meringa fiammeggiata",
       "desc": "Effetto scenografico",
       "priceDelta": 4,
-      "color": "#fffaf0"
+      "color": "#fffaf0",
+      "allergeni": [
+        "uova"
+      ]
     },
     {
       "id": "ganache-cop",
       "name": "Ganache fondente",
       "desc": "Lucida e intensa",
       "priceDelta": 3,
-      "color": "#2a160e"
+      "color": "#2a160e",
+      "allergeni": [
+        "latte",
+        "soia"
+      ]
     },
     {
       "id": "glassa-specchio",
       "name": "Glassa a specchio",
       "desc": "Effetto wow",
       "priceDelta": 5,
-      "color": "#b651e4"
+      "color": "#b651e4",
+      "allergeni": [
+        "latte"
+      ]
     },
     {
       "id": "frutta-cop",
       "name": "Copertura di frutta",
       "desc": "Fresca, di stagione",
       "priceDelta": 4,
-      "color": "#e84a6e"
+      "color": "#e84a6e",
+      "allergeni": []
     },
     {
       "id": "naked",
       "name": "Naked cake",
       "desc": "Bordi a vista, rustica",
       "priceDelta": 0,
-      "color": null
+      "color": null,
+      "allergeni": []
     },
     {
       "id": "cioccolato-cop",
       "name": "Copertura cioccolato",
       "desc": "Fondente o latte",
       "priceDelta": 3,
-      "color": "#3d2114"
+      "color": "#3d2114",
+      "allergeni": [
+        "latte",
+        "soia"
+      ]
     }
   ],
   "cakeDecorations": [

@@ -4,6 +4,15 @@
 // dati di sicurezza (fallback) e il sito non si rompe mai.
 
 import { supabase } from '../lib/supabase';
+import * as fbCake from './fallback/cakeOptions';
+
+// Gli allergeni restano gestiti da codice (dato tecnico/di sicurezza): li
+// sovrapponiamo ai dati live cercandoli nel fallback per nome (gusti) o id.
+const allergMap = (arr, key) => Object.fromEntries(arr.map((x) => [x[key], x.allergeni || []]));
+const FLAV_ALLERG = allergMap(fbCake.cakeFlavors, 'name');
+const BASE_ALLERG = allergMap(fbCake.cakeBases, 'id');
+const FILL_ALLERG = allergMap(fbCake.cakeFillings, 'id');
+const COV_ALLERG = allergMap(fbCake.cakeCoverings, 'id');
 
 export async function fetchMenu() {
   if (!supabase) return null;
@@ -76,10 +85,10 @@ export async function fetchCakeOptions() {
         if (s.popolare) o.popular = true;
         return o;
       }),
-      cakeFlavors: gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [] })),
-      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore })),
-      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null })),
-      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null })),
+      cakeFlavors: gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] })),
+      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: BASE_ALLERG[b.id] || [] })),
+      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: FILL_ALLERG[f.id] || [] })),
+      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: COV_ALLERG[c.id] || [] })),
       cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '' })),
       cakeOccasions: occ.map((o) => o.nome).filter(Boolean),
     };

@@ -11,9 +11,17 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import * as fbCake from '../src/data/fallback/cakeOptions.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const genDir = resolve(__dirname, '..', 'src/data/generated');
+
+// Allergeni gestiti da codice (dato tecnico): sovrapposti ai dati Supabase.
+const allergMap = (arr, key) => Object.fromEntries(arr.map((x) => [x[key], x.allergeni || []]));
+const FLAV_ALLERG = allergMap(fbCake.cakeFlavors, 'name');
+const BASE_ALLERG = allergMap(fbCake.cakeBases, 'id');
+const FILL_ALLERG = allergMap(fbCake.cakeFillings, 'id');
+const COV_ALLERG = allergMap(fbCake.cakeCoverings, 'id');
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY;
@@ -119,15 +127,15 @@ try {
       if (s.popolare) o.popular = true;
       return o;
     }),
-    cakeFlavors: gustiTorte.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [] })),
+    cakeFlavors: gustiTorte.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] })),
     cakeBases: basi.map((b) => ({
-      id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore,
+      id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: BASE_ALLERG[b.id] || [],
     })),
     cakeFillings: farciture.map((f) => ({
-      id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null,
+      id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: FILL_ALLERG[f.id] || [],
     })),
     cakeCoverings: coperture.map((c) => ({
-      id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null,
+      id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: COV_ALLERG[c.id] || [],
     })),
     cakeDecorations: decorazioni.map((d) => ({
       id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '',
