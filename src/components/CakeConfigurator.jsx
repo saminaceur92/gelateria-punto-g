@@ -186,7 +186,7 @@ export default function CakeConfigurator({ open, onClose }) {
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
-      `*Base:* ${base?.name}`,
+      `*Base:* ${base?.name}${base?.desc ? ` (${base.desc})` : ''}`,
       `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
       filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
       covering ? `*Copertura:* ${covering.name}` : '',
@@ -206,6 +206,23 @@ export default function CakeConfigurator({ open, onClose }) {
       `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
 
+    // Cattura l'immagine 3D della torta configurata (ridotta, per la dashboard)
+    let immagine = null;
+    try {
+      const canvas = document.querySelector('.cfg-preview canvas');
+      if (canvas) {
+        const max = 380;
+        const scale = Math.min(1, max / Math.max(canvas.width, canvas.height));
+        const off = document.createElement('canvas');
+        off.width = Math.round(canvas.width * scale);
+        off.height = Math.round(canvas.height * scale);
+        off.getContext('2d').drawImage(canvas, 0, 0, off.width, off.height);
+        immagine = off.toDataURL('image/jpeg', 0.72);
+      }
+    } catch {
+      /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
+    }
+
     // Salva l'ordine su Supabase (non blocca l'invio WhatsApp se fallisce)
     if (supabase) {
       const { photo, ...dettagli } = config;
@@ -219,6 +236,7 @@ export default function CakeConfigurator({ open, onClose }) {
           totale: total,
           tipo: type?.name || null,
           riepilogo: msg,
+          immagine,
           dettagli: { ...dettagli, conFoto: !!photo },
           note: config.notes || null,
         })

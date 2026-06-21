@@ -137,40 +137,45 @@ export default function OrdersPanel() {
 
           return (
             <div key={o.id} className={`ord-card ${accent}`}>
-              <div className="ord-top">
-                <div className="ord-who">
-                  <strong>{o.cliente_nome || 'Senza nome'}</strong>
-                  <span className="ord-meta">{o.tipo || 'Torta'} · €{Number(o.totale || 0).toFixed(2)}</span>
+              <div className="ord-row">
+                {o.immagine && <img className="ord-img" src={o.immagine} alt="Torta configurata" loading="lazy" />}
+                <div className="ord-body">
+                  <div className="ord-top">
+                    <div className="ord-who">
+                      <strong>{o.cliente_nome || 'Senza nome'}</strong>
+                      <span className="ord-meta">{o.tipo || 'Torta'} · €{Number(o.totale || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="ord-badges">
+                      {urg && <span className="ord-badge" style={{ background: urg.color }}>{urg.label}</span>}
+                      <span className="ord-badge ord-badge-stato" style={{ background: stato.color }}>{stato.label}</span>
+                    </div>
+                  </div>
+
+                  {gusti && <div className="ord-gusti">🍰 {gusti}</div>}
+
+                  <div className="ord-info">
+                    <span>🗓️ Prenotato {fmtDateTime(o.created_at)}</span>
+                    {o.ritiro_data && <span>🛍️ Ritiro {fmtDate(o.ritiro_data)}</span>}
+                    {o.cliente_telefono && <span>📞 {o.cliente_telefono}</span>}
+                  </div>
+
+                  <div className="ord-actions">
+                    <select value={o.stato} onChange={(e) => setStato(o.id, e.target.value)}>
+                      {STATI.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                    <button className="adm-btn" onClick={() => setOpenId(open ? null : o.id)}>
+                      {open ? 'Nascondi' : 'Dettagli'}
+                    </button>
+                    {tel && (
+                      <a className="adm-btn" href={`https://api.whatsapp.com/send?phone=${tel}`} target="_blank" rel="noopener noreferrer">
+                        WhatsApp
+                      </a>
+                    )}
+                    <button className="adm-btn adm-btn-del" onClick={() => remove(o.id)} title="Elimina">🗑</button>
+                  </div>
                 </div>
-                <div className="ord-badges">
-                  {urg && <span className="ord-badge" style={{ background: urg.color }}>{urg.label}</span>}
-                  <span className="ord-badge ord-badge-stato" style={{ background: stato.color }}>{stato.label}</span>
-                </div>
-              </div>
-
-              {gusti && <div className="ord-gusti">🍰 {gusti}</div>}
-
-              <div className="ord-info">
-                <span>🗓️ Prenotato {fmtDateTime(o.created_at)}</span>
-                {o.ritiro_data && <span>🛍️ Ritiro {fmtDate(o.ritiro_data)}</span>}
-                {o.cliente_telefono && <span>📞 {o.cliente_telefono}</span>}
-              </div>
-
-              <div className="ord-actions">
-                <select value={o.stato} onChange={(e) => setStato(o.id, e.target.value)}>
-                  {STATI.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-                <button className="adm-btn" onClick={() => setOpenId(open ? null : o.id)}>
-                  {open ? 'Nascondi' : 'Dettagli'}
-                </button>
-                {tel && (
-                  <a className="adm-btn" href={`https://api.whatsapp.com/send?phone=${tel}`} target="_blank" rel="noopener noreferrer">
-                    WhatsApp
-                  </a>
-                )}
-                <button className="adm-btn adm-btn-del" onClick={() => remove(o.id)} title="Elimina">🗑</button>
               </div>
 
               {open && (
