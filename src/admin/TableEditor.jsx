@@ -120,6 +120,13 @@ export default function TableEditor({ table, title, subtitle, fields, newRow }) 
                       <input type="color" value={row[f.key] || '#cccccc'} onChange={(e) => edit(row.id, f.key, e.target.value)} />
                       <code>{row[f.key] || '—'}</code>
                     </span>
+                  ) : f.type === 'checkbox' ? (
+                    <input
+                      type="checkbox"
+                      className="adm-check"
+                      checked={!!row[f.key]}
+                      onChange={(e) => edit(row.id, f.key, e.target.checked)}
+                    />
                   ) : (
                     <input
                       type={f.type === 'number' ? 'number' : 'text'}

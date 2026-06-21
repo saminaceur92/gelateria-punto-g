@@ -7,7 +7,6 @@ const uuid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `id
 
 const TAG_OPTIONS = [
   { value: 'firma', label: 'firma' },
-  { value: 'vegan', label: 'vegan' },
   { value: 'stagione', label: 'stagione' },
 ];
 
@@ -38,8 +37,11 @@ export default function Dashboard() {
             { key: 'categoria_id', label: 'Categoria', type: 'select', options: catOptions },
             { key: 'colore', label: 'Colore', type: 'color' },
             { key: 'tag', label: 'Tag', type: 'select', options: TAG_OPTIONS },
+            { key: 'vegan', label: 'Vegan', type: 'checkbox' },
+            { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
+            { key: 'senza_lattosio', label: 'Senza lattosio', type: 'checkbox' },
           ],
-          newRow: () => ({ nome: 'Nuovo gusto', categoria_id: firstCat, colore: '#f5d97a', tag: null }),
+          newRow: () => ({ nome: 'Nuovo gusto', categoria_id: firstCat, colore: '#f5d97a', tag: null, vegan: false, senza_glutine: false, senza_lattosio: false }),
         },
       },
       {

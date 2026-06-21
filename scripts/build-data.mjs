@@ -86,7 +86,16 @@ try {
       description: c.descrizione || '',
       flavors: gusti
         .filter((g) => g.categoria_id === c.id)
-        .map((g) => ({ name: g.nome, color: g.colore, tag: g.tag ?? null })),
+        .map((g) => ({
+          name: g.nome,
+          color: g.colore,
+          tag: g.tag ?? null,
+          diet: [
+            g.vegan && { short: 'VEG', label: 'Vegan' },
+            g.senza_glutine && { short: 'SG', label: 'Senza glutine' },
+            g.senza_lattosio && { short: 'SL', label: 'Senza lattosio' },
+          ].filter(Boolean),
+        })),
     }))
     .filter((c) => c.flavors.length > 0);
 

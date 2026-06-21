@@ -61,6 +61,9 @@ export default function Menu() {
                 <span className="flavor-name">
                   {f.name}
                   {f.tag && <span className="flavor-tag">{f.tag}</span>}
+                  {f.diet?.map((d) => (
+                    <span key={d.short} className="flavor-diet" title={d.label}>{d.short}</span>
+                  ))}
                 </span>
               </motion.div>
             ))}
