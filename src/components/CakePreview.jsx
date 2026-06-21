@@ -32,6 +32,7 @@ export default function CakePreview({ config }) {
     candle = false,
     messageFont = 'caveat',
     photo = null,
+    photoTransform = { zoom: 1, posX: 50, posY: 50 },
   } = config;
 
   const sh = cakeShapes.find((x) => x.id === shape) || cakeShapes[0];
@@ -77,7 +78,10 @@ export default function CakePreview({ config }) {
             covering={covering}
             candle={candle}
             photo={photo}
+            photoTransform={photoTransform}
             decorationId={d?.id}
+            message={message}
+            messageFont={messageFont}
           />
         </Suspense>
 
@@ -163,6 +167,7 @@ export default function CakePreview({ config }) {
       <div className="cake-card-footer">
         <span>fatta a mano · ingredienti freschi</span>
       </div>
+
     </motion.div>
   );
 }

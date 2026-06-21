@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, Send, Cake, Shuffle } from 'lucide-react';
 import {
@@ -29,6 +29,7 @@ const STEPS = [
   'review',     // riepilogo
 ];
 const MAX_FLAVORS = 4;
+const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
 const WHATSAPP = '393203306009';
 
 const initialConfig = {
@@ -45,6 +46,7 @@ const initialConfig = {
   candle: false,
   occasion: '',
   photo: null,
+  photoTransform: { zoom: 1, posX: 50, posY: 50 },
   pickupDate: '',
   name: '',
   phone: '',
@@ -55,6 +57,8 @@ export default function CakeConfigurator({ open, onClose }) {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState(initialConfig);
   const [sent, setSent] = useState(false);
+  const bodyRef = useRef(null);
+  const [showAllerg, setShowAllerg] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -93,6 +97,21 @@ export default function CakeConfigurator({ open, onClose }) {
     if (config.photo) p += 5;
     return p;
   }, [config]);
+
+  // Allergeni: unione di gusti + base + farcitura + copertura (indicativi)
+  const allergeni = useMemo(() => {
+    const base = cakeBases.find((b) => b.id === config.baseId);
+    const filling = cakeFillings.find((f) => f.id === config.fillingId);
+    const covering = cakeCoverings.find((c) => c.id === config.coveringId);
+    return [
+      ...new Set([
+        ...config.flavors.flatMap((f) => f.allergeni || []),
+        ...(base?.allergeni || []),
+        ...(filling?.allergeni || []),
+        ...(covering?.allergeni || []),
+      ]),
+    ];
+  }, [config.flavors, config.baseId, config.fillingId, config.coveringId]);
 
   // Conteggio combinazioni teoriche (effetto wow)
   const combos = useMemo(() => {
@@ -230,6 +249,10 @@ export default function CakeConfigurator({ open, onClose }) {
           </header>
 
           <aside className="cfg-preview">
+            {/* combos in alto (mobile): sopra la torta, non occupa spazio sotto */}
+            <div className="combo-counter combo-counter-top">
+              1 di <strong>{combos.toLocaleString('it-IT')}</strong> combinazioni
+            </div>
             <div className="cfg-preview-stage">
               <CakePreview config={config} />
             </div>
@@ -237,9 +260,16 @@ export default function CakeConfigurator({ open, onClose }) {
               <div className="combo-counter">
                 1 di <strong>{combos.toLocaleString('it-IT')}</strong> combinazioni
               </div>
-              <div className="price">
-                €{total.toFixed(0)}
-                <small>stima</small>
+              <div className="price-row">
+                <div className="price">
+                  €{total.toFixed(0)}
+                  <small>stima</small>
+                </div>
+                {config.flavors.length > 0 && (
+                  <button type="button" className="allergeni-btn" onClick={() => setShowAllerg(true)}>
+                    <span className="allergeni-btn-i" aria-hidden="true">i</span> Allergeni
+                  </button>
+                )}
               </div>
               {!sent && (
                 <button
@@ -254,18 +284,18 @@ export default function CakeConfigurator({ open, onClose }) {
             </div>
           </aside>
 
-          <div className="cfg-body">
+          <div className="cfg-body" ref={bodyRef}>
             {sent ? (
               <SuccessView name={config.name} onClose={onClose} />
             ) : (
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait" onExitComplete={() => bodyRef.current?.scrollTo({ top: 0 })}>
                 <motion.div
                   key={step}
                   className="cfg-step"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.35 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {STEPS[step] === 'type' && <StepType config={config} set={set} />}
                   {STEPS[step] === 'shape' && <StepShape config={config} set={set} />}
@@ -289,6 +319,10 @@ export default function CakeConfigurator({ open, onClose }) {
                 <span>Totale stimato</span>
                 <strong>€{total.toFixed(2)}</strong>
               </div>
+              {/* su mobile, al posto del totale, c'è Sorprendimi */}
+              <button type="button" className="cfg-btn cfg-btn-surprise" onClick={surpriseMe}>
+                <Shuffle size={15} /> Sorprendimi!
+              </button>
               <div className="cfg-footer-actions">
                 <button className="cfg-btn cfg-btn-back" onClick={back} disabled={step === 0}>
                   <ArrowLeft size={16} /> Indietro
@@ -304,6 +338,33 @@ export default function CakeConfigurator({ open, onClose }) {
                 )}
               </div>
             </footer>
+          )}
+
+          {showAllerg && (
+            <div
+              className="allergeni-pop-overlay"
+              onClick={(e) => e.target === e.currentTarget && setShowAllerg(false)}
+            >
+              <div className="allergeni-pop" role="dialog" aria-label="Allergeni">
+                <h4>Allergeni</h4>
+                {allergeni.length > 0 ? (
+                  <ul className="allergeni-pop-list">
+                    {allergeni.map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="allergeni-pop-empty">Nessuno tra i principali.</p>
+                )}
+                <p className="allergeni-pop-note">
+                  Valori indicativi in base ai gusti scelti. Chiedi sempre conferma allo staff per
+                  intolleranze e allergie.
+                </p>
+                <button type="button" className="allergeni-pop-close" onClick={() => setShowAllerg(false)}>
+                  Chiudi
+                </button>
+              </div>
+            </div>
           )}
         </motion.div>
       </motion.div>
@@ -393,13 +454,6 @@ function StepSize({ config, set }) {
 }
 
 function StepFlavors({ config, toggle }) {
-  const tagLabels = {
-    gelato: '🍨 Gelato',
-    semifreddo: '✨ Semifreddo',
-    sorbetto: '🍋 Sorbetto',
-    vegano: '🌱 Vegano',
-    sg: '🌾 Senza glutine',
-  };
   return (
     <>
       <StepHeader
@@ -425,18 +479,7 @@ function StepFlavors({ config, toggle }) {
               style={disabled ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
             >
               <span className="flavor-dot" style={{ background: f.color }} />
-              <span className="flavor-name">
-                {f.name}
-                {f.tags && f.tags.length > 0 && (
-                  <span className="flavor-tags">
-                    {f.tags.map((t) => (
-                      <span key={t} className="flavor-tag" title={tagLabels[t]}>
-                        {tagLabels[t]?.split(' ')[0]}
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </span>
+              <span className="flavor-name">{f.name}</span>
               {selected && <span className="flavor-pos">{idx + 1}</span>}
             </button>
           );
@@ -564,20 +607,26 @@ function StepMessage({ config, set }) {
 
       <div className="cfg-field">
         <label>Foto da stampare (opzionale, +€5)</label>
-        <PhotoUploader value={config.photo} onChange={(p) => set({ photo: p })} />
+        <PhotoUploader
+          value={config.photo}
+          onChange={(p) => set({ photo: p })}
+          transform={config.photoTransform}
+          onTransform={(tf) => set({ photoTransform: tf })}
+          shape={config.shape}
+        />
         <p className="hint">JPG o PNG, max 4 MB. Stampata su cialda alimentare commestibile.</p>
       </div>
 
       <div className="cfg-field">
-        <label>Scritta sulla torta (max 30 caratteri)</label>
+        <label>Scritta sulla torta (max {MAX_MESSAGE} caratteri)</label>
         <input
           type="text"
-          maxLength={30}
+          maxLength={MAX_MESSAGE}
           placeholder="Es. Buon compleanno Anna!"
           value={config.message}
           onChange={(e) => set({ message: e.target.value })}
         />
-        <p className="hint">{config.message.length}/30 caratteri</p>
+        <p className="hint">{config.message.length}/{MAX_MESSAGE} caratteri</p>
       </div>
 
       {config.message && (
@@ -759,7 +808,25 @@ function SuccessView({ name, onClose }) {
   );
 }
 
-function PhotoUploader({ value, onChange }) {
+const DEFAULT_PHOTO_TF = { zoom: 1, posX: 50, posY: 50 };
+
+const photoAspectFor = (shape) =>
+  shape === 'rettangolare' ? 1.85 / 1.1 : shape === 'cuore' ? 2 / 1.74 : 1;
+
+function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
+  const t = transform || DEFAULT_PHOTO_TF;
+  const aspect = photoAspectFor(shape);
+  const cropKind = shape === 'cuore' ? 'heart' : shape === 'quadrata' || shape === 'rettangolare' ? 'rect' : 'circle';
+  const cropRef = useRef(null);
+  const [dim, setDim] = useState(null);
+
+  useEffect(() => {
+    if (!value) { setDim(null); return; }
+    const im = new Image();
+    im.onload = () => setDim({ w: im.naturalWidth, h: im.naturalHeight });
+    im.src = value;
+  }, [value]);
+
   const onFile = (file) => {
     if (!file) return;
     if (file.size > 4 * 1024 * 1024) {
@@ -770,7 +837,7 @@ function PhotoUploader({ value, onChange }) {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const max = 600;
+        const max = 700;
         const scale = Math.min(1, max / Math.max(img.width, img.height));
         const w = img.width * scale;
         const h = img.height * scale;
@@ -780,16 +847,83 @@ function PhotoUploader({ value, onChange }) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
         onChange(canvas.toDataURL('image/jpeg', 0.85));
+        onTransform({ ...DEFAULT_PHOTO_TF });
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   };
 
+  const clamp = (v) => Math.max(0, Math.min(100, v));
+  const startDrag = (e) => {
+    if (!cropRef.current) return;
+    e.preventDefault();
+    const rect = cropRef.current.getBoundingClientRect();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const sPosX = t.posX;
+    const sPosY = t.posY;
+    const z = t.zoom;
+    const move = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      onTransform({
+        zoom: z,
+        posX: clamp(sPosX - (dx / rect.width) * 100 / z),
+        posY: clamp(sPosY - (dy / rect.height) * 100 / z),
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
   if (value) {
+    // dimensioni per riprodurre lo stesso ritaglio (e aspetto) della torta
+    let bgSize = 'cover';
+    if (dim) {
+      const a = dim.w / dim.h;
+      const winWpx = (a >= aspect ? dim.h * aspect : dim.w) / t.zoom;
+      bgSize = `${(dim.w / winWpx) * 100}% auto`;
+    }
     return (
-      <div className="photo-preview">
-        <img src={value} alt="Foto torta" />
+      <div className="photo-editor">
+        {cropKind === 'heart' && (
+          <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+            <clipPath id="photoHeartClip" clipPathUnits="objectBoundingBox">
+              <path d="M0.5,1 C0.35,0.85 0,0.62 0,0.35 C0,0.13 0.22,0.04 0.38,0.16 C0.45,0.21 0.5,0.28 0.5,0.33 C0.5,0.28 0.55,0.21 0.62,0.16 C0.78,0.04 1,0.13 1,0.35 C1,0.62 0.65,0.85 0.5,1 Z" />
+            </clipPath>
+          </svg>
+        )}
+        <div
+          className={`photo-crop ${cropKind}`}
+          ref={cropRef}
+          onPointerDown={startDrag}
+          style={{
+            width: 220,
+            height: 220 / aspect,
+            backgroundImage: `url(${value})`,
+            backgroundSize: bgSize,
+            backgroundPosition: `${t.posX}% ${t.posY}%`,
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+        <input
+          type="range"
+          className="photo-zoom"
+          min="1"
+          max="3"
+          step="0.02"
+          value={t.zoom}
+          onChange={(e) => onTransform({ ...t, zoom: parseFloat(e.target.value) })}
+          aria-label="Zoom foto"
+        />
+        <p className="hint" style={{ textAlign: 'center' }}>
+          Trascina per posizionare · slider per lo zoom
+        </p>
         <button type="button" className="toggle-pill" onClick={() => onChange(null)}>
           Rimuovi foto
         </button>

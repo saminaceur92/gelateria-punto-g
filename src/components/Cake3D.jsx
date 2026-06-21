@@ -55,6 +55,16 @@ function creamy(hex) {
   return mix(hex, '#fff3e0', 0.17);
 }
 
+/** True se il colore è scuro (per scegliere scritta bianca vs cioccolato). */
+function isDark(hex) {
+  const m = (hex || '#888888').replace('#', '');
+  const f = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+  const r = parseInt(f.slice(0, 2), 16);
+  const g = parseInt(f.slice(2, 4), 16);
+  const b = parseInt(f.slice(4, 6), 16);
+  return 0.299 * r + 0.587 * g + 0.114 * b < 145;
+}
+
 /* ============================ geometria cuore ============================ */
 
 function makeHeartShape() {
@@ -173,6 +183,94 @@ function gelatoDisc(R, h, seed = 1) {
 function boxDims(shape, R) {
   if (shape === 'rettangolare') return [R * 1.85, R * 1.1];
   return [R * 1.55, R * 1.55]; // quadrata
+}
+
+/**
+ * Riquadro (mondo) in cui sta la scritta sulla torta. Dipende dalla forma e dal
+ * bordo occupato:
+ *  - 'granella' → la scritta sta nel buco centrale (spazio piccolo)
+ *  - 'panna'    → dentro l'anello di ciuffi (spazio medio)
+ *  - 'none'     → niente bordo: la scritta si allarga a TUTTA la torta
+ */
+function messageBox(shape, R, level) {
+  if (level === 'granella') {
+    if (shape === 'rettangolare') return { w: R * 1.55, h: R * 0.56 };
+    if (shape === 'quadrata') return { w: R * 1.1, h: R * 0.9 };
+    if (shape === 'cuore') return { w: R * 0.9, h: R * 0.56 };
+    return { w: R * 1.06, h: R * 0.6 }; // tonda
+  }
+  if (level === 'panna') {
+    if (shape === 'rettangolare') return { w: R * 1.6, h: R * 0.66 };
+    if (shape === 'quadrata') return { w: R * 1.26, h: R * 1.02 };
+    if (shape === 'cuore') return { w: R * 1.0, h: R * 0.66 };
+    return { w: R * 1.34, h: R * 0.78 }; // tonda
+  }
+  // none → tutta la torta
+  if (shape === 'rettangolare') return { w: R * 1.8, h: R * 0.84 };
+  if (shape === 'quadrata') return { w: R * 1.46, h: R * 1.2 };
+  if (shape === 'cuore') return { w: R * 1.24, h: R * 0.84 };
+  return { w: R * 1.62, h: R * 0.92 }; // tonda
+}
+
+/** Aspetto (w/h) della foto in base alla forma della torta. */
+function photoAspect(shape) {
+  if (shape === 'rettangolare') return 1.85 / 1.1;
+  if (shape === 'cuore') return 2 / 1.74;
+  return 1; // tonda, quadrata
+}
+
+/**
+ * Footprint della foto sul top: sagoma + dimensioni. Dipende dalla forma e dal
+ * bordo occupato (come la scritta):
+ *  - 'granella' → piccola (sta nel buco)
+ *  - 'panna'    → media (dentro i ciuffi)
+ *  - 'none'     → aderisce a TUTTA la torta
+ */
+function photoFootprint(shape, R, level) {
+  const aspect = photoAspect(shape);
+  const wByShape = {
+    cuore: { granella: 1.0, panna: 1.5, none: 1.92 },
+    quadrata: { granella: 1.0, panna: 1.28, none: 1.48 },
+    rettangolare: { granella: 1.4, panna: 1.52, none: 1.78 },
+    tonda: { granella: 1.12, panna: 1.5, none: 1.92 },
+  };
+  const w = R * (wByShape[shape] || wByShape.tonda)[level];
+  if (shape === 'cuore') return { kind: 'heart', w, h: w / aspect, aspect };
+  if (shape === 'quadrata') return { kind: 'rect', w, h: w, aspect: 1 };
+  if (shape === 'rettangolare') return { kind: 'rect', w, h: w / aspect, aspect };
+  return { kind: 'circle', w, h: w, aspect: 1 };
+}
+
+/** Geometria piatta della foto (cerchio / rettangolo / cuore), già coricata sul top. */
+function photoGeometry(kind, w, h) {
+  if (kind === 'heart') {
+    const g = new THREE.ShapeGeometry(makeHeartShape(), 40);
+    g.computeBoundingBox();
+    const bb = g.boundingBox;
+    const sx = bb.max.x - bb.min.x;
+    const sy = bb.max.y - bb.min.y;
+    const pos = g.attributes.position;
+    const uv = new Float32Array(pos.count * 2);
+    for (let i = 0; i < pos.count; i++) {
+      // UV ruotato di 180° per compensare la rotateY(PI) della geometria a cuore
+      uv[i * 2] = 1 - (pos.getX(i) - bb.min.x) / sx;
+      uv[i * 2 + 1] = 1 - (pos.getY(i) - bb.min.y) / sy;
+    }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, 0);
+    g.scale(w / sx, h / sy, 1);
+    g.rotateX(-Math.PI / 2);
+    g.rotateY(Math.PI);
+    return g;
+  }
+  if (kind === 'rect') {
+    const g = new THREE.PlaneGeometry(w, h);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }
+  const g = new THREE.CircleGeometry(w / 2, 72);
+  g.rotateX(-Math.PI / 2);
+  return g;
 }
 
 /** Geometria di uno strato in base alla forma. */
@@ -452,7 +550,7 @@ function Decorations({ id, R, y, coverColor }) {
 
 /* ============================ granella croccante (firma Gelopie) ============================ */
 
-function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58', '#7a4a26'], shiny = false }) {
+function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58', '#7a4a26'], shiny = false, holeW = 0, holeH = 0 }) {
   const ref = useRef();
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -496,8 +594,20 @@ function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58'
     const cols = colors.map((c) => new THREE.Color(c));
     const tmp = new THREE.Color();
     for (let i = 0; i < count; i++) {
-      const [x, z] = sample();
-      const dist = Math.hypot(x, z);
+      let [x, z] = sample();
+      let dist = Math.hypot(x, z);
+      // buco centrale ellittico (per scritta/foto): granella solo nella corona esterna
+      if (holeW > 0 && holeH > 0) {
+        const inHole = () => (x * x) / (holeW * holeW) + (z * z) / (holeH * holeH) < 1;
+        let tries = 0;
+        while (inHole() && tries < 30) { [x, z] = sample(); tries++; }
+        if (inHole()) {
+          const e = Math.sqrt((x * x) / (holeW * holeW) + (z * z) / (holeH * holeH)) || 1e-3;
+          const s = (1.05 + Math.random() * 0.12) / e;
+          x *= s; z *= s;
+        }
+        dist = Math.hypot(x, z);
+      }
       const pile = (1 - Math.min(1, dist / (maxExt + 1e-3))) * 0.04;
       const yy = y + 0.008 + Math.random() * 0.035 + pile;
       dummy.position.set(x, yy, z);
@@ -511,7 +621,7 @@ function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58'
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [shape, R, y, coverage, count, colors, shiny]);
+  }, [shape, R, y, coverage, count, colors, shiny, holeW, holeH]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow receiveShadow>
       <icosahedronGeometry args={[1, 0]} />
@@ -567,27 +677,135 @@ function Drips({ shape, R, topEdgeY, color, maxLen }) {
 
 /* ============================ foto su cialda ============================ */
 
-function PhotoDisc({ url, R, y }) {
+function PhotoDisc({ url, y, foot, transform }) {
   const tex = useLoader(THREE.TextureLoader, url);
+  const tf = transform || { zoom: 1, posX: 50, posY: 50 };
+  const geo = useMemo(() => photoGeometry(foot.kind, foot.w, foot.h), [foot.kind, foot.w, foot.h]);
+  const border = useMemo(
+    () => photoGeometry(foot.kind, foot.w + 0.06, foot.h + 0.06),
+    [foot.kind, foot.w, foot.h]
+  );
   useMemo(() => {
-    if (tex) {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.center.set(0.5, 0.5);
-      tex.anisotropy = 8;
+    if (!tex) return;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    const img = tex.image;
+    if (img && img.width && img.height) {
+      const W = img.width;
+      const H = img.height;
+      const a = W / H;
+      const At = foot.aspect;
+      let winWpx, winHpx;
+      if (a >= At) { winHpx = H; winWpx = H * At; } else { winWpx = W; winHpx = W / At; }
+      winWpx /= tf.zoom;
+      winHpx /= tf.zoom;
+      const winW = winWpx / W;
+      const winH = winHpx / H;
+      const winLeft = (tf.posX / 100) * (1 - winW);
+      const winTop = (tf.posY / 100) * (1 - winH);
+      tex.repeat.set(winW, winH);
+      tex.offset.set(winLeft, 1 - winTop - winH);
     }
-  }, [tex]);
-  const pr = R * 0.55;
+    tex.needsUpdate = true;
+  }, [tex, tf.zoom, tf.posX, tf.posY, foot.aspect]);
   return (
-    <group position={[0, y + 0.015, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <circleGeometry args={[pr, 48]} />
-        <meshStandardMaterial map={tex} roughness={0.5} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[pr, pr + 0.035, 48]} />
+    <group position={[0, y + 0.02, 0]}>
+      <mesh geometry={border} position={[0, -0.006, 0]} renderOrder={1}>
         <meshStandardMaterial color="#fff8ec" roughness={0.6} side={THREE.DoubleSide} />
       </mesh>
+      <mesh geometry={geo} renderOrder={2}>
+        <meshStandardMaterial map={tex} roughness={0.5} side={THREE.DoubleSide} />
+      </mesh>
     </group>
+  );
+}
+
+/* ============================ scritta sulla torta ============================ */
+
+function MessageText({ text, font, y, boxW, boxH, z = 0, onDark = false }) {
+  const [tex, setTex] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    const family = font === 'fraunces' ? "'Fraunces', serif" : font === 'inter' ? "'Inter', sans-serif" : "'Caveat', cursive";
+    const weight = font === 'inter' ? '800' : font === 'fraunces' ? '600' : '700';
+    const style = font === 'fraunces' ? 'italic' : 'normal';
+    const upper = font === 'inter';
+    const cssAt = (px) => `${style} ${weight} ${px}px ${family}`;
+
+    const build = () => {
+      // canvas con lo stesso rapporto del riquadro 3D → testo non deformato
+      const aspect = boxW / boxH;
+      const CW = 1400;
+      const CH = Math.max(200, Math.round(CW / aspect));
+      const canvas = document.createElement('canvas');
+      canvas.width = CW;
+      canvas.height = CH;
+      const ctx = canvas.getContext('2d');
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const content = upper ? text.toUpperCase() : text;
+      const availW = CW * 0.9;
+      const availH = CH * 0.82;
+
+      const wrap = (px) => {
+        ctx.font = cssAt(px);
+        const words = content.split(/\s+/);
+        const lines = [];
+        let cur = '';
+        for (const w of words) {
+          const t = cur ? `${cur} ${w}` : w;
+          if (ctx.measureText(t).width > availW && cur) { lines.push(cur); cur = w; } else cur = t;
+        }
+        if (cur) lines.push(cur);
+        const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+        return { lines, maxW, totalH: lines.length * px * 1.16 };
+      };
+
+      // auto-fit: font massimo che entra nel riquadro
+      let chosen = null;
+      for (let px = Math.round(CH * 0.78); px >= 14; px -= 2) {
+        const r = wrap(px);
+        if (r.maxW <= availW && r.totalH <= availH) { chosen = { px, ...r }; break; }
+      }
+      if (!chosen) { const r = wrap(14); chosen = { px: 14, ...r }; }
+
+      ctx.font = cssAt(chosen.px);
+      ctx.lineJoin = 'round';
+      const lh = chosen.px * 1.16;
+      const startY = CH / 2 - ((chosen.lines.length - 1) * lh) / 2;
+      // su fondo scuro → bianco panna spesso; su fondo chiaro → cioccolato
+      const fill = onDark ? '#ffffff' : '#4a2a12';
+      const stroke = onDark ? 'rgba(28,16,8,0.55)' : 'rgba(255,250,242,0.92)';
+      chosen.lines.forEach((ln, i) => {
+        const yy = startY + i * lh;
+        ctx.lineWidth = chosen.px * (onDark ? 0.18 : 0.14);
+        ctx.strokeStyle = stroke;
+        ctx.strokeText(ln, CW / 2, yy);
+        ctx.fillStyle = fill;
+        ctx.fillText(ln, CW / 2, yy);
+      });
+
+      const t = new THREE.CanvasTexture(canvas);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      t.needsUpdate = true;
+      if (!cancelled) setTex(t);
+    };
+
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load(cssAt(80), text).then(build).catch(build);
+    } else {
+      build();
+    }
+    return () => { cancelled = true; };
+  }, [text, font, boxW, boxH, onDark]);
+
+  if (!tex) return null;
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y + 0.025, z]}>
+      <planeGeometry args={[boxW, boxH]} />
+      <meshBasicMaterial map={tex} transparent depthWrite={false} toneMapped={false} />
+    </mesh>
   );
 }
 
@@ -634,7 +852,7 @@ function Candle({ y }) {
 
 /* ============================ corpo torta ============================ */
 
-function CakeModel({ shape, flavors, base, filling, covering, candle, photo, decorationId }) {
+function CakeModel({ shape, flavors, base, filling, covering, candle, photo, photoTransform, decorationId, message, messageFont }) {
   // Torta gelato vera: BASSA e LARGA. Dischi di gelato netti e impilati.
   const R = 1.18;
   const layers = Math.max(1, flavors.length);
@@ -662,7 +880,8 @@ function CakeModel({ shape, flavors, base, filling, covering, candle, photo, dec
   const bandCenterY = (i) => stackBottom + bandH * (i + 0.5);
   const bodyTop = stackBottom + layers * bandH;
   const capY = bodyTop - 0.015; // la calotta si appoggia sul disco superiore
-  const surfaceY = useCover ? bodyTop + capH * 0.5 : bodyTop; // dove poggiano granella/decorazioni/foto
+  // dove poggiano granella/decorazioni/foto/scritta: sopra il bombamento del disco superiore
+  const surfaceY = (useCover ? bodyTop + capH * 0.5 : bodyTop) + bandH * 0.1;
 
   // Geometrie: dischi lisci e netti (Gelopie), leggermente sovrapposti per i solchi.
   const geos = useMemo(() => {
@@ -678,6 +897,23 @@ function CakeModel({ shape, flavors, base, filling, covering, candle, photo, dec
 
   const platterR = R * 1.16; // piatto contenuto, appena più largo della torta
   const showRosetteRing = (shape === 'tonda' || shape === 'cuore') && (covering?.id === 'panna' || covering?.id === 'meringa');
+
+  // Scritta / foto al centro → il topping si sagoma con un buco al centro
+  const hasMessage = !!(message && message.trim());
+  const hasGranella = !!(decorationId && TOPPINGS[decorationId]);
+  const hasCenter = !!photo || hasMessage;
+  const fullCoverage = shape === 'tonda' ? 0.98 : shape === 'cuore' ? 0.92 : 0.9;
+  const granellaCoverage = hasCenter ? fullCoverage : showRosetteRing ? 0.66 : fullCoverage;
+  // Riquadro scritta: dipende da forma e dal bordo occupato (granella > panna > niente)
+  const borderLevel = hasGranella ? 'granella' : showRosetteRing ? 'panna' : 'none';
+  const msgBox = messageBox(shape, R, borderLevel);
+  // colore del fondo sotto la scritta → scritta bianca (panna) su scuro, cioccolato su chiaro
+  const topFlavor = flavors[layers - 1] || flavors[flavors.length - 1] || { color: '#fff4e0' };
+  const msgOnDark = isDark(useCover ? coverColor : topFlavor.color);
+  const photoFoot = photoFootprint(shape, R, borderLevel);
+  // buco ellittico nella granella che segue il contenuto centrale (foto o scritta)
+  const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
+  const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
 
   return (
     <group>
@@ -734,22 +970,37 @@ function CakeModel({ shape, flavors, base, filling, covering, candle, photo, dec
           <Dollop key={`ro${i}`} position={[x, surfaceY - 0.02, z]} color={shade(coverColor, 0.05)} s={0.85} rotation={i} />
         ))}
 
-      {/* ---- Foto su cialda ---- */}
-      {photo && (
-        <Suspense fallback={null}>
-          <PhotoDisc url={photo} R={R} y={surfaceY} />
-        </Suspense>
-      )}
-
-      {/* ---- Topping: granella croccante sopra, SEGUE la forma (saltata se c'è la foto) ---- */}
-      {decorationId && TOPPINGS[decorationId] && !photo && (
+      {/* ---- Topping: granella croccante sopra, SEGUE la forma; buco per scritta/foto ---- */}
+      {hasGranella && (
         <Granella
           shape={shape}
           R={R}
           y={surfaceY}
           colors={TOPPINGS[decorationId].colors}
           shiny={TOPPINGS[decorationId].shiny}
-          coverage={showRosetteRing ? 0.66 : shape === 'tonda' ? 0.98 : shape === 'cuore' ? 0.92 : 0.9}
+          coverage={granellaCoverage}
+          holeW={holeW}
+          holeH={holeH}
+        />
+      )}
+
+      {/* ---- Foto su cialda al centro (più grande se non c'è granella) ---- */}
+      {photo && (
+        <Suspense fallback={null}>
+          <PhotoDisc url={photo} y={surfaceY} foot={photoFoot} transform={photoTransform} />
+        </Suspense>
+      )}
+
+      {/* ---- Scritta applicata sulla torta (al centro, se non c'è la foto) ---- */}
+      {hasMessage && !photo && (
+        <MessageText
+          text={message.trim()}
+          font={messageFont}
+          y={surfaceY}
+          boxW={msgBox.w}
+          boxH={msgBox.h}
+          z={shape === 'cuore' ? R * 0.12 : 0}
+          onDark={msgOnDark}
         />
       )}
 
