@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import TableEditor from './TableEditor';
 import OrdersPanel from './OrdersPanel';
+import CakeConfigurator from '../components/CakeConfigurator';
+import { CakeDataProvider } from '../data/CakeDataProvider';
 
 const uuid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `id-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
 
@@ -15,6 +17,8 @@ export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
+  const [cfgOpen, setCfgOpen] = useState(false);
+  const [ordersKey, setOrdersKey] = useState(0);
 
   useEffect(() => {
     supabase.from('categorie').select('id, nome').order('ordine').then(({ data }) => setCats(data || []));
@@ -208,6 +212,9 @@ export default function Dashboard() {
       </header>
 
       <nav className="adm-nav">
+        <button className="adm-tab adm-new-cake" onClick={() => setCfgOpen(true)}>
+          🎂 Nuova torta
+        </button>
         <button
           className={`adm-tab adm-tab-orders ${active === 'ordini' ? 'active' : ''}`}
           onClick={() => setActive('ordini')}
@@ -226,8 +233,20 @@ export default function Dashboard() {
       </nav>
 
       <main className="adm-main">
-        {active === 'ordini' ? <OrdersPanel /> : <TableEditor key={current.key} {...current.props} />}
+        {active === 'ordini' ? <OrdersPanel key={ordersKey} /> : <TableEditor key={current.key} {...current.props} />}
       </main>
+
+      <CakeDataProvider>
+        <CakeConfigurator
+          open={cfgOpen}
+          staff
+          onClose={() => {
+            setCfgOpen(false);
+            setActive('ordini');
+            setOrdersKey((k) => k + 1);
+          }}
+        />
+      </CakeDataProvider>
     </div>
   );
 }

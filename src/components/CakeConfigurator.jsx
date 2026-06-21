@@ -47,7 +47,7 @@ function makeInitialConfig(cake) {
   };
 }
 
-export default function CakeConfigurator({ open, onClose }) {
+export default function CakeConfigurator({ open, onClose, staff = false }) {
   const cake = useCakeData();
   const {
     cakeShapes,
@@ -181,7 +181,7 @@ export default function CakeConfigurator({ open, onClose }) {
     const deco = cakeDecorations.find((d) => d.id === config.decoration);
 
     const msg = [
-      `🎂 *Nuova richiesta torta — Punto G!*`,
+      staff ? `🎂 *Nuovo ordine in gelateria — Punto G!*` : `🎂 *Nuova richiesta torta — Punto G!*`,
       ``,
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
@@ -201,9 +201,9 @@ export default function CakeConfigurator({ open, onClose }) {
       `*Telefono:* ${config.phone}`,
       config.notes ? `*Note:* ${config.notes}` : '',
       ``,
-      `💰 *Stima:* €${total.toFixed(2)}`,
+      staff ? '' : `💰 *Stima:* €${total.toFixed(2)}`,
       ``,
-      `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
+      staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
 
     // Cattura l'immagine 3D della torta configurata (ridotta, per la dashboard)
@@ -245,8 +245,12 @@ export default function CakeConfigurator({ open, onClose }) {
         });
     }
 
-    const url = `https://api.whatsapp.com/send?phone=${WHATSAPP}&text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    // Solo per il sito pubblico: apre WhatsApp con la richiesta già pronta.
+    // In gelateria (staff) l'ordine viene solo salvato, senza WhatsApp.
+    if (!staff) {
+      const url = `https://api.whatsapp.com/send?phone=${WHATSAPP}&text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
     setSent(true);
   };
 
@@ -255,7 +259,7 @@ export default function CakeConfigurator({ open, onClose }) {
   return (
     <AnimatePresence>
       <motion.div
-        className="cfg-overlay"
+        className={`cfg-overlay ${staff ? 'cfg-staff' : ''}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -275,7 +279,7 @@ export default function CakeConfigurator({ open, onClose }) {
           <header className="cfg-header">
             <div className="cfg-title">
               <Cake size={20} color="var(--violet-deep)" />
-              Crea la tua torta
+              {staff ? 'Nuovo ordine' : 'Crea la tua torta'}
               <small style={{ marginLeft: '0.5rem' }}>· Punto G!</small>
             </div>
             {!sent && (
@@ -331,7 +335,7 @@ export default function CakeConfigurator({ open, onClose }) {
 
           <div className="cfg-body" ref={bodyRef}>
             {sent ? (
-              <SuccessView name={config.name} onClose={onClose} />
+              <SuccessView name={config.name} onClose={onClose} staff={staff} />
             ) : (
               <AnimatePresence mode="wait" onExitComplete={() => bodyRef.current?.scrollTo({ top: 0 })}>
                 <motion.div
@@ -345,14 +349,14 @@ export default function CakeConfigurator({ open, onClose }) {
                   {STEPS[step] === 'type' && <StepType config={config} set={set} />}
                   {STEPS[step] === 'shape' && <StepShape config={config} set={set} />}
                   {STEPS[step] === 'size' && <StepSize config={config} set={set} />}
-                  {STEPS[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} />}
+                  {STEPS[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} staff={staff} />}
                   {STEPS[step] === 'filling' && <StepFilling config={config} set={set} />}
                   {STEPS[step] === 'covering' && <StepCovering config={config} set={set} />}
                   {STEPS[step] === 'base' && <StepBase config={config} set={set} />}
                   {STEPS[step] === 'decoration' && <StepDecoration config={config} set={set} />}
-                  {STEPS[step] === 'message' && <StepMessage config={config} set={set} />}
-                  {STEPS[step] === 'details' && <StepDetails config={config} set={set} />}
-                  {STEPS[step] === 'review' && <StepReview config={config} total={total} />}
+                  {STEPS[step] === 'message' && <StepMessage config={config} set={set} staff={staff} />}
+                  {STEPS[step] === 'details' && <StepDetails config={config} set={set} staff={staff} />}
+                  {STEPS[step] === 'review' && <StepReview config={config} total={total} staff={staff} />}
                 </motion.div>
               </AnimatePresence>
             )}
@@ -378,7 +382,7 @@ export default function CakeConfigurator({ open, onClose }) {
                   </button>
                 ) : (
                   <button className="cfg-btn cfg-btn-send" onClick={sendWhatsApp} disabled={!canNext}>
-                    <Send size={16} /> Invia su WhatsApp
+                    {staff ? (<><Check size={16} /> Crea ordine</>) : (<><Send size={16} /> Invia su WhatsApp</>)}
                   </button>
                 )}
               </div>
@@ -501,7 +505,7 @@ function StepSize({ config, set }) {
   );
 }
 
-function StepFlavors({ config, toggle }) {
+function StepFlavors({ config, toggle, staff }) {
   const { cakeFlavors } = useCakeData();
   const tagLabels = {
     gelato: '🍨 Gelato',
@@ -515,7 +519,7 @@ function StepFlavors({ config, toggle }) {
       <StepHeader
         num={5}
         title="Scegli i gusti degli strati"
-        lead={`Da 1 a ${MAX_FLAVORS} gusti — l'ordine determina gli strati (dal basso verso l'alto). Ogni gusto extra: +2€.`}
+        lead={`Da 1 a ${MAX_FLAVORS} gusti — l'ordine determina gli strati (dal basso verso l'alto).${staff ? '' : ' Ogni gusto extra: +2€.'}`}
       />
       <div className="flavor-hint">
         Hai scelto <strong>{config.flavors.length}</strong> di {MAX_FLAVORS} strati.{' '}
@@ -655,7 +659,7 @@ function StepDecoration({ config, set }) {
   );
 }
 
-function StepMessage({ config, set }) {
+function StepMessage({ config, set, staff }) {
   const { cakeOccasions } = useCakeData();
   const fonts = [
     { id: 'caveat', label: 'Calligrafica', preview: 'Auguri!', family: "'Caveat', cursive", size: '1.4rem' },
@@ -667,7 +671,7 @@ function StepMessage({ config, set }) {
       <StepHeader num={9} title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo su cialda alimentare e la posiamo sulla torta." />
 
       <div className="cfg-field">
-        <label>Foto da stampare (opzionale, +€5)</label>
+        <label>Foto da stampare (opzionale{staff ? '' : ', +€5'})</label>
         <PhotoUploader
           value={config.photo}
           onChange={(p) => set({ photo: p })}
@@ -732,7 +736,7 @@ function StepMessage({ config, set }) {
             className={`toggle-pill ${config.candle ? 'active' : ''}`}
             onClick={() => set({ candle: true })}
           >
-            Aggiungi candelina (+ €1)
+            Aggiungi candelina{staff ? '' : ' (+ €1)'}
           </button>
         </div>
       </div>
@@ -755,14 +759,16 @@ function StepMessage({ config, set }) {
   );
 }
 
-function StepDetails({ config, set }) {
+function StepDetails({ config, set, staff }) {
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   return (
     <>
       <StepHeader
         num={10}
-        title="I tuoi dati"
-        lead="Per torte personalizzate servono almeno 24h di preavviso. Ti contattiamo per confermare."
+        title={staff ? 'Dati cliente' : 'I tuoi dati'}
+        lead={staff
+          ? 'Inserisci i dati del cliente e la data di ritiro concordata (nessun limite di tempo).'
+          : 'Per torte personalizzate servono almeno 24h di preavviso. Ti contattiamo per confermare.'}
       />
       <div className="cfg-field-row">
         <div className="cfg-field">
@@ -791,12 +797,12 @@ function StepDetails({ config, set }) {
         <label>Quando vuoi ritirarla? *</label>
         <input
           type="date"
-          min={tomorrow}
+          min={staff ? undefined : tomorrow}
           value={config.pickupDate}
           onChange={(e) => set({ pickupDate: e.target.value })}
           required
         />
-        <p className="hint">Minimo 24h dall'ordine. Ti chiameremo per concordare l'orario.</p>
+        <p className="hint">{staff ? 'Qualsiasi data, anche oggi.' : "Minimo 24h dall'ordine. Ti chiameremo per concordare l'orario."}</p>
       </div>
 
       <div className="cfg-field">
@@ -811,8 +817,8 @@ function StepDetails({ config, set }) {
   );
 }
 
-function StepReview({ config, total }) {
-  const { cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
+function StepReview({ config, total, staff }) {
+  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
   const type = cakeTypes.find((t) => t.id === config.type);
   const shape = cakeShapes.find((sh) => sh.id === config.shape);
   const size = cakeSizes.find((s) => s.id === config.sizeId);
@@ -822,7 +828,7 @@ function StepReview({ config, total }) {
   const deco = cakeDecorations.find((d) => d.id === config.decoration);
   return (
     <>
-      <StepHeader num={11} title="Riepilogo" lead="Controlla tutto e invia la richiesta su WhatsApp. Ti rispondiamo a mano!" />
+      <StepHeader num={11} title="Riepilogo" lead={staff ? "Controlla i dettagli e crea l'ordine: finirà tra gli ordini da fare." : 'Controlla tutto e invia la richiesta su WhatsApp. Ti rispondiamo a mano!'} />
       <div className="summary-box">
         <dl>
           <dt>Tipo</dt><dd>{type?.name}</dd>
@@ -843,28 +849,31 @@ function StepReview({ config, total }) {
           {config.notes && (<><dt>Note</dt><dd>{config.notes}</dd></>)}
         </dl>
       </div>
-      <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(182,81,228,0.2)' }}>
-        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink)' }}>
-          <strong style={{ color: 'var(--violet-deep)' }}>Totale stimato: €{total.toFixed(2)}</strong>
-          <br />
-          Il prezzo definitivo viene confermato dal nostro staff in base alle decorazioni richieste.
-        </p>
-      </div>
+      {!staff && (
+        <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(182,81,228,0.2)' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink)' }}>
+            <strong style={{ color: 'var(--violet-deep)' }}>Totale stimato: €{total.toFixed(2)}</strong>
+            <br />
+            Il prezzo definitivo viene confermato dal nostro staff in base alle decorazioni richieste.
+          </p>
+        </div>
+      )}
     </>
   );
 }
 
-function SuccessView({ name, onClose }) {
+function SuccessView({ name, onClose, staff }) {
   return (
     <div className="cfg-success">
       <div className="check"><Check size={36} /></div>
-      <h2>Richiesta inviata!</h2>
+      <h2>{staff ? 'Ordine creato!' : 'Richiesta inviata!'}</h2>
       <p className="lead" style={{ maxWidth: 420 }}>
-        Grazie {name?.split(' ')[0] || ''}! La tua richiesta è stata aperta su WhatsApp.
-        Inviala per confermare e ti rispondiamo entro poche ore per finalizzare l'ordine.
+        {staff
+          ? `Ordine per ${name?.split(' ')[0] || 'il cliente'} salvato: lo trovi tra gli ordini "Da fare".`
+          : `Grazie ${name?.split(' ')[0] || ''}! La tua richiesta è stata aperta su WhatsApp. Inviala per confermare e ti rispondiamo entro poche ore per finalizzare l'ordine.`}
       </p>
       <button className="cfg-btn cfg-btn-next" onClick={onClose} style={{ marginTop: '1rem' }}>
-        Torna al sito
+        {staff ? 'Chiudi' : 'Torna al sito'}
       </button>
     </div>
   );

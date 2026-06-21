@@ -43,6 +43,9 @@ function urgency(ritiro) {
   return { label: `tra ${days} giorni`, color: '#8a8a8a', level: 0 };
 }
 
+// Ordine "scaduto": ritiro già passato e ancora da gestire (non chiuso).
+const isScaduto = (o) => !FINALI.includes(o.stato) && urgency(o.ritiro_data)?.label === 'Scaduto';
+
 export default function OrdersPanel() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,9 +79,10 @@ export default function OrdersPanel() {
     else setOrders((os) => os.filter((o) => o.id !== id));
   }
 
-  // Filtro per stato
+  // Filtro per stato (+ vista trasversale "Scaduto")
   let shown = orders;
-  if (filter !== 'tutti') shown = orders.filter((o) => o.stato === filter);
+  if (filter === 'scaduto') shown = orders.filter(isScaduto);
+  else if (filter !== 'tutti') shown = orders.filter((o) => o.stato === filter);
 
   // Ordinamento
   shown = [...shown].sort((a, b) => {
@@ -93,6 +97,7 @@ export default function OrdersPanel() {
 
   const nDaFare = orders.filter((o) => o.stato === 'da_fare').length;
   const nInLav = orders.filter((o) => o.stato === 'in_lavorazione').length;
+  const nScaduti = orders.filter(isScaduto).length;
 
   return (
     <section className="adm-card">
@@ -101,7 +106,10 @@ export default function OrdersPanel() {
           <h3>Ordini torte</h3>
           <p>Richieste dal sito, ordinate per priorità (ritiro più vicino in cima). Aggiorna lo stato man mano che le prepari.</p>
         </div>
-        <span className="adm-count">{nDaFare} da fare · {nInLav} in lavorazione · {orders.length} totali</span>
+        <span className="adm-count">
+          {nDaFare} da fare · {nInLav} in lavorazione · {orders.length} totali
+          {nScaduti > 0 && <span className="ord-count-scaduti"> · {nScaduti} scaduti</span>}
+        </span>
       </header>
 
       <div className="ord-filters">
@@ -110,6 +118,9 @@ export default function OrdersPanel() {
             {s.label}
           </button>
         ))}
+        <button className={`ord-f-scaduto ${filter === 'scaduto' ? 'active' : ''}`} onClick={() => setFilter('scaduto')}>
+          Scaduto{nScaduti > 0 ? ` (${nScaduti})` : ''}
+        </button>
         <button className={filter === 'tutti' ? 'active' : ''} onClick={() => setFilter('tutti')}>Tutti</button>
         <span className="ord-sort">
           Ordina:
