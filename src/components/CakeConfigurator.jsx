@@ -229,7 +229,7 @@ export default function CakeConfigurator({ open, onClose }) {
       supabase
         .from('ordini')
         .insert({
-          stato: 'nuovo',
+          stato: 'da_fare',
           cliente_nome: config.name,
           cliente_telefono: config.phone,
           ritiro_data: config.pickupDate || null,

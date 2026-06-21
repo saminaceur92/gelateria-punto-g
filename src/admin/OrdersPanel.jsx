@@ -2,15 +2,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const STATI = [
-  { value: 'nuovo', label: 'Nuovo', color: '#b651e4' },
-  { value: 'da_fare', label: 'Da fare', color: '#2a7ad6' },
+  { value: 'da_fare', label: 'Da fare', color: '#b651e4' },
+  { value: 'in_lavorazione', label: 'In lavorazione', color: '#2a7ad6' },
   { value: 'pronto', label: 'Pronto', color: '#eb911e' },
   { value: 'consegnato', label: 'Consegnato', color: '#46a85a' },
   { value: 'annullato', label: 'Annullato', color: '#b03a3a' },
 ];
-// Ordini ancora da gestire (la vista "Da fare"): nuovi + presi in carico.
-// Il "pronto" è già fatto, quindi NON rientra qui: vive solo nel suo filtro.
-const ATTIVI = ['nuovo', 'da_fare'];
+// Stati finali: ordine chiuso, niente countdown alla scadenza.
+const FINALI = ['consegnato', 'annullato'];
 
 // Formato date uniforme (gg/mm/aaaa) in tutta la dashboard.
 const fmtDate = (val) => {
@@ -77,10 +76,9 @@ export default function OrdersPanel() {
     else setOrders((os) => os.filter((o) => o.id !== id));
   }
 
-  // Filtro
+  // Filtro per stato
   let shown = orders;
-  if (filter === 'da_fare') shown = orders.filter((o) => ATTIVI.includes(o.stato));
-  else if (filter !== 'tutti') shown = orders.filter((o) => o.stato === filter);
+  if (filter !== 'tutti') shown = orders.filter((o) => o.stato === filter);
 
   // Ordinamento
   shown = [...shown].sort((a, b) => {
@@ -93,7 +91,8 @@ export default function OrdersPanel() {
     return (b.created_at || '').localeCompare(a.created_at || '');
   });
 
-  const daFare = orders.filter((o) => ATTIVI.includes(o.stato)).length;
+  const nDaFare = orders.filter((o) => o.stato === 'da_fare').length;
+  const nInLav = orders.filter((o) => o.stato === 'in_lavorazione').length;
 
   return (
     <section className="adm-card">
@@ -102,17 +101,16 @@ export default function OrdersPanel() {
           <h3>Ordini torte</h3>
           <p>Richieste dal sito, ordinate per priorità (ritiro più vicino in cima). Aggiorna lo stato man mano che le prepari.</p>
         </div>
-        <span className="adm-count">{daFare} da fare · {orders.length} totali</span>
+        <span className="adm-count">{nDaFare} da fare · {nInLav} in lavorazione · {orders.length} totali</span>
       </header>
 
       <div className="ord-filters">
-        <button className={filter === 'da_fare' ? 'active' : ''} onClick={() => setFilter('da_fare')}>Da fare</button>
-        <button className={filter === 'tutti' ? 'active' : ''} onClick={() => setFilter('tutti')}>Tutti</button>
-        {STATI.filter((s) => s.value !== 'da_fare').map((s) => (
+        {STATI.map((s) => (
           <button key={s.value} className={filter === s.value ? 'active' : ''} onClick={() => setFilter(s.value)}>
             {s.label}
           </button>
         ))}
+        <button className={filter === 'tutti' ? 'active' : ''} onClick={() => setFilter('tutti')}>Tutti</button>
         <span className="ord-sort">
           Ordina:
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -132,8 +130,8 @@ export default function OrdersPanel() {
           const stato = STATI.find((s) => s.value === o.stato) || STATI[0];
           const open = openId === o.id;
           const tel = (o.cliente_telefono || '').replace(/\D/g, '');
-          const attivo = ATTIVI.includes(o.stato);
-          const urg = attivo ? urgency(o.ritiro_data) : null;
+          // Il countdown alla scadenza c'è sempre, finché l'ordine non è chiuso.
+          const urg = FINALI.includes(o.stato) ? null : urgency(o.ritiro_data);
           const gusti = Array.isArray(o.dettagli?.flavors) ? o.dettagli.flavors.map((f) => f.name).filter(Boolean).join(', ') : '';
           const accent = urg && urg.level >= 2 ? 'urgente' : urg && urg.level === 1 ? 'presto' : '';
 
