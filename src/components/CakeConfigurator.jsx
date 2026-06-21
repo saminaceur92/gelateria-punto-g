@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, Send, Cake, Shuffle } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
+import { supabase } from '../lib/supabase';
 import CakePreview from './CakePreview';
 
 const STEPS = [
@@ -204,6 +205,27 @@ export default function CakeConfigurator({ open, onClose }) {
       ``,
       `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
+
+    // Salva l'ordine su Supabase (non blocca l'invio WhatsApp se fallisce)
+    if (supabase) {
+      const { photo, ...dettagli } = config;
+      supabase
+        .from('ordini')
+        .insert({
+          stato: 'nuovo',
+          cliente_nome: config.name,
+          cliente_telefono: config.phone,
+          ritiro_data: config.pickupDate || null,
+          totale: total,
+          tipo: type?.name || null,
+          riepilogo: msg,
+          dettagli: { ...dettagli, conFoto: !!photo },
+          note: config.notes || null,
+        })
+        .then(({ error }) => {
+          if (error) console.warn('[ordine] non salvato:', error.message);
+        });
+    }
 
     const url = `https://api.whatsapp.com/send?phone=${WHATSAPP}&text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank', 'noopener,noreferrer');

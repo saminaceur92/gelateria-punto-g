@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import TableEditor from './TableEditor';
+import OrdersPanel from './OrdersPanel';
 
 const uuid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `id-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
 
@@ -13,7 +14,7 @@ const TAG_OPTIONS = [
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [cats, setCats] = useState([]);
-  const [active, setActive] = useState('gusti');
+  const [active, setActive] = useState('ordini');
 
   useEffect(() => {
     supabase.from('categorie').select('id, nome').order('ordine').then(({ data }) => setCats(data || []));
@@ -207,6 +208,12 @@ export default function Dashboard() {
       </header>
 
       <nav className="adm-nav">
+        <button
+          className={`adm-tab adm-tab-orders ${active === 'ordini' ? 'active' : ''}`}
+          onClick={() => setActive('ordini')}
+        >
+          📦 Ordini
+        </button>
         {sections.map((s) => (
           <button
             key={s.key}
@@ -219,7 +226,7 @@ export default function Dashboard() {
       </nav>
 
       <main className="adm-main">
-        <TableEditor key={current.key} {...current.props} />
+        {active === 'ordini' ? <OrdersPanel /> : <TableEditor key={current.key} {...current.props} />}
       </main>
     </div>
   );
