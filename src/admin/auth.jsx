@@ -54,12 +54,9 @@ export function AuthProvider({ children }) {
     user: session?.user || null,
     profile,
     isOwner: profile?.role === 'owner',
-    // Invia un'email con il link/codice di accesso
-    signInWithEmail: (email) =>
-      supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/admin` },
-      }),
+    // Login classico con email + password
+    signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
+    signUp: (email, password) => supabase.auth.signUp({ email, password }),
     signOut: () => supabase.auth.signOut(),
   };
 

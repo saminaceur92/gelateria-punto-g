@@ -76,4 +76,6 @@
 .adm-btn-del:hover { background: #fdeaea; border-color: #e0a0a0; }
 
 .adm-error { background: #fdeaea; color: #a33; padding: .5rem .8rem; border-radius: 8px; font-size: .85rem; margin: .5rem 0; }
+.adm-info { background: #e9f8ec; color: #2a7a3f; padding: .5rem .8rem; border-radius: 8px; font-size: .85rem; margin: .5rem 0; }
 .adm-muted { color: #999; font-size: .88rem; }
+.adm-link { background: none; border: none; color: var(--v-deep); cursor: pointer; font-size: .85rem; text-decoration: underline; padding: .3rem; align-self: center; }

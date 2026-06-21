@@ -4,48 +4,71 @@ import Dashboard from './Dashboard';
 import './admin.css';
 
 function Login() {
-  const { signInWithEmail } = useAuth();
+  const { signIn, signUp } = useAuth();
+  const [mode, setMode] = useState('in'); // 'in' = accedi, 'up' = crea account
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const { error } = await signInWithEmail(email.trim());
+    setInfo('');
+    const fn = mode === 'up' ? signUp : signIn;
+    const { data, error } = await fn(email.trim(), password);
     setBusy(false);
-    if (error) setError(error.message);
-    else setSent(true);
+    if (error) {
+      setError(error.message);
+    } else if (mode === 'up' && !data.session) {
+      // Email di conferma attiva: avvisa (consigliato disattivarla, vedi guida)
+      setInfo('Account creato. Se richiesto, conferma la mail; poi accedi.');
+      setMode('in');
+    }
+    // Se c'è la sessione, il Gate passa automaticamente alla dashboard.
   };
 
   return (
     <div className="adm-login">
       <div className="adm-login-card">
         <div className="adm-login-brand"><strong>Punto G!</strong><span>Area gestione</span></div>
-        {sent ? (
-          <div className="adm-login-sent">
-            <h2>Controlla la tua email 📧</h2>
-            <p>Ti abbiamo inviato un link di accesso a <strong>{email}</strong>. Aprilo da questo dispositivo per entrare.</p>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            <h2>Accedi</h2>
-            <p className="adm-muted">Inserisci la tua email: ti mandiamo un link per entrare, senza password.</p>
-            <input
-              type="email"
-              required
-              placeholder="latua@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {error && <div className="adm-error">⚠️ {error}</div>}
-            <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
-              {busy ? 'Invio…' : 'Invia link di accesso'}
-            </button>
-          </form>
-        )}
+        <form onSubmit={submit}>
+          <h2>{mode === 'up' ? 'Crea account' : 'Accedi'}</h2>
+          <p className="adm-muted">
+            {mode === 'up' ? 'Scegli una password per il tuo account proprietario.' : 'Entra con email e password.'}
+          </p>
+          <input
+            type="email"
+            required
+            placeholder="latua@email.com"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            required
+            minLength={6}
+            placeholder="Password"
+            autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error && <div className="adm-error">⚠️ {error}</div>}
+          {info && <div className="adm-info">✅ {info}</div>}
+          <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
+            {busy ? 'Attendi…' : mode === 'up' ? 'Crea account' : 'Entra'}
+          </button>
+          <button
+            type="button"
+            className="adm-link"
+            onClick={() => { setMode(mode === 'up' ? 'in' : 'up'); setError(''); setInfo(''); }}
+          >
+            {mode === 'up' ? 'Hai già un account? Accedi' : 'Prima volta? Crea il tuo account'}
+          </button>
+        </form>
       </div>
     </div>
   );
