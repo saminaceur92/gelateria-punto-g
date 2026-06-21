@@ -57,12 +57,19 @@ public/
   └─ *.jpg          → immagini hero/gallery
 ```
 
+## 🗄️ Backend dati
+
+Gestione contenuti (gusti, prezzi, storico ordini) su **Supabase**.
+Setup, project ref e autenticazione MCP → [`docs/SUPABASE.md`](docs/SUPABASE.md).
+
 ## 🛒 Roadmap
 
 - [x] Sito vetrina (v1)
-- [ ] E-commerce: ordini online + pagamento (Stripe)
-- [ ] Calendario prenotazione torte
-- [ ] Newsletter gusti del mese
+- [x] Configuratore torte 3D (Fase 1)
+- [ ] E-commerce: ordini online + pagamento (Stripe / Satispay) — Fase 2
+- [ ] Storico ordini su Supabase — Fase 2
+- [ ] Cookie / GDPR — Fase 2
+- [ ] Notifiche ordini (Telegram / WhatsApp) — Fase 2
 
 ## 📞 Contatti gelateria
 
