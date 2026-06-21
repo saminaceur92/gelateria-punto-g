@@ -1,0 +1,5 @@
+"Id","Nome","Descrizione","PrezzoBase","Immagine","Colore","In vetrina","Ordine"
+"semifreddo","Semifreddo","Soffice, vellutato, perfetto a fine pasto","24","/torte.jpg","Viola Punto G","true","10"
+"gelato","Torta Gelato","Strati di gelato artigianale dei tuoi gusti preferiti","26","/gelato.jpg","Viola scuro","true","20"
+"crock","CROCK","Base croccante + semifreddo: la nostra firma","28","/semifreddi.jpg","Arancio","true","30"
+"piani","A piani","Per occasioni speciali — scenografica e golosa","38","/torte.jpg","Verde acqua","true","40"
