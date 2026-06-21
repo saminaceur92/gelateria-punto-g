@@ -3,12 +3,11 @@ import { supabase } from '../lib/supabase';
 
 const STATI = [
   { value: 'nuovo', label: 'Nuovo', color: '#b651e4' },
-  { value: 'confermato', label: 'Confermato', color: '#2a7ad6' },
   { value: 'pronto', label: 'Pronto', color: '#eb911e' },
   { value: 'consegnato', label: 'Consegnato', color: '#46a85a' },
   { value: 'annullato', label: 'Annullato', color: '#b03a3a' },
 ];
-const ATTIVI = ['nuovo', 'confermato', 'pronto'];
+const ATTIVI = ['nuovo', 'pronto'];
 
 // Formato date uniforme (gg/mm/aaaa) in tutta la dashboard.
 const fmtDate = (val) => {
