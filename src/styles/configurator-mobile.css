@@ -1,0 +1,139 @@
+/* ============================================================
+   Mobile-app overrides for cake configurator
+   Trasforma il wizard in un'esperienza tipo app nativa
+   ============================================================ */
+
+@media (max-width: 900px) {
+  /* Layout: header fisso, preview hero, body scrollabile, footer fisso */
+  .cfg-overlay { padding: 0; align-items: stretch; }
+  .cfg-modal {
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  /* Header compatto */
+  .cfg-header {
+    padding: 0.7rem 0.9rem;
+    gap: 0.5rem;
+  }
+  .cfg-title { font-size: 0.95rem; gap: 0.3rem; }
+  .cfg-title small { display: none; }
+  .cfg-close { width: 36px; height: 36px; }
+
+  /* Preview hero compatto e sticky */
+  .cfg-preview {
+    padding: 0.6rem 1rem 0.4rem;
+    min-height: auto;
+    max-height: none;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(182,81,228,0.18), transparent 65%),
+      var(--cream-warm);
+  }
+  .cfg-preview-stage { max-width: 240px; }
+
+  /* Card editorial: in modalit� mobile mostra SOLO la torta + nome + dimensioni + prezzo */
+  .cake-card {
+    padding: 0.4rem 0.5rem 0.5rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .cake-card::before { display: none; }
+  .cake-card-ribbon { display: none; }
+  .cake-card-flavors,
+  .cake-card-base,
+  .cake-card-message,
+  .cake-card-icons,
+  .cake-card-footer { display: none; }
+  .cake-card-type { font-size: 1.15rem; margin-top: 0.2rem; }
+  .cake-card-size { font-size: 0.78rem; margin: 0.1rem 0 0; }
+
+  .cake3d-stage { max-width: 240px; height: 240px; margin-bottom: 0.2rem; }
+
+  /* Info preview sotto: nascondi nome (� gi� nella card), mostra solo prezzo */
+  .cfg-preview-info { margin-top: 0.4rem; }
+  .cfg-preview-info h3 { display: none; }
+  .cfg-preview-info p:not(.combo-counter) { display: none; }
+  .cfg-preview-info .combo-counter { font-size: 0.66rem; margin: 0; }
+  .cfg-preview-info .price { font-size: 1.5rem; margin-top: 0.15rem; }
+
+  /* Body scrollabile a tutta larghezza */
+  .cfg-body {
+    padding: 1rem 1rem 1rem;
+    -webkit-overflow-scrolling: touch;
+    background: #faf6ee;
+  }
+  .cfg-step h2 { font-size: 1.3rem; line-height: 1.2; margin-bottom: 0.3rem; }
+  .cfg-step .lead { font-size: 0.85rem; margin-bottom: 1rem; }
+  .cfg-step-num { font-size: 0.65rem; margin-bottom: 0.3rem; }
+
+  /* Option grid: sempre 2 colonne fitte su mobile */
+  .opt-grid.cols-2,
+  .opt-grid.cols-3,
+  .opt-grid.cols-flavors {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.55rem;
+  }
+  .opt-card {
+    padding: 0.7rem 0.7rem;
+    border-radius: 14px;
+    min-height: 64px;
+  }
+  .opt-card .opt-name { font-size: 0.88rem; }
+  .opt-card .opt-desc { font-size: 0.72rem; }
+  .opt-card .opt-meta { font-size: 0.72rem; margin-top: 0.25rem; }
+  .opt-card.selected::after {
+    width: 20px; height: 20px; font-size: 0.7rem;
+    top: 0.4rem; right: 0.4rem;
+  }
+  .opt-card .badge-popular { font-size: 0.55rem; padding: 2px 6px; }
+
+  /* Flavors: lista verticale compatta */
+  .opt-grid.cols-flavors { grid-template-columns: 1fr 1fr; }
+  .opt-flavor { padding: 0.55rem 0.6rem; gap: 0.5rem; }
+  .opt-flavor .flavor-dot { width: 22px; height: 22px; }
+  .opt-flavor .flavor-name { font-size: 0.82rem; line-height: 1.15; }
+
+  /* Form fields */
+  .cfg-field input,
+  .cfg-field textarea,
+  .cfg-field select { padding: 0.75rem 0.85rem; font-size: 16px; /* impedisce zoom iOS */ }
+  .cfg-field-row { grid-template-columns: 1fr; gap: 0.7rem; }
+
+  /* Footer fissato in basso, con safe-area iPhone */
+  .cfg-footer {
+    padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    box-shadow: 0 -8px 20px -10px rgba(0,0,0,0.15);
+    z-index: 5;
+  }
+  .cfg-footer .price-tag strong { font-size: 1.25rem; }
+  .cfg-footer .price-tag span { font-size: 0.6rem; }
+  .cfg-footer-actions { gap: 0.4rem; flex-shrink: 0; }
+  .cfg-btn { padding: 0.7rem 1rem; font-size: 0.85rem; }
+  .cfg-btn-back { padding: 0.7rem 0.85rem; }
+  .cfg-btn-back span { display: none; } /* solo freccia */
+
+  /* Font picker e altri grid: 2 col */
+  .font-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+  .font-card { padding: 0.6rem 0.4rem; min-height: 60px; }
+
+  /* Toggle pills pi� tappable */
+  .toggle-pill { padding: 0.6rem 0.95rem; font-size: 0.82rem; }
+
+  /* Summary box mobile */
+  .summary-box { padding: 0.9rem; }
+  .summary-box dl { grid-template-columns: 1fr; row-gap: 0.4rem; }
+  .summary-box dd { margin-left: 0; padding-left: 0; padding-bottom: 0.3rem; border-bottom: 1px solid rgba(42,26,62,0.05); }
+}
+
+/* Smartphone piccoli */
+@media (max-width: 380px) {
+  .opt-grid.cols-2,
+  .opt-grid.cols-3 { grid-template-columns: 1fr; }
+  .cake3d-stage { max-width: 200px; height: 200px; }
+}

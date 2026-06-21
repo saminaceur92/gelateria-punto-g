@@ -1,17 +1,33 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, Send, Cake } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Check, Send, Cake, Shuffle } from 'lucide-react';
 import {
+  cakeShapes,
   cakeTypes,
   cakeSizes,
   cakeFlavors,
   cakeBases,
+  cakeFillings,
+  cakeCoverings,
   cakeDecorations,
   cakeOccasions,
+  cakeRecipes,
 } from '../data/cakeOptions';
 import CakePreview from './CakePreview';
 
-const STEPS = ['type', 'size', 'flavors', 'base', 'decoration', 'message', 'details', 'review'];
+const STEPS = [
+  'type',       // tipo torta (semifreddo / gelato / crock / a piani)
+  'shape',      // forma
+  'size',       // dimensione
+  'base',       // base sotto (tra le prime scelte)
+  'flavors',    // strati / gusti
+  'filling',    // farcitura tra strati
+  'covering',   // copertura esterna
+  'decoration', // decorazioni topping
+  'message',    // scritta + foto + candelina
+  'details',    // dati cliente
+  'review',     // riepilogo
+];
 const MAX_FLAVORS = 4;
 const WHATSAPP = '393203306009';
 
@@ -23,16 +39,18 @@ const defaultDecoration = cakeDecorations[0]?.id || '';
 
 const initialConfig = {
   type: '',
+  shape: 'tonda',
   sizeId: defaultSizeId,
   flavors: [], // [{name,color}]
   baseId: defaultBaseId,
+  fillingId: 'nessuna',
+  coveringId: '',
   decoration: defaultDecoration,
   message: '',
   messageFont: 'caveat',
-  messageRotation: 0,
   candle: false,
   occasion: '',
-  photo: null, // dataURL della foto da mettere sulla torta
+  photo: null,
   pickupDate: '',
   name: '',
   phone: '',
@@ -53,7 +71,6 @@ export default function CakeConfigurator({ open, onClose }) {
     }
   }, [open]);
 
-  // ESC chiude
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     if (open) window.addEventListener('keydown', onKey);
@@ -66,16 +83,45 @@ export default function CakeConfigurator({ open, onClose }) {
     const type = cakeTypes.find((t) => t.id === config.type);
     const size = cakeSizes.find((s) => s.id === config.sizeId);
     const base = cakeBases.find((b) => b.id === config.baseId);
-    let p = (type?.basePrice ?? 0) + (size?.priceDelta ?? 0) + (base?.priceDelta ?? 0);
+    const shape = cakeShapes.find((sh) => sh.id === config.shape);
+    const filling = cakeFillings.find((f) => f.id === config.fillingId);
+    const covering = cakeCoverings.find((c) => c.id === config.coveringId);
+    let p =
+      (type?.basePrice ?? 0) +
+      (size?.priceDelta ?? 0) +
+      (base?.priceDelta ?? 0) +
+      (shape?.priceDelta ?? 0) +
+      (filling?.priceDelta ?? 0) +
+      (covering?.priceDelta ?? 0);
+    // Gusti extra: dopo il primo, +2€ ciascuno
+    if (config.flavors.length > 1) p += (config.flavors.length - 1) * 2;
     if (config.candle) p += 1;
+    if (config.photo) p += 5;
     return p;
   }, [config]);
+
+  // Conteggio combinazioni teoriche (effetto wow)
+  const combos = useMemo(() => {
+    const flavorsCombos = (cakeFlavors.length ** 2) * 4; // 1-4 strati
+    return (
+      cakeShapes.length *
+      cakeSizes.length *
+      flavorsCombos *
+      cakeFillings.length *
+      cakeCoverings.length *
+      cakeBases.length *
+      cakeDecorations.length
+    );
+  }, []);
 
   const canNext = useMemo(() => {
     switch (STEPS[step]) {
       case 'type': return !!config.type;
+      case 'shape': return !!config.shape;
       case 'size': return !!config.sizeId;
       case 'flavors': return config.flavors.length >= 1;
+      case 'filling': return !!config.fillingId;
+      case 'covering': return !!config.coveringId;
       case 'base': return !!config.baseId;
       case 'details': return config.name.trim() && config.phone.trim() && config.pickupDate;
       default: return true;
@@ -94,22 +140,40 @@ export default function CakeConfigurator({ open, onClose }) {
     }
   };
 
+  const surpriseMe = () => {
+    const recipe = cakeRecipes[Math.floor(Math.random() * cakeRecipes.length)];
+    const flavors = recipe.flavors.map((n) => cakeFlavors.find((f) => f.name === n)).filter(Boolean);
+    // mantiene la forma già scelta: randomizza tutto il resto DENTRO quella forma
+    set({
+      flavors,
+      fillingId: recipe.filling,
+      coveringId: recipe.covering,
+      decoration: recipe.decoration,
+    });
+  };
+
   const sendWhatsApp = () => {
     const type = cakeTypes.find((t) => t.id === config.type);
+    const shape = cakeShapes.find((sh) => sh.id === config.shape);
     const size = cakeSizes.find((s) => s.id === config.sizeId);
     const base = cakeBases.find((b) => b.id === config.baseId);
+    const filling = cakeFillings.find((f) => f.id === config.fillingId);
+    const covering = cakeCoverings.find((c) => c.id === config.coveringId);
     const deco = cakeDecorations.find((d) => d.id === config.decoration);
 
     const msg = [
       `🎂 *Nuova richiesta torta — Punto G!*`,
       ``,
       `*Tipo:* ${type?.name}`,
+      `*Forma:* ${shape?.name}`,
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
       `*Base:* ${base?.name}`,
-      `*Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
+      `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
+      filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
+      covering ? `*Copertura:* ${covering.name}` : '',
       `*Decorazione:* ${deco?.name}`,
       config.message ? `*Scritta:* "${config.message}"` : '',
-      config.photo ? `*Foto sulla torta:* sì (verrà inviata a parte)` : '',
+      config.photo ? `*Foto su cialda:* sì (verrà inviata a parte)` : '',
       config.candle ? `*Candelina:* sì` : '',
       config.occasion ? `*Occasione:* ${config.occasion}` : '',
       ``,
@@ -150,7 +214,6 @@ export default function CakeConfigurator({ open, onClose }) {
           exit={{ y: 30, opacity: 0 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* HEADER */}
           <header className="cfg-header">
             <div className="cfg-title">
               <Cake size={20} color="var(--violet-deep)" />
@@ -172,26 +235,31 @@ export default function CakeConfigurator({ open, onClose }) {
             </button>
           </header>
 
-          {/* PREVIEW (sempre visibile, anche su mobile) */}
           <aside className="cfg-preview">
             <div className="cfg-preview-stage">
               <CakePreview config={config} />
             </div>
             <div className="cfg-preview-info">
-              <h3>{cakeTypes.find((t) => t.id === config.type)?.name || 'La tua torta'}</h3>
-              <p>
-                {config.flavors.length > 0
-                  ? config.flavors.map((f) => f.name).join(' · ')
-                  : 'Inizia scegliendo il tipo'}
-              </p>
+              <div className="combo-counter">
+                1 di <strong>{combos.toLocaleString('it-IT')}</strong> combinazioni
+              </div>
               <div className="price">
                 €{total.toFixed(0)}
                 <small>stima</small>
               </div>
+              {!sent && (
+                <button
+                  type="button"
+                  className="cfg-btn cfg-btn-back"
+                  onClick={surpriseMe}
+                  style={{ marginTop: '0.6rem' }}
+                >
+                  <Shuffle size={14} /> Sorprendimi!
+                </button>
+              )}
             </div>
           </aside>
 
-          {/* BODY */}
           <div className="cfg-body">
             {sent ? (
               <SuccessView name={config.name} onClose={onClose} />
@@ -206,8 +274,11 @@ export default function CakeConfigurator({ open, onClose }) {
                   transition={{ duration: 0.35 }}
                 >
                   {STEPS[step] === 'type' && <StepType config={config} set={set} />}
+                  {STEPS[step] === 'shape' && <StepShape config={config} set={set} />}
                   {STEPS[step] === 'size' && <StepSize config={config} set={set} />}
                   {STEPS[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} />}
+                  {STEPS[step] === 'filling' && <StepFilling config={config} set={set} />}
+                  {STEPS[step] === 'covering' && <StepCovering config={config} set={set} />}
                   {STEPS[step] === 'base' && <StepBase config={config} set={set} />}
                   {STEPS[step] === 'decoration' && <StepDecoration config={config} set={set} />}
                   {STEPS[step] === 'message' && <StepMessage config={config} set={set} />}
@@ -218,7 +289,6 @@ export default function CakeConfigurator({ open, onClose }) {
             )}
           </div>
 
-          {/* FOOTER */}
           {!sent && (
             <footer className="cfg-footer">
               <div className="price-tag">
@@ -252,7 +322,7 @@ export default function CakeConfigurator({ open, onClose }) {
 function StepHeader({ num, title, lead }) {
   return (
     <>
-      <span className="cfg-step-num">Passo {num} di 8</span>
+      <span className="cfg-step-num">Passo {num} di {STEPS.length}</span>
       <h2>{title}</h2>
       {lead && <p className="lead">{lead}</p>}
     </>
@@ -283,10 +353,33 @@ function StepType({ config, set }) {
   );
 }
 
+function StepShape({ config, set }) {
+  return (
+    <>
+      <StepHeader num={2} title="Che forma vuoi?" lead="Tonda, a cuore, quadrata o rettangolare per i buffet più generosi." />
+      <div className="opt-grid cols-2">
+        {cakeShapes.map((sh) => (
+          <button
+            key={sh.id}
+            className={`opt-card ${config.shape === sh.id ? 'selected' : ''}`}
+            onClick={() => set({ shape: sh.id })}
+          >
+            <div className="opt-name">
+              <span style={{ fontSize: '1.3rem' }}>{sh.emoji}</span> {sh.name}
+            </div>
+            <div className="opt-desc">{sh.desc}</div>
+            <div className="opt-meta">{sh.priceDelta > 0 ? `+ €${sh.priceDelta}` : 'inclusa'}</div>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function StepSize({ config, set }) {
   return (
     <>
-      <StepHeader num={2} title="Per quante persone?" lead="Una stima abbondante: meglio un cucchiaio in più che in meno." />
+      <StepHeader num={3} title="Per quante persone?" lead="Una stima abbondante: meglio un cucchiaio in più che in meno." />
       <div className="opt-grid cols-3">
         {cakeSizes.map((s) => (
           <button
@@ -306,15 +399,22 @@ function StepSize({ config, set }) {
 }
 
 function StepFlavors({ config, toggle }) {
+  const tagLabels = {
+    gelato: '🍨 Gelato',
+    semifreddo: '✨ Semifreddo',
+    sorbetto: '🍋 Sorbetto',
+    vegano: '🌱 Vegano',
+    sg: '🌾 Senza glutine',
+  };
   return (
     <>
       <StepHeader
-        num={3}
-        title="Scegli i gusti"
-        lead={`Da 1 a ${MAX_FLAVORS} gusti — gli strati seguono l'ordine di scelta.`}
+        num={5}
+        title="Scegli i gusti degli strati"
+        lead={`Da 1 a ${MAX_FLAVORS} gusti — l'ordine determina gli strati (dal basso verso l'alto). Ogni gusto extra: +2€.`}
       />
       <div className="flavor-hint">
-        Hai scelto <strong>{config.flavors.length}</strong> di {MAX_FLAVORS} gusti.{' '}
+        Hai scelto <strong>{config.flavors.length}</strong> di {MAX_FLAVORS} strati.{' '}
         {config.flavors.length === 0 && 'Tocca un gusto per aggiungerlo.'}
       </div>
       <div className="opt-grid cols-flavors">
@@ -331,7 +431,18 @@ function StepFlavors({ config, toggle }) {
               style={disabled ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
             >
               <span className="flavor-dot" style={{ background: f.color }} />
-              <span className="flavor-name">{f.name}</span>
+              <span className="flavor-name">
+                {f.name}
+                {f.tags && f.tags.length > 0 && (
+                  <span className="flavor-tags">
+                    {f.tags.map((t) => (
+                      <span key={t} className="flavor-tag" title={tagLabels[t]}>
+                        {tagLabels[t]?.split(' ')[0]}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </span>
               {selected && <span className="flavor-pos">{idx + 1}</span>}
             </button>
           );
@@ -341,10 +452,70 @@ function StepFlavors({ config, toggle }) {
   );
 }
 
+function StepFilling({ config, set }) {
+  return (
+    <>
+      <StepHeader
+        num={6}
+        title="Farcitura tra gli strati"
+        lead="Un cuore goloso tra uno strato e l'altro: salse, creme o granelle. Oppure niente, per gusti puri."
+      />
+      <div className="opt-grid cols-3">
+        {cakeFillings.map((f) => (
+          <button
+            key={f.id}
+            className={`opt-card ${config.fillingId === f.id ? 'selected' : ''}`}
+            onClick={() => set({ fillingId: f.id })}
+          >
+            <div className="opt-name">
+              {f.color && (
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: f.color, display: 'inline-block' }} />
+              )}
+              {f.name}
+            </div>
+            <div className="opt-desc">{f.desc}</div>
+            <div className="opt-meta">{f.priceDelta > 0 ? `+ €${f.priceDelta}` : 'inclusa'}</div>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function StepCovering({ config, set }) {
+  return (
+    <>
+      <StepHeader
+        num={7}
+        title="Copertura esterna"
+        lead="Quello che vede l'occhio prima del primo morso. Lucida, soffice, fiammeggiata… o nuda."
+      />
+      <div className="opt-grid cols-2">
+        {cakeCoverings.map((c) => (
+          <button
+            key={c.id}
+            className={`opt-card ${config.coveringId === c.id ? 'selected' : ''}`}
+            onClick={() => set({ coveringId: c.id })}
+          >
+            <div className="opt-name">
+              {c.color && (
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: c.color, display: 'inline-block', border: '1px solid rgba(0,0,0,0.1)' }} />
+              )}
+              {c.name}
+            </div>
+            <div className="opt-desc">{c.desc}</div>
+            <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'inclusa'}</div>
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function StepBase({ config, set }) {
   return (
     <>
-      <StepHeader num={4} title="Quale base preferisci?" />
+      <StepHeader num={4} title="Quale base preferisci?" lead="Quello che sostiene la torta sotto: dal classico pan di Spagna al senza glutine." />
       <div className="opt-grid cols-2">
         {cakeBases.map((b) => (
           <button
@@ -352,7 +523,10 @@ function StepBase({ config, set }) {
             className={`opt-card ${config.baseId === b.id ? 'selected' : ''}`}
             onClick={() => set({ baseId: b.id })}
           >
-            <div className="opt-name">{b.name}</div>
+            <div className="opt-name">
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: b.color, display: 'inline-block' }} />
+              {b.name}
+            </div>
             <div className="opt-desc">{b.desc}</div>
             <div className="opt-meta">{b.priceDelta > 0 ? `+ €${b.priceDelta}` : 'inclusa'}</div>
           </button>
@@ -365,7 +539,7 @@ function StepBase({ config, set }) {
 function StepDecoration({ config, set }) {
   return (
     <>
-      <StepHeader num={5} title="Decorazione" lead="Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff." />
+      <StepHeader num={8} title="Decorazioni" lead="Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff." />
       <div className="opt-grid cols-3">
         {cakeDecorations.map((d) => (
           <button
@@ -392,10 +566,10 @@ function StepMessage({ config, set }) {
   ];
   return (
     <>
-      <StepHeader num={6} title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo su cialda alimentare e la posiamo sulla torta." />
+      <StepHeader num={9} title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo su cialda alimentare e la posiamo sulla torta." />
 
       <div className="cfg-field">
-        <label>Foto da stampare (opzionale)</label>
+        <label>Foto da stampare (opzionale, +€5)</label>
         <PhotoUploader value={config.photo} onChange={(p) => set({ photo: p })} />
         <p className="hint">JPG o PNG, max 4 MB. Stampata su cialda alimentare commestibile.</p>
       </div>
@@ -413,34 +587,32 @@ function StepMessage({ config, set }) {
       </div>
 
       {config.message && (
-        <>
-          <div className="cfg-field">
-            <label>Stile della scritta</label>
-            <div className="font-grid">
-              {fonts.map((f) => (
-                <button
-                  key={f.id}
-                  className={`font-card ${config.messageFont === f.id ? 'selected' : ''}`}
-                  onClick={() => set({ messageFont: f.id })}
+        <div className="cfg-field">
+          <label>Stile della scritta</label>
+          <div className="font-grid">
+            {fonts.map((f) => (
+              <button
+                key={f.id}
+                className={`font-card ${config.messageFont === f.id ? 'selected' : ''}`}
+                onClick={() => set({ messageFont: f.id })}
+              >
+                <span
+                  className="font-preview"
+                  style={{
+                    fontFamily: f.family,
+                    fontSize: f.size,
+                    fontStyle: f.italic ? 'italic' : 'normal',
+                    fontWeight: f.weight || 600,
+                    letterSpacing: f.letterSpacing || 'normal',
+                  }}
                 >
-                  <span
-                    className="font-preview"
-                    style={{
-                      fontFamily: f.family,
-                      fontSize: f.size,
-                      fontStyle: f.italic ? 'italic' : 'normal',
-                      fontWeight: f.weight || 600,
-                      letterSpacing: f.letterSpacing || 'normal',
-                    }}
-                  >
-                    {f.preview}
-                  </span>
-                  <span className="font-label">{f.label}</span>
-                </button>
-              ))}
-            </div>
+                  {f.preview}
+                </span>
+                <span className="font-label">{f.label}</span>
+              </button>
+            ))}
           </div>
-        </>
+        </div>
       )}
 
       <div className="cfg-field">
@@ -480,12 +652,11 @@ function StepMessage({ config, set }) {
 }
 
 function StepDetails({ config, set }) {
-  // Data minima: domani
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   return (
     <>
       <StepHeader
-        num={7}
+        num={10}
         title="I tuoi dati"
         lead="Per torte personalizzate servono almeno 24h di preavviso. Ti contattiamo per confermare."
       />
@@ -538,20 +709,27 @@ function StepDetails({ config, set }) {
 
 function StepReview({ config, total }) {
   const type = cakeTypes.find((t) => t.id === config.type);
+  const shape = cakeShapes.find((sh) => sh.id === config.shape);
   const size = cakeSizes.find((s) => s.id === config.sizeId);
   const base = cakeBases.find((b) => b.id === config.baseId);
+  const filling = cakeFillings.find((f) => f.id === config.fillingId);
+  const covering = cakeCoverings.find((c) => c.id === config.coveringId);
   const deco = cakeDecorations.find((d) => d.id === config.decoration);
   return (
     <>
-      <StepHeader num={8} title="Riepilogo" lead="Controlla tutto e invia la richiesta su WhatsApp. Ti rispondiamo a mano!" />
+      <StepHeader num={11} title="Riepilogo" lead="Controlla tutto e invia la richiesta su WhatsApp. Ti rispondiamo a mano!" />
       <div className="summary-box">
         <dl>
           <dt>Tipo</dt><dd>{type?.name}</dd>
+          <dt>Forma</dt><dd>{shape?.name}</dd>
           <dt>Dimensione</dt><dd>{size?.label} · Ø {size?.diameter}cm</dd>
           <dt>Base</dt><dd>{base?.name}</dd>
-          <dt>Gusti</dt><dd>{config.flavors.map((f) => f.name).join(', ') || '—'}</dd>
-          <dt>Decoraz.</dt><dd>{deco?.name}</dd>
+          <dt>Strati</dt><dd>{config.flavors.map((f) => f.name).join(' · ') || '—'}</dd>
+          {filling && filling.id !== 'nessuna' && (<><dt>Farcitura</dt><dd>{filling.name}</dd></>)}
+          <dt>Copertura</dt><dd>{covering?.name}</dd>
+          <dt>Decorazione</dt><dd>{deco?.name}</dd>
           {config.message && (<><dt>Scritta</dt><dd>"{config.message}"</dd></>)}
+          {config.photo && (<><dt>Foto</dt><dd>su cialda alimentare</dd></>)}
           {config.candle && (<><dt>Candelina</dt><dd>sì</dd></>)}
           {config.occasion && (<><dt>Occasione</dt><dd>{config.occasion}</dd></>)}
           <dt>Ritiro</dt><dd>{config.pickupDate || '—'}</dd>
@@ -594,7 +772,6 @@ function PhotoUploader({ value, onChange }) {
       alert('Foto troppo grande (max 4 MB).');
       return;
     }
-    // Ridimensiona/comprimi per anteprima leggera
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -607,7 +784,6 @@ function PhotoUploader({ value, onChange }) {
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext('2d');
-        // Maschera circolare per l'anteprima
         ctx.drawImage(img, 0, 0, w, h);
         onChange(canvas.toDataURL('image/jpeg', 0.85));
       };
