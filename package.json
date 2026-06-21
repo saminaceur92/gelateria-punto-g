@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "node scripts/build-data.mjs && vite build",
     "preview": "vite preview --port 4173",
-    "sync": "node scripts/build-data.mjs",
+    "sync": "node --env-file-if-exists=.env scripts/build-data.mjs",
     "seed": "node scripts/seed-from-fallback.mjs",
     "optimize-images": "node scripts/optimize-images.mjs"
   },
