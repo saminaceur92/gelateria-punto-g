@@ -87,13 +87,19 @@
 .ord-filters { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
 .ord-filters button { border: 1px solid var(--line); background: #fff; padding: .35rem .8rem; border-radius: 999px; cursor: pointer; font-size: .85rem; color: #666; }
 .ord-filters button.active { background: var(--v-deep); color: #fff; border-color: var(--v-deep); }
-.ord-reload { margin-left: auto; font-size: 1rem; }
+.ord-sort { margin-left: auto; display: flex; align-items: center; gap: .4rem; font-size: .82rem; color: #888; }
+.ord-sort select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 8px; font-size: .82rem; }
+.ord-reload { font-size: 1rem; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .2rem .5rem; cursor: pointer; }
 .ord-list { display: flex; flex-direction: column; gap: .7rem; }
-.ord-card { border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; }
+.ord-card { border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; border-left-width: 4px; }
+.ord-card.urgente { border-left-color: #b03a3a; background: #fdf4f4; }
+.ord-card.presto { border-left-color: #eb911e; }
 .ord-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .ord-who strong { display: block; }
 .ord-meta { font-size: .85rem; color: #888; }
+.ord-badges { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
 .ord-badge { color: #fff; font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; text-transform: uppercase; letter-spacing: .03em; }
+.ord-gusti { margin: .5rem 0 0; font-size: .9rem; color: var(--ink); font-weight: 500; }
 .ord-info { display: flex; flex-wrap: wrap; gap: .9rem; margin: .6rem 0; font-size: .85rem; color: #666; }
 .ord-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .ord-actions select { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
