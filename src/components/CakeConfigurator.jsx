@@ -1,18 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, Send, Cake, Shuffle } from 'lucide-react';
-import {
-  cakeShapes,
-  cakeTypes,
-  cakeSizes,
-  cakeFlavors,
-  cakeBases,
-  cakeFillings,
-  cakeCoverings,
-  cakeDecorations,
-  cakeOccasions,
-  cakeRecipes,
-} from '../data/cakeOptions';
+import { useCakeData } from '../data/CakeDataProvider';
 import CakePreview from './CakePreview';
 
 const STEPS = [
@@ -31,42 +20,52 @@ const STEPS = [
 const MAX_FLAVORS = 4;
 const WHATSAPP = '393203306009';
 
-// Default calcolati dai dati disponibili: così restano validi anche se il
-// proprietario disattiva la dimensione/base/decorazione usata di default.
-const defaultSizeId = (cakeSizes.find((s) => s.popular) || cakeSizes[0])?.id || '';
-const defaultBaseId = cakeBases[0]?.id || '';
-const defaultDecoration = cakeDecorations[0]?.id || '';
-
-const initialConfig = {
-  type: '',
-  shape: 'tonda',
-  sizeId: defaultSizeId,
-  flavors: [], // [{name,color}]
-  baseId: defaultBaseId,
-  fillingId: 'nessuna',
-  coveringId: '',
-  decoration: defaultDecoration,
-  message: '',
-  messageFont: 'caveat',
-  candle: false,
-  occasion: '',
-  photo: null,
-  pickupDate: '',
-  name: '',
-  phone: '',
-  notes: '',
-};
+// Config iniziale calcolata dai dati disponibili (validi anche se il proprietario
+// disattiva la dimensione/base/decorazione di default).
+function makeInitialConfig(cake) {
+  return {
+    type: '',
+    shape: cake.cakeShapes[0]?.id || 'tonda',
+    sizeId: (cake.cakeSizes.find((s) => s.popular) || cake.cakeSizes[0])?.id || '',
+    flavors: [], // [{name,color}]
+    baseId: cake.cakeBases[0]?.id || '',
+    fillingId: 'nessuna',
+    coveringId: '',
+    decoration: cake.cakeDecorations[0]?.id || 'nessuna',
+    message: '',
+    messageFont: 'caveat',
+    candle: false,
+    occasion: '',
+    photo: null,
+    pickupDate: '',
+    name: '',
+    phone: '',
+    notes: '',
+  };
+}
 
 export default function CakeConfigurator({ open, onClose }) {
+  const cake = useCakeData();
+  const {
+    cakeShapes,
+    cakeTypes,
+    cakeSizes,
+    cakeFlavors,
+    cakeBases,
+    cakeFillings,
+    cakeCoverings,
+    cakeDecorations,
+    cakeRecipes,
+  } = cake;
   const [step, setStep] = useState(0);
-  const [config, setConfig] = useState(initialConfig);
+  const [config, setConfig] = useState(() => makeInitialConfig(cake));
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     if (open) {
       setStep(0);
-      setConfig(initialConfig);
+      setConfig(makeInitialConfig(cake));
       setSent(false);
     }
   }, [open]);
@@ -330,6 +329,7 @@ function StepHeader({ num, title, lead }) {
 }
 
 function StepType({ config, set }) {
+  const { cakeTypes } = useCakeData();
   return (
     <>
       <StepHeader num={1} title="Che torta vuoi creare?" lead="Scegli la base, poi la rendiamo unica insieme." />
@@ -354,6 +354,7 @@ function StepType({ config, set }) {
 }
 
 function StepShape({ config, set }) {
+  const { cakeShapes } = useCakeData();
   return (
     <>
       <StepHeader num={2} title="Che forma vuoi?" lead="Tonda, a cuore, quadrata o rettangolare per i buffet più generosi." />
@@ -377,6 +378,7 @@ function StepShape({ config, set }) {
 }
 
 function StepSize({ config, set }) {
+  const { cakeSizes } = useCakeData();
   return (
     <>
       <StepHeader num={3} title="Per quante persone?" lead="Una stima abbondante: meglio un cucchiaio in più che in meno." />
@@ -399,6 +401,7 @@ function StepSize({ config, set }) {
 }
 
 function StepFlavors({ config, toggle }) {
+  const { cakeFlavors } = useCakeData();
   const tagLabels = {
     gelato: '🍨 Gelato',
     semifreddo: '✨ Semifreddo',
@@ -453,6 +456,7 @@ function StepFlavors({ config, toggle }) {
 }
 
 function StepFilling({ config, set }) {
+  const { cakeFillings } = useCakeData();
   return (
     <>
       <StepHeader
@@ -483,6 +487,7 @@ function StepFilling({ config, set }) {
 }
 
 function StepCovering({ config, set }) {
+  const { cakeCoverings } = useCakeData();
   return (
     <>
       <StepHeader
@@ -513,6 +518,7 @@ function StepCovering({ config, set }) {
 }
 
 function StepBase({ config, set }) {
+  const { cakeBases } = useCakeData();
   return (
     <>
       <StepHeader num={4} title="Quale base preferisci?" lead="Quello che sostiene la torta sotto: dal classico pan di Spagna al senza glutine." />
@@ -537,6 +543,7 @@ function StepBase({ config, set }) {
 }
 
 function StepDecoration({ config, set }) {
+  const { cakeDecorations } = useCakeData();
   return (
     <>
       <StepHeader num={8} title="Decorazioni" lead="Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff." />
@@ -559,6 +566,7 @@ function StepDecoration({ config, set }) {
 }
 
 function StepMessage({ config, set }) {
+  const { cakeOccasions } = useCakeData();
   const fonts = [
     { id: 'caveat', label: 'Calligrafica', preview: 'Auguri!', family: "'Caveat', cursive", size: '1.4rem' },
     { id: 'fraunces', label: 'Elegante', preview: 'Auguri!', family: "'Fraunces', serif", size: '1.15rem', italic: true },
@@ -708,6 +716,7 @@ function StepDetails({ config, set }) {
 }
 
 function StepReview({ config, total }) {
+  const { cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
   const type = cakeTypes.find((t) => t.id === config.type);
   const shape = cakeShapes.find((sh) => sh.id === config.shape);
   const size = cakeSizes.find((s) => s.id === config.sizeId);

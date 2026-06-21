@@ -47,3 +47,43 @@ export async function fetchHours() {
     return null;
   }
 }
+
+const num = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+// Opzioni del configuratore torte, live da Supabase (forme, tipi, dimensioni,
+// gusti torte, basi, farciture, coperture, decorazioni, occasioni).
+// Le ricette "Sorprendimi" restano statiche (gestite dal codice).
+export async function fetchCakeOptions() {
+  if (!supabase) return null;
+  try {
+    const names = [
+      'forme', 'tipi_torta', 'dimensioni', 'gusti_torte', 'basi',
+      'farciture', 'coperture', 'decorazioni', 'occasioni',
+    ];
+    const results = await Promise.all(
+      names.map((n) => supabase.from(n).select('*').eq('attivo', true).order('ordine'))
+    );
+    if (results.some((r) => r.error)) return null;
+    const [forme, tipi, dim, gt, basi, farc, cop, dec, occ] = results.map((r) => r.data || []);
+    return {
+      cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
+      cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore })),
+      cakeSizes: dim.map((s) => {
+        const o = { id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento) };
+        if (s.popolare) o.popular = true;
+        return o;
+      }),
+      cakeFlavors: gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [] })),
+      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore })),
+      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null })),
+      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null })),
+      cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '' })),
+      cakeOccasions: occ.map((o) => o.nome).filter(Boolean),
+    };
+  } catch {
+    return null;
+  }
+}

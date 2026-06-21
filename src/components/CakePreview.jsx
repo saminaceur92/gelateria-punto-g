@@ -1,14 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import {
-  cakeShapes,
-  cakeTypes,
-  cakeSizes,
-  cakeBases,
-  cakeFillings,
-  cakeCoverings,
-  cakeDecorations,
-} from '../data/cakeOptions';
+import { useCakeData } from '../data/CakeDataProvider';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
@@ -33,6 +25,8 @@ export default function CakePreview({ config }) {
     messageFont = 'caveat',
     photo = null,
   } = config;
+
+  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
 
   const sh = cakeShapes.find((x) => x.id === shape) || cakeShapes[0];
   const t = cakeTypes.find((x) => x.id === type);
