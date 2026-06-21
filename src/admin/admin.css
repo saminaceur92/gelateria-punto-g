@@ -35,6 +35,8 @@
 .adm-tab { border: 1px solid var(--line); background: #fff; padding: .5rem .9rem; border-radius: 999px; cursor: pointer; font-size: .9rem; color: #555; }
 .adm-tab:hover { border-color: var(--v); }
 .adm-tab.active { background: var(--v-deep); color: #fff; border-color: var(--v-deep); }
+.adm-new-cake { background: var(--v-deep); color: #fff; border-color: var(--v-deep); font-weight: 700; }
+.adm-new-cake:hover { filter: brightness(1.08); }
 
 .adm-main { padding: 1.4rem; max-width: 980px; }
 
@@ -87,6 +89,9 @@
 .ord-filters { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
 .ord-filters button { border: 1px solid var(--line); background: #fff; padding: .35rem .8rem; border-radius: 999px; cursor: pointer; font-size: .85rem; color: #666; }
 .ord-filters button.active { background: var(--v-deep); color: #fff; border-color: var(--v-deep); }
+.ord-filters .ord-f-scaduto { border-color: #e3b4b4; color: #b03a3a; font-weight: 600; }
+.ord-filters .ord-f-scaduto.active { background: #b03a3a; color: #fff; border-color: #b03a3a; }
+.ord-count-scaduti { color: #b03a3a; font-weight: 700; }
 .ord-sort { margin-left: auto; display: flex; align-items: center; gap: .4rem; font-size: .82rem; color: #888; }
 .ord-sort select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 8px; font-size: .82rem; }
 .ord-reload { font-size: 1rem; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .2rem .5rem; cursor: pointer; }
