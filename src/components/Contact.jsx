@@ -65,9 +65,6 @@ export default function Contact() {
                     <div key={o.day}><span>{o.day}</span><span>{o.hours}</span></div>
                   ))}
                 </div>
-                <p style={{ fontSize: '0.78rem', marginTop: '0.6rem', color: 'rgba(255,249,237,0.55)' }}>
-                  * Orari indicativi. Verifica sui canali social per variazioni stagionali.
-                </p>
               </div>
             </div>
 
