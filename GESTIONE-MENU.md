@@ -28,22 +28,30 @@ un foglio online tipo Excel. Quando modifichi una tabella, il sito si aggiorna d
 ### 1.1 — Crea il "base" su Airtable e importa i dati
 
 1. Vai su [airtable.com](https://airtable.com), accedi e crea un nuovo **Base** (chiamalo es. `Gelateria Punto G`).
-2. Importa, una per una, le 8 tabelle dalla cartella **`airtable-import/`** di questo progetto:
+2. Importa, una per una, le 11 tabelle dalla cartella **`airtable-import/`** di questo progetto:
    - In Airtable: pulsante **Add or import → CSV file**, carica il file, e **rinomina la tabella**
      col nome indicato qui sotto (i nomi devono coincidere **esattamente**):
 
-   | File CSV               | Nome tabella in Airtable |
-   |------------------------|--------------------------|
-   | `categorie.csv`        | `Categorie`              |
-   | `gusti.csv`            | `Gusti`                  |
-   | `gusti-torte.csv`      | `Gusti Torte`            |
-   | `tipi-torta.csv`       | `Tipi Torta`             |
-   | `dimensioni.csv`       | `Dimensioni`             |
-   | `basi.csv`             | `Basi`                   |
-   | `decorazioni.csv`      | `Decorazioni`            |
-   | `occasioni.csv`        | `Occasioni`              |
+   | File CSV               | Nome tabella in Airtable | Cosa gestisce |
+   |------------------------|--------------------------|---------------|
+   | `categorie.csv`        | `Categorie`              | sezioni del menù gelato |
+   | `gusti.csv`            | `Gusti`                  | gusti del menù gelato |
+   | `gusti-torte.csv`      | `Gusti Torte`            | gusti scegliibili per le torte |
+   | `tipi-torta.csv`       | `Tipi Torta`             | tipi di torta |
+   | `dimensioni.csv`       | `Dimensioni`             | dimensioni torta |
+   | `forme.csv`            | `Forme`                  | forme torta (3D) |
+   | `basi.csv`             | `Basi`                   | basi torta |
+   | `farciture.csv`        | `Farciture`              | farciture tra gli strati |
+   | `coperture.csv`        | `Coperture`              | coperture/glasse (3D) |
+   | `decorazioni.csv`      | `Decorazioni`            | topping/granelle (3D) |
+   | `occasioni.csv`        | `Occasioni`              | occasioni |
 
    I CSV contengono **già tutti i gusti e le opzioni attuali**: non devi riscrivere nulla.
+
+   > ⚠️ **Forme**, **Coperture** e **Decorazioni** sono legate alla resa 3D della torta: puoi
+   > accenderle/spegnerle e rinominarle, ma **non cambiare la colonna `Id`** (controlla il
+   > rendering). Aggiungerne di nuove oltre a quelle esistenti è possibile, ma non avranno un
+   > aspetto 3D dedicato.
 
 ### 1.2 — Imposta i tipi di colonna (importante)
 
@@ -58,6 +66,11 @@ Dopo l'import, sistema il tipo di alcune colonne (clic sull'intestazione → *Ed
 - Tabella **Gusti**, colonna **`Categoria`** → **Single select**, con esattamente queste opzioni:
   `Creme`, `Frutta & Veggy`, `Semifreddi`, `Altre Leccornie` (devono combaciare con `Categorie.Nome`).
 - Tabella **Gusti**, colonna **`Tag`** → **Single select**, opzioni: `firma`, `vegan`, `stagione` (più "vuoto").
+- Tabella **Gusti Torte**, colonna **`Tag`** → **Multiple select** (più valori per riga), opzioni:
+  `gelato`, `semifreddo`, `sorbetto`, `vegano`, `sg`. Sono i pallini-etichetta accanto al gusto nel
+  configuratore torte (puramente informativi).
+- Tabelle **Basi**, **Farciture**, **Coperture**, colonna **`Colore`** → lascia **Single line text**:
+  è un codice esadecimale (es. `#e8d2a8`) usato per la resa 3D, di norma si lascia com'è.
 - Tabella **Dimensioni**, colonna **`Popolare`** → **Checkbox**.
 - Colonne numeriche → tipo **Number**: `Ordine` (tutte), `PrezzoBase`, `Diametro`, `Supplemento`.
 
@@ -186,15 +199,22 @@ usa in automatico una versione **alleggerita** della foto, quindi resta veloce a
 |---------------|-------------------------------------------------------------------|
 | Categorie     | Id, Nome, Descrizione, In vetrina, Ordine                         |
 | Gusti         | Nome, Categoria, Colore, Tag, In vetrina, Ordine                  |
-| Gusti Torte   | Nome, Colore, In vetrina, Ordine                                  |
+| Gusti Torte   | Nome, Colore, Tag, In vetrina, Ordine                            |
 | Tipi Torta    | Id, Nome, Descrizione, PrezzoBase, Immagine, Colore, In vetrina, Ordine |
 | Dimensioni    | Id, Etichetta, Diametro, Supplemento, Popolare, In vetrina, Ordine |
-| Basi          | Id, Nome, Descrizione, Supplemento, In vetrina, Ordine            |
+| Forme         | Id, Nome, Descrizione, Emoji, Supplemento, In vetrina, Ordine     |
+| Basi          | Id, Nome, Descrizione, Supplemento, Colore, In vetrina, Ordine    |
+| Farciture     | Id, Nome, Descrizione, Supplemento, Colore, In vetrina, Ordine    |
+| Coperture     | Id, Nome, Descrizione, Supplemento, Colore, In vetrina, Ordine    |
 | Decorazioni   | Id, Nome, Descrizione, Emoji, In vetrina, Ordine                  |
 | Occasioni     | Nome, In vetrina, Ordine                                          |
 
+Le **Ricette "Sorprendimi"** del configuratore restano gestite dal codice (non da Airtable).
+
 - **In vetrina**: casella (checkbox). Spuntata = visibile sul sito; vuota = nascosta (in archivio).
-- **Colore**: menù a tendina con i nomi della palette (`Pistacchio`, `Cioccolato fondente`, …).
+- **Colore** (Gusti / Gusti Torte): menù a tendina con i nomi della palette (`Pistacchio`, …).
+  **Colore** (Basi / Farciture / Coperture): codice esadecimale per la resa 3D, di norma invariato.
+- **Tag** (Gusti Torte): più valori (`gelato`, `sg`, `vegano`…), etichette informative nel configuratore.
 - **Ordine**: numero che decide la posizione (più basso = appare prima).
 - **Id**: non modificarlo per le righe esistenti; per righe nuove lascialo vuoto (viene generato dal Nome).
 - I **nomi delle tabelle e delle colonne** devono restare invariati: sono usati dallo script
