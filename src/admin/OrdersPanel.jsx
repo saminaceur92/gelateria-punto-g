@@ -3,11 +3,14 @@ import { supabase } from '../lib/supabase';
 
 const STATI = [
   { value: 'nuovo', label: 'Nuovo', color: '#b651e4' },
+  { value: 'da_fare', label: 'Da fare', color: '#2a7ad6' },
   { value: 'pronto', label: 'Pronto', color: '#eb911e' },
   { value: 'consegnato', label: 'Consegnato', color: '#46a85a' },
   { value: 'annullato', label: 'Annullato', color: '#b03a3a' },
 ];
-const ATTIVI = ['nuovo', 'pronto'];
+// Ordini ancora da gestire (la vista "Da fare"): nuovi + presi in carico.
+// Il "pronto" è già fatto, quindi NON rientra qui: vive solo nel suo filtro.
+const ATTIVI = ['nuovo', 'da_fare'];
 
 // Formato date uniforme (gg/mm/aaaa) in tutta la dashboard.
 const fmtDate = (val) => {
@@ -105,7 +108,7 @@ export default function OrdersPanel() {
       <div className="ord-filters">
         <button className={filter === 'da_fare' ? 'active' : ''} onClick={() => setFilter('da_fare')}>Da fare</button>
         <button className={filter === 'tutti' ? 'active' : ''} onClick={() => setFilter('tutti')}>Tutti</button>
-        {STATI.map((s) => (
+        {STATI.filter((s) => s.value !== 'da_fare').map((s) => (
           <button key={s.value} className={filter === s.value ? 'active' : ''} onClick={() => setFilter(s.value)}>
             {s.label}
           </button>
