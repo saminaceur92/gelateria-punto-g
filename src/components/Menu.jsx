@@ -1,10 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { flavorCategories } from '../data/flavors';
+import { flavorCategories as fallbackCategories } from '../data/flavors';
+import { fetchMenu } from '../data/live';
 
 export default function Menu() {
-  const [active, setActive] = useState(flavorCategories[0].id);
-  const current = flavorCategories.find((c) => c.id === active);
+  const [categories, setCategories] = useState(fallbackCategories);
+  const [active, setActive] = useState(fallbackCategories[0].id);
+
+  // Aggiornamento live da Supabase (con fallback ai dati statici)
+  useEffect(() => {
+    let alive = true;
+    fetchMenu().then((data) => {
+      if (alive && data?.length) setCategories(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const current = categories.find((c) => c.id === active) || categories[0];
 
   return (
     <section id="menu" className="section menu">
@@ -22,7 +36,7 @@ export default function Menu() {
         </div>
 
         <div className="menu-tabs" role="tablist">
-          {flavorCategories.map((c) => (
+          {categories.map((c) => (
             <button
               key={c.id}
               role="tab"
@@ -61,6 +75,9 @@ export default function Menu() {
                 <span className="flavor-name">
                   {f.name}
                   {f.tag && <span className="flavor-tag">{f.tag}</span>}
+                  {f.diet?.map((d) => (
+                    <span key={d.short} className="flavor-diet" title={d.label}>{d.short}</span>
+                  ))}
                 </span>
               </motion.div>
             ))}

@@ -11,6 +11,7 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import WhatsAppFab from './components/WhatsAppFab';
 import CakeConfigurator from './components/CakeConfigurator';
+import { CakeDataProvider } from './data/CakeDataProvider';
 
 export default function App() {
   const [cfgOpen, setCfgOpen] = useState(false);
@@ -32,7 +33,9 @@ export default function App() {
       </main>
       <Footer />
       <WhatsAppFab />
-      <CakeConfigurator open={cfgOpen} onClose={closeCfg} />
+      <CakeDataProvider>
+        <CakeConfigurator open={cfgOpen} onClose={closeCfg} />
+      </CakeDataProvider>
     </>
   );
 }

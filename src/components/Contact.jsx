@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Clock, Instagram } from 'lucide-react';
-import { openingHours } from '../data/hours';
+import { openingHours as fallbackHours } from '../data/hours';
+import { fetchHours } from '../data/live';
 
 const reveal = {
   initial: { opacity: 0, y: 30 },
@@ -10,6 +12,19 @@ const reveal = {
 };
 
 export default function Contact() {
+  const [hours, setHours] = useState(fallbackHours);
+
+  // Aggiornamento live degli orari da Supabase (con fallback)
+  useEffect(() => {
+    let alive = true;
+    fetchHours().then((data) => {
+      if (alive && data?.length) setHours(data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   return (
     <section id="contatti" className="section contact">
       <div className="container">
@@ -61,13 +76,10 @@ export default function Contact() {
               <div style={{ width: '100%' }}>
                 <h4>Orari di apertura</h4>
                 <div className="hours-grid">
-                  {openingHours.map((o) => (
+                  {hours.map((o) => (
                     <div key={o.day}><span>{o.day}</span><span>{o.hours}</span></div>
                   ))}
                 </div>
-                <p style={{ fontSize: '0.78rem', marginTop: '0.6rem', color: 'rgba(255,249,237,0.55)' }}>
-                  * Orari indicativi. Verifica sui canali social per variazioni stagionali.
-                </p>
               </div>
             </div>
 

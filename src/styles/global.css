@@ -869,6 +869,19 @@ p {
   text-transform: uppercase;
 }
 
+.flavor-diet {
+  display: inline-block;
+  margin-left: 0.3rem;
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(126, 161, 90, 0.15);
+  color: #4e7a36;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: help;
+}
+
 .menu-note {
   text-align: center;
   margin-top: 2.5rem;

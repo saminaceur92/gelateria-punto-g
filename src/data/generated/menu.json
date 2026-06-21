@@ -7,112 +7,134 @@
       {
         "name": "Fior di latte",
         "color": "#fff8e6",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Crema",
         "color": "#f5d97a",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "After Eight",
         "color": "#1e3a2b",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Yogurt bianco",
         "color": "#fafafa",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Stracciatella",
         "color": "#f5f0dd",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Cheesecake ai frutti rossi",
         "color": "#c94a6b",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Spagnola",
         "color": "#d9b384",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Pino pinguino",
         "color": "#3a2418",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Nocciola",
         "color": "#8a5a3b",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Rocher",
         "color": "#5a3520",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Nutella",
         "color": "#3d2114",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Cioccolato al latte",
         "color": "#6b4226",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Caramello salato",
         "color": "#c8842b",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Super Kinder",
         "color": "#e6c79c",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Bacio",
         "color": "#3a2519",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Caffè",
         "color": "#4a2e1f",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Biscotto",
         "color": "#c89968",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Pistacchio",
         "color": "#7ea15a",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Punto Gi",
         "color": "#b651e4",
-        "tag": "firma"
+        "tag": "firma",
+        "diet": []
       },
       {
         "name": "Duplo",
         "color": "#7a4a2e",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Cremino al Pistacchio",
         "color": "#9bb678",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Cioccolato fondente",
         "color": "#2a160e",
-        "tag": null
+        "tag": null,
+        "diet": []
       }
     ]
   },
@@ -124,32 +146,92 @@
       {
         "name": "Fragola",
         "color": "#e84a6e",
-        "tag": null
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
       },
       {
         "name": "Limone",
         "color": "#f5e26a",
-        "tag": null
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
       },
       {
         "name": "Mango",
         "color": "#f3a72d",
-        "tag": null
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
       },
       {
         "name": "Cocco",
         "color": "#fafafa",
-        "tag": null
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
       },
       {
         "name": "Pistacchio Veg",
         "color": "#7ea15a",
-        "tag": "vegan"
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
       },
       {
         "name": "Nocciola Veg",
         "color": "#8a5a3b",
-        "tag": "vegan"
+        "tag": null,
+        "diet": [
+          {
+            "short": "VEG",
+            "label": "Vegan"
+          },
+          {
+            "short": "SL",
+            "label": "Senza lattosio"
+          }
+        ]
       }
     ]
   },
@@ -161,12 +243,14 @@
       {
         "name": "Giovanna",
         "color": "#e8c79e",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Millefoglie",
         "color": "#fff2d6",
-        "tag": null
+        "tag": null,
+        "diet": []
       }
     ]
   },
@@ -178,32 +262,38 @@
       {
         "name": "Pasticcini",
         "color": "#f3a3c2",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Salame dolce",
         "color": "#5a3520",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Torte gelato",
         "color": "#b651e4",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Torte semifreddo",
         "color": "#a5cdcb",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Monoporzioni",
         "color": "#eb911e",
-        "tag": null
+        "tag": null,
+        "diet": []
       },
       {
         "name": "Prodotti stagionali",
         "color": "#7ea15a",
-        "tag": "stagione"
+        "tag": "stagione",
+        "diet": []
       }
     ]
   }
