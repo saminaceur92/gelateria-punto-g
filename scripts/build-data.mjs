@@ -25,7 +25,10 @@ const T = {
   gustiTorte: 'Gusti Torte',
   tipiTorta: 'Tipi Torta',
   dimensioni: 'Dimensioni',
+  forme: 'Forme',
   basi: 'Basi',
+  farciture: 'Farciture',
+  coperture: 'Coperture',
   decorazioni: 'Decorazioni',
   occasioni: 'Occasioni',
 };
@@ -40,22 +43,31 @@ if (!TOKEN || !BASE_ID) {
 
 // ─────────── helper ───────────
 
+// Scarica una tabella. È resiliente: se la tabella non esiste ancora o dà errore,
+// segnala un avviso e restituisce [] (così quella sezione usa il fallback statico)
+// senza far fallire l'intera sincronizzazione (es. il menù resta aggiornato).
 async function fetchTable(table) {
-  const records = [];
-  let offset;
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(table)}`);
-    url.searchParams.set('pageSize', '100');
-    if (offset) url.searchParams.set('offset', offset);
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-    if (!res.ok) {
-      throw new Error(`Tabella "${table}": HTTP ${res.status} ${res.statusText} — ${await res.text()}`);
-    }
-    const data = await res.json();
-    records.push(...data.records.map((r) => r.fields || {}));
-    offset = data.offset;
-  } while (offset);
-  return records;
+  try {
+    const records = [];
+    let offset;
+    do {
+      const url = new URL(`https://api.airtable.com/v0/${BASE_ID}/${encodeURIComponent(table)}`);
+      url.searchParams.set('pageSize', '100');
+      if (offset) url.searchParams.set('offset', offset);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      if (!res.ok) {
+        console.warn(`[build-data] Tabella "${table}": HTTP ${res.status} ${res.statusText} — la salto (uso il fallback).`);
+        return [];
+      }
+      const data = await res.json();
+      records.push(...data.records.map((r) => r.fields || {}));
+      offset = data.offset;
+    } while (offset);
+    return records;
+  } catch (e) {
+    console.warn(`[build-data] Tabella "${table}" non raggiungibile: ${e.message} — la salto (uso il fallback).`);
+    return [];
+  }
 }
 
 const truthy = (v) => v === true || v === 'true' || v === 1;
@@ -73,9 +85,24 @@ function color(v) {
   return resolveColor(v) || DEFAULT_COLOR;
 }
 
+// Come color() ma può restituire null (per farciture/coperture senza colore, es. "Naked").
+function colorNullable(v) {
+  return resolveColor(v);
+}
+
 function tag(v) {
   const s = typeof v === 'string' ? v.trim().toLowerCase() : '';
   return ALLOWED_TAGS.has(s) ? s : null;
+}
+
+// Tag multipli dei gusti torta (campo multi-select di Airtable -> array di stringhe).
+function tagsList(v) {
+  const arr = Array.isArray(v)
+    ? v
+    : typeof v === 'string' && v.trim()
+    ? v.split(',')
+    : [];
+  return arr.map((t) => String(t).trim().toLowerCase()).filter(Boolean);
 }
 
 function slug(s) {
@@ -106,17 +133,31 @@ function image(v, fallbackImg) {
 // ─────────── main ───────────
 
 try {
-  const [categorie, gusti, gustiTorte, tipiTorta, dimensioni, basi, decorazioni, occasioni] =
-    await Promise.all([
-      fetchTable(T.categorie),
-      fetchTable(T.gusti),
-      fetchTable(T.gustiTorte),
-      fetchTable(T.tipiTorta),
-      fetchTable(T.dimensioni),
-      fetchTable(T.basi),
-      fetchTable(T.decorazioni),
-      fetchTable(T.occasioni),
-    ]);
+  const [
+    categorie,
+    gusti,
+    gustiTorte,
+    tipiTorta,
+    dimensioni,
+    forme,
+    basi,
+    farciture,
+    coperture,
+    decorazioni,
+    occasioni,
+  ] = await Promise.all([
+    fetchTable(T.categorie),
+    fetchTable(T.gusti),
+    fetchTable(T.gustiTorte),
+    fetchTable(T.tipiTorta),
+    fetchTable(T.dimensioni),
+    fetchTable(T.forme),
+    fetchTable(T.basi),
+    fetchTable(T.farciture),
+    fetchTable(T.coperture),
+    fetchTable(T.decorazioni),
+    fetchTable(T.occasioni),
+  ]);
 
   // MENU: ricostruisce le categorie con dentro i gusti attivi
   const activeGusti = gusti.filter(isActive).sort(byOrder);
@@ -134,6 +175,13 @@ try {
     .filter((c) => c.flavors.length > 0); // niente sezioni vuote nel menù
 
   const cake = {
+    cakeShapes: forme.filter(isActive).sort(byOrder).map((s) => ({
+      id: text(s.Id) || slug(s.Nome),
+      name: text(s.Nome),
+      desc: text(s.Descrizione),
+      emoji: text(s.Emoji),
+      priceDelta: num(s.Supplemento),
+    })),
     cakeTypes: tipiTorta.filter(isActive).sort(byOrder).map((t) => ({
       id: text(t.Id) || slug(t.Nome),
       name: text(t.Nome),
@@ -155,12 +203,28 @@ try {
     cakeFlavors: gustiTorte.filter(isActive).sort(byOrder).map((f) => ({
       name: text(f.Nome),
       color: color(f.Colore),
+      tags: tagsList(f.Tag),
     })),
     cakeBases: basi.filter(isActive).sort(byOrder).map((b) => ({
       id: text(b.Id) || slug(b.Nome),
       name: text(b.Nome),
       desc: text(b.Descrizione),
       priceDelta: num(b.Supplemento),
+      color: color(b.Colore),
+    })),
+    cakeFillings: farciture.filter(isActive).sort(byOrder).map((f) => ({
+      id: text(f.Id) || slug(f.Nome),
+      name: text(f.Nome),
+      desc: text(f.Descrizione),
+      priceDelta: num(f.Supplemento),
+      color: colorNullable(f.Colore),
+    })),
+    cakeCoverings: coperture.filter(isActive).sort(byOrder).map((c) => ({
+      id: text(c.Id) || slug(c.Nome),
+      name: text(c.Nome),
+      desc: text(c.Descrizione),
+      priceDelta: num(c.Supplemento),
+      color: colorNullable(c.Colore),
     })),
     cakeDecorations: decorazioni.filter(isActive).sort(byOrder).map((d) => ({
       id: text(d.Id) || slug(d.Nome),

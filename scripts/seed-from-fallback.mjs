@@ -10,12 +10,16 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { flavorCategories } from '../src/data/fallback/flavors.js';
 import {
+  cakeShapes,
   cakeTypes,
   cakeSizes,
   cakeFlavors,
   cakeBases,
+  cakeFillings,
+  cakeCoverings,
   cakeDecorations,
   cakeOccasions,
+  cakeRecipes,
 } from '../src/data/fallback/cakeOptions.js';
 import { hexToName, PALETTE } from './palette.mjs';
 
@@ -41,7 +45,20 @@ const menu = flavorCategories.map((c) => ({
   flavors: c.flavors.map((f) => ({ name: f.name, color: f.color, tag: f.tag ?? null })),
 }));
 
-const cake = { cakeTypes, cakeSizes, cakeFlavors, cakeBases, cakeDecorations, cakeOccasions };
+// Nota: cakeRecipes ("Sorprendimi") resta gestito da codice (presets fragili che
+// referenziano gli altri elementi) e quindi NON va in Airtable; il loader lo prende
+// sempre dal fallback. Per questo non lo includiamo qui in cake.json.
+const cake = {
+  cakeShapes,
+  cakeTypes,
+  cakeSizes,
+  cakeFlavors,
+  cakeBases,
+  cakeFillings,
+  cakeCoverings,
+  cakeDecorations,
+  cakeOccasions,
+};
 
 writeFileSync(resolve(genDir, 'menu.json'), JSON.stringify(menu, null, 2) + '\n');
 writeFileSync(resolve(genDir, 'cake.json'), JSON.stringify(cake, null, 2) + '\n');
@@ -81,11 +98,12 @@ write(
 );
 
 // Gusti selezionabili per le torte (lista separata)
+// Tag = multi-select (gelato/semifreddo/sorbetto/vegano/sg); più valori separati da virgola
 write(
   'gusti-torte.csv',
   csv(
-    ['Nome', 'Colore', 'In vetrina', 'Ordine'],
-    cakeFlavors.map((f, i) => [f.name, colorName(f.color), 'true', order(i)])
+    ['Nome', 'Colore', 'Tag', 'In vetrina', 'Ordine'],
+    cakeFlavors.map((f, i) => [f.name, colorName(f.color), (f.tags || []).join(', '), 'true', order(i)])
   )
 );
 
@@ -107,12 +125,39 @@ write(
   )
 );
 
-// Basi
+// Forme (legate al rendering 3D: l'Id non va cambiato)
+write(
+  'forme.csv',
+  csv(
+    ['Id', 'Nome', 'Descrizione', 'Emoji', 'Supplemento', 'In vetrina', 'Ordine'],
+    cakeShapes.map((s, i) => [s.id, s.name, s.desc, s.emoji, s.priceDelta, 'true', order(i)])
+  )
+);
+
+// Basi — Colore (codice esadecimale) usato per la torta 3D
 write(
   'basi.csv',
   csv(
-    ['Id', 'Nome', 'Descrizione', 'Supplemento', 'In vetrina', 'Ordine'],
-    cakeBases.map((b, i) => [b.id, b.name, b.desc, b.priceDelta, 'true', order(i)])
+    ['Id', 'Nome', 'Descrizione', 'Supplemento', 'Colore', 'In vetrina', 'Ordine'],
+    cakeBases.map((b, i) => [b.id, b.name, b.desc, b.priceDelta, colorName(b.color), 'true', order(i)])
+  )
+);
+
+// Farciture
+write(
+  'farciture.csv',
+  csv(
+    ['Id', 'Nome', 'Descrizione', 'Supplemento', 'Colore', 'In vetrina', 'Ordine'],
+    cakeFillings.map((f, i) => [f.id, f.name, f.desc, f.priceDelta, colorName(f.color), 'true', order(i)])
+  )
+);
+
+// Coperture (legate al rendering 3D: l'Id non va cambiato)
+write(
+  'coperture.csv',
+  csv(
+    ['Id', 'Nome', 'Descrizione', 'Supplemento', 'Colore', 'In vetrina', 'Ordine'],
+    cakeCoverings.map((c, i) => [c.id, c.name, c.desc, c.priceDelta, colorName(c.color), 'true', order(i)])
   )
 );
 

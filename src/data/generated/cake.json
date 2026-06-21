@@ -1,4 +1,34 @@
 {
+  "cakeShapes": [
+    {
+      "id": "tonda",
+      "name": "Tonda",
+      "desc": "Classica, perfetta per ogni occasione",
+      "emoji": "⬤",
+      "priceDelta": 0
+    },
+    {
+      "id": "cuore",
+      "name": "Cuore",
+      "desc": "Romantica, per dichiarazioni e ricorrenze",
+      "emoji": "❤",
+      "priceDelta": 4
+    },
+    {
+      "id": "quadrata",
+      "name": "Quadrata",
+      "desc": "Moderna, ideale per più persone",
+      "emoji": "◼",
+      "priceDelta": 2
+    },
+    {
+      "id": "rettangolare",
+      "name": "Rettangolare",
+      "desc": "Per buffet e tagli generosi",
+      "emoji": "▭",
+      "priceDelta": 3
+    }
+  ],
   "cakeTypes": [
     {
       "id": "semifreddo",
@@ -70,36 +100,6 @@
       "label": "20 persone",
       "diameter": 30,
       "priceDelta": 38
-    }
-  ],
-  "cakeShapes": [
-    {
-      "id": "tonda",
-      "name": "Tonda",
-      "desc": "Classica, perfetta per ogni occasione",
-      "emoji": "⬤",
-      "priceDelta": 0
-    },
-    {
-      "id": "cuore",
-      "name": "Cuore",
-      "desc": "Romantica, per dichiarazioni e ricorrenze",
-      "emoji": "❤",
-      "priceDelta": 4
-    },
-    {
-      "id": "quadrata",
-      "name": "Quadrata",
-      "desc": "Moderna, ideale per più persone",
-      "emoji": "◼",
-      "priceDelta": 2
-    },
-    {
-      "id": "rettangolare",
-      "name": "Rettangolare",
-      "desc": "Per buffet e tagli generosi",
-      "emoji": "▭",
-      "priceDelta": 3
     }
   ],
   "cakeFlavors": [
@@ -434,62 +434,5 @@
     "Comunione",
     "Festa di famiglia",
     "Solo per coccolarmi"
-  ],
-  "cakeRecipes": [
-    {
-      "name": "Estate piena",
-      "shape": "tonda",
-      "flavors": [
-        "Limone",
-        "Fragola"
-      ],
-      "filling": "frutti-rossi",
-      "covering": "frutta-cop",
-      "decoration": "zuccherini"
-    },
-    {
-      "name": "Cioccolato lover",
-      "shape": "tonda",
-      "flavors": [
-        "Cioccolato fondente",
-        "Nocciola"
-      ],
-      "filling": "ganache",
-      "covering": "ganache-cop",
-      "decoration": "granella-nocciola-pistacchio"
-    },
-    {
-      "name": "Romantica",
-      "shape": "cuore",
-      "flavors": [
-        "Cheesecake frutti rossi",
-        "Yogurt bianco"
-      ],
-      "filling": "amarena",
-      "covering": "panna",
-      "decoration": "granella-frutta-secca"
-    },
-    {
-      "name": "Classica",
-      "shape": "tonda",
-      "flavors": [
-        "Crema",
-        "Nocciola"
-      ],
-      "filling": "cremino",
-      "covering": "panna",
-      "decoration": "granella-nocciola-pistacchio"
-    },
-    {
-      "name": "Punto G! signature",
-      "shape": "tonda",
-      "flavors": [
-        "Pistacchio",
-        "Punto Gi"
-      ],
-      "filling": "pistacchio",
-      "covering": "meringa",
-      "decoration": "zuccherini"
-    }
   ]
 }
