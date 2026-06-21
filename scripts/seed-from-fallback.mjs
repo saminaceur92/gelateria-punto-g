@@ -9,6 +9,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { flavorCategories } from '../src/data/fallback/flavors.js';
+import { openingHours } from '../src/data/fallback/hours.js';
 import {
   cakeShapes,
   cakeTypes,
@@ -62,6 +63,7 @@ const cake = {
 
 writeFileSync(resolve(genDir, 'menu.json'), JSON.stringify(menu, null, 2) + '\n');
 writeFileSync(resolve(genDir, 'cake.json'), JSON.stringify(cake, null, 2) + '\n');
+writeFileSync(resolve(genDir, 'hours.json'), JSON.stringify({ openingHours }, null, 2) + '\n');
 
 // ─────────── CSV per Airtable ───────────
 
@@ -176,6 +178,15 @@ write(
   csv(
     ['Nome', 'In vetrina', 'Ordine'],
     cakeOccasions.map((o, i) => [o, 'true', order(i)])
+  )
+);
+
+// Orari di apertura
+write(
+  'orari.csv',
+  csv(
+    ['Giorno', 'Orario', 'In vetrina', 'Ordine'],
+    openingHours.map((o, i) => [o.day, o.hours, 'true', order(i)])
   )
 );
 

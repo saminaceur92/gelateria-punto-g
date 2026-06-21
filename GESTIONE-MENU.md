@@ -45,6 +45,7 @@ un foglio online tipo Excel. Quando modifichi una tabella, il sito si aggiorna d
    | `coperture.csv`        | `Coperture`              | coperture/glasse (3D) |
    | `decorazioni.csv`      | `Decorazioni`            | topping/granelle (3D) |
    | `occasioni.csv`        | `Occasioni`              | occasioni |
+   | `orari.csv`            | `Orari`                  | orari di apertura |
 
    I CSV contengono **già tutti i gusti e le opzioni attuali**: non devi riscrivere nulla.
 
@@ -174,6 +175,13 @@ Ci sono **due** elenchi di gusti, separati di proposito perché spesso sono dive
 Se un gusto deve comparire in entrambi, va messo in **tutte e due** le tabelle. Tienile separate:
 in vasca puoi avere gusti che non vendi come torta, e viceversa.
 
+### 🕒 Orari di apertura (estate/inverno)
+Apri la tabella **Orari**: una riga per ogni giorno (Lun…Dom), con la colonna **Orario**.
+- Per cambiare gli orari della stagione: modifica la cella **Orario** del giorno (es. `15:00 – 23:00`,
+  oppure scrivi `Chiuso`).
+- Togliendo la spunta **In vetrina** di un giorno, quel giorno **non viene mostrato** sul sito.
+- Le modifiche compaiono dopo il consueto aggiornamento (1–2 minuti).
+
 ### Altre tabelle (cambiano di rado)
 - **Tipi Torta**, **Dimensioni**, **Occasioni**: opzioni del configuratore. Si modificano allo stesso modo.
 
@@ -208,6 +216,7 @@ usa in automatico una versione **alleggerita** della foto, quindi resta veloce a
 | Coperture     | Id, Nome, Descrizione, Supplemento, Colore, In vetrina, Ordine    |
 | Decorazioni   | Id, Nome, Descrizione, Emoji, In vetrina, Ordine                  |
 | Occasioni     | Nome, In vetrina, Ordine                                          |
+| Orari         | Giorno, Orario, In vetrina, Ordine                                |
 
 Le **Ricette "Sorprendimi"** del configuratore restano gestite dal codice (non da Airtable).
 

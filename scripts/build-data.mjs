@@ -31,6 +31,7 @@ const T = {
   coperture: 'Coperture',
   decorazioni: 'Decorazioni',
   occasioni: 'Occasioni',
+  orari: 'Orari',
 };
 
 const DEFAULT_COLOR = '#d9b384';
@@ -145,6 +146,7 @@ try {
     coperture,
     decorazioni,
     occasioni,
+    orari,
   ] = await Promise.all([
     fetchTable(T.categorie),
     fetchTable(T.gusti),
@@ -157,6 +159,7 @@ try {
     fetchTable(T.coperture),
     fetchTable(T.decorazioni),
     fetchTable(T.occasioni),
+    fetchTable(T.orari),
   ]);
 
   // MENU: ricostruisce le categorie con dentro i gusti attivi
@@ -248,6 +251,20 @@ try {
 
   writeFileSync(resolve(genDir, 'cake.json'), JSON.stringify(cake, null, 2) + '\n');
   console.log(`[build-data] Torte aggiornate: ${cake.cakeTypes.length} tipi, ${cake.cakeFlavors.length} gusti, ${cake.cakeBases.length} basi, ${cake.cakeDecorations.length} decorazioni.`);
+
+  // ORARI di apertura
+  const openingHours = orari
+    .filter(isActive)
+    .sort(byOrder)
+    .map((o) => ({ day: text(o.Giorno), hours: text(o.Orario) }))
+    .filter((o) => o.day);
+  if (openingHours.length > 0) {
+    writeFileSync(resolve(genDir, 'hours.json'), JSON.stringify({ openingHours }, null, 2) + '\n');
+    console.log(`[build-data] Orari aggiornati: ${openingHours.length} giorni.`);
+  } else {
+    console.warn('[build-data] Nessun orario attivo: mantengo i dati precedenti degli orari.');
+  }
+
   console.log('[build-data] Sincronizzazione da Airtable completata.');
 } catch (err) {
   console.warn('[build-data] Sincronizzazione da Airtable FALLITA, uso i dati precedenti. Dettaglio:', err.message);
