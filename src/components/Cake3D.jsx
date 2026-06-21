@@ -1088,7 +1088,7 @@ export default function Cake3D(props) {
       <Canvas
         shadows
         dpr={[1, 2]}
-        gl={{ alpha: true, antialias: true, preserveDrawingBuffer: false }}
+        gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
         camera={{ position: [0, 2.7, 5.0], fov: 30 }}
       >
         <Suspense fallback={null}>

@@ -105,3 +105,7 @@
 .ord-actions select { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
 .ord-riepilogo { background: #faf7fb; border: 1px solid var(--line); border-radius: 8px; padding: .8rem; font-size: .82rem; white-space: pre-wrap; font-family: inherit; margin: .7rem 0 0; color: #444; }
 .ord-note { font-size: .85rem; color: #555; margin: .5rem 0 0; }
+.ord-row { display: flex; gap: 1rem; align-items: flex-start; }
+.ord-img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #faf7fb; flex-shrink: 0; }
+.ord-body { flex: 1; min-width: 0; }
+@media (max-width: 560px) { .ord-row { flex-direction: column; } .ord-img { width: 100%; height: 160px; } }
