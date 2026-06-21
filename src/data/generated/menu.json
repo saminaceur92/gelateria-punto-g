@@ -1,0 +1,210 @@
+[
+  {
+    "id": "creme",
+    "name": "Creme",
+    "description": "I grandi classici reinterpretati con la nostra ricetta",
+    "flavors": [
+      {
+        "name": "Fior di latte",
+        "color": "#fff8e6",
+        "tag": null
+      },
+      {
+        "name": "Crema",
+        "color": "#f5d97a",
+        "tag": null
+      },
+      {
+        "name": "After Eight",
+        "color": "#1e3a2b",
+        "tag": null
+      },
+      {
+        "name": "Yogurt bianco",
+        "color": "#fafafa",
+        "tag": null
+      },
+      {
+        "name": "Stracciatella",
+        "color": "#f5f0dd",
+        "tag": null
+      },
+      {
+        "name": "Cheesecake ai frutti rossi",
+        "color": "#c94a6b",
+        "tag": null
+      },
+      {
+        "name": "Spagnola",
+        "color": "#d9b384",
+        "tag": null
+      },
+      {
+        "name": "Pino pinguino",
+        "color": "#3a2418",
+        "tag": null
+      },
+      {
+        "name": "Nocciola",
+        "color": "#8a5a3b",
+        "tag": null
+      },
+      {
+        "name": "Rocher",
+        "color": "#5a3520",
+        "tag": null
+      },
+      {
+        "name": "Nutella",
+        "color": "#3d2114",
+        "tag": null
+      },
+      {
+        "name": "Cioccolato al latte",
+        "color": "#6b4226",
+        "tag": null
+      },
+      {
+        "name": "Caramello salato",
+        "color": "#c8842b",
+        "tag": null
+      },
+      {
+        "name": "Super Kinder",
+        "color": "#e6c79c",
+        "tag": null
+      },
+      {
+        "name": "Bacio",
+        "color": "#3a2519",
+        "tag": null
+      },
+      {
+        "name": "Caffè",
+        "color": "#4a2e1f",
+        "tag": null
+      },
+      {
+        "name": "Biscotto",
+        "color": "#c89968",
+        "tag": null
+      },
+      {
+        "name": "Pistacchio",
+        "color": "#7ea15a",
+        "tag": null
+      },
+      {
+        "name": "Punto Gi",
+        "color": "#b651e4",
+        "tag": "firma"
+      },
+      {
+        "name": "Duplo",
+        "color": "#7a4a2e",
+        "tag": null
+      },
+      {
+        "name": "Cremino al Pistacchio",
+        "color": "#9bb678",
+        "tag": null
+      },
+      {
+        "name": "Cioccolato fondente",
+        "color": "#2a160e",
+        "tag": null
+      }
+    ]
+  },
+  {
+    "id": "frutta",
+    "name": "Frutta & Veggy",
+    "description": "Solo frutta, niente latte. Naturalmente vegan",
+    "flavors": [
+      {
+        "name": "Fragola",
+        "color": "#e84a6e",
+        "tag": null
+      },
+      {
+        "name": "Limone",
+        "color": "#f5e26a",
+        "tag": null
+      },
+      {
+        "name": "Mango",
+        "color": "#f3a72d",
+        "tag": null
+      },
+      {
+        "name": "Cocco",
+        "color": "#fafafa",
+        "tag": null
+      },
+      {
+        "name": "Pistacchio Veg",
+        "color": "#7ea15a",
+        "tag": "vegan"
+      },
+      {
+        "name": "Nocciola Veg",
+        "color": "#8a5a3b",
+        "tag": "vegan"
+      }
+    ]
+  },
+  {
+    "id": "semifreddi",
+    "name": "Semifreddi",
+    "description": "Eleganza tra cucchiaio e morso",
+    "flavors": [
+      {
+        "name": "Giovanna",
+        "color": "#e8c79e",
+        "tag": null
+      },
+      {
+        "name": "Millefoglie",
+        "color": "#fff2d6",
+        "tag": null
+      }
+    ]
+  },
+  {
+    "id": "leccornie",
+    "name": "Altre Leccornie",
+    "description": "Pasticceria a freddo, torte e prelibatezze",
+    "flavors": [
+      {
+        "name": "Pasticcini",
+        "color": "#f3a3c2",
+        "tag": null
+      },
+      {
+        "name": "Salame dolce",
+        "color": "#5a3520",
+        "tag": null
+      },
+      {
+        "name": "Torte gelato",
+        "color": "#b651e4",
+        "tag": null
+      },
+      {
+        "name": "Torte semifreddo",
+        "color": "#a5cdcb",
+        "tag": null
+      },
+      {
+        "name": "Monoporzioni",
+        "color": "#eb911e",
+        "tag": null
+      },
+      {
+        "name": "Prodotti stagionali",
+        "color": "#7ea15a",
+        "tag": "stagione"
+      }
+    ]
+  }
+]

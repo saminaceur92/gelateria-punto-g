@@ -1,0 +1,8 @@
+"Giorno","Orario","In vetrina","Ordine"
+"Lun","Chiuso","true","10"
+"Mar","15:00 – 23:00","true","20"
+"Mer","15:00 – 23:00","true","30"
+"Gio","15:00 – 23:00","true","40"
+"Ven","15:00 – 23:30","true","50"
+"Sab","14:30 – 23:30","true","60"
+"Dom","14:30 – 23:00","true","70"
