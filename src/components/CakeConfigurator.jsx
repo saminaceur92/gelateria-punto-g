@@ -22,6 +22,18 @@ const MAX_FLAVORS = 4;
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
 const WHATSAPP = '393203306009';
 
+// Telefono valido: 10 cifre (es. 348 5556677), con prefisso +39 / 0039 opzionale.
+const phoneOk = (s) => {
+  let d = (s || '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('39')) d = d.slice(2);
+  if (d.length === 14 && d.startsWith('0039')) d = d.slice(4);
+  return d.length === 10;
+};
+// Data minima di ritiro: oggi per la gelateria (staff), domani (24h) per il sito.
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const tomorrowISO = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-CA');
+const minPickup = (staff) => (staff ? todayISO() : tomorrowISO());
+
 // Config iniziale calcolata dai dati disponibili (validi anche se il proprietario
 // disattiva la dimensione/base/decorazione di default).
 function makeInitialConfig(cake) {
@@ -142,10 +154,10 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       case 'filling': return !!config.fillingId;
       case 'covering': return !!config.coveringId;
       case 'base': return !!config.baseId;
-      case 'details': return config.name.trim() && config.phone.trim() && config.pickupDate;
+      case 'details': return config.name.trim() && phoneOk(config.phone) && !!config.pickupDate && config.pickupDate >= minPickup(staff);
       default: return true;
     }
-  }, [step, config]);
+  }, [step, config, staff]);
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -760,14 +772,15 @@ function StepMessage({ config, set, staff }) {
 }
 
 function StepDetails({ config, set, staff }) {
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const minDate = minPickup(staff);
+  const phoneInvalid = config.phone.trim() && !phoneOk(config.phone);
   return (
     <>
       <StepHeader
         num={10}
         title={staff ? 'Dati cliente' : 'I tuoi dati'}
         lead={staff
-          ? 'Inserisci i dati del cliente e la data di ritiro concordata (nessun limite di tempo).'
+          ? 'Inserisci i dati del cliente e la data di ritiro (da oggi in poi).'
           : 'Per torte personalizzate servono almeno 24h di preavviso. Ti contattiamo per confermare.'}
       />
       <div className="cfg-field-row">
@@ -785,11 +798,12 @@ function StepDetails({ config, set, staff }) {
           <label>Telefono *</label>
           <input
             type="tel"
-            placeholder="+39 ..."
+            placeholder="348 5556677"
             value={config.phone}
             onChange={(e) => set({ phone: e.target.value })}
             required
           />
+          {phoneInvalid && <p className="hint" style={{ color: '#b03a3a' }}>Numero non valido: servono 10 cifre (es. 348 5556677).</p>}
         </div>
       </div>
 
@@ -797,12 +811,12 @@ function StepDetails({ config, set, staff }) {
         <label>Quando vuoi ritirarla? *</label>
         <input
           type="date"
-          min={staff ? undefined : tomorrow}
+          min={minDate}
           value={config.pickupDate}
           onChange={(e) => set({ pickupDate: e.target.value })}
           required
         />
-        <p className="hint">{staff ? 'Qualsiasi data, anche oggi.' : "Minimo 24h dall'ordine. Ti chiameremo per concordare l'orario."}</p>
+        <p className="hint">{staff ? 'Da oggi in poi (anche oggi stesso).' : "Minimo 24h dall'ordine. Ti chiameremo per concordare l'orario."}</p>
       </div>
 
       <div className="cfg-field">
