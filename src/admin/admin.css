@@ -45,7 +45,8 @@
 .adm-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
 .adm-card-head h3 { margin: 0; }
 .adm-card-head p { margin: .3rem 0 0; color: #888; font-size: .88rem; max-width: 60ch; }
-.adm-count { color: var(--v-deep); font-weight: 600; font-size: .82rem; white-space: nowrap; }
+.adm-count { color: var(--v-deep); font-weight: 600; font-size: .82rem; text-align: right; }
+.adm-count-detail { color: #999; font-weight: 400; }
 
 /* Righe */
 .adm-rows { display: flex; flex-direction: column; gap: .5rem; }
