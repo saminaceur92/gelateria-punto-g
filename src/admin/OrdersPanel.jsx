@@ -107,8 +107,8 @@ export default function OrdersPanel() {
           <p>Richieste dal sito, ordinate per priorità (ritiro più vicino in cima). Aggiorna lo stato man mano che le prepari.</p>
         </div>
         <span className="adm-count">
-          {nDaFare} da fare · {nInLav} in lavorazione · {orders.length} totali
-          {nScaduti > 0 && <span className="ord-count-scaduti"> · {nScaduti} scaduti</span>}
+          {nDaFare + nInLav} da gestire <span className="adm-count-detail">({nDaFare} da fare · {nInLav} in lavorazione)</span> · {orders.length} totali
+          {nScaduti > 0 && <span className="ord-count-scaduti"> · ⚠ {nScaduti} scaduti</span>}
         </span>
       </header>
 
