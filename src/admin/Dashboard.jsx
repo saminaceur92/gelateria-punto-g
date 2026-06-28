@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import TableEditor from './TableEditor';
 import OrdersPanel from './OrdersPanel';
+import StaffPanel from './StaffPanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 
@@ -233,10 +234,22 @@ export default function Dashboard() {
             {s.label}
           </button>
         ))}
+        <button
+          className={`adm-tab ${active === 'staff' ? 'active' : ''}`}
+          onClick={() => setActive('staff')}
+        >
+          👥 Accessi staff
+        </button>
       </nav>
 
       <main className="adm-main">
-        {active === 'ordini' ? <OrdersPanel key={ordersKey} /> : <TableEditor key={current.key} {...current.props} />}
+        {active === 'ordini' ? (
+          <OrdersPanel key={ordersKey} />
+        ) : active === 'staff' ? (
+          <StaffPanel />
+        ) : (
+          <TableEditor key={current.key} {...current.props} />
+        )}
       </main>
 
       <CakeDataProvider>
