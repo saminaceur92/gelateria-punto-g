@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/log';
 
 const STATI = [
   { value: 'da_fare', label: 'Da fare', color: '#b651e4' },
@@ -70,23 +71,30 @@ export default function OrdersPanel() {
 
   async function setStato(id, stato) {
     const { error } = await supabase.from('ordini').update({ stato }).eq('id', id);
-    if (error) setError(error.message);
-    else setOrders((os) => os.map((o) => (o.id === id ? { ...o, stato } : o)));
+    if (error) { setError(error.message); return; }
+    setOrders((os) => os.map((o) => (o.id === id ? { ...o, stato } : o)));
+    const o = orders.find((x) => x.id === id);
+    const label = (STATI.find((s) => s.value === stato) || {}).label || stato;
+    logAction('Ordine spostato', `${o?.cliente_nome || 'ordine'} → ${label}`);
   }
 
   async function remove(id) {
+    const o = orders.find((x) => x.id === id);
     if (!window.confirm("Eliminare questo ordine? L'operazione non è reversibile.")) return;
     const { error } = await supabase.from('ordini').delete().eq('id', id);
-    if (error) setError(error.message);
-    else setOrders((os) => os.filter((o) => o.id !== id));
+    if (error) { setError(error.message); return; }
+    setOrders((os) => os.filter((x) => x.id !== id));
+    logAction('Ordine eliminato', o?.cliente_nome || 'ordine');
   }
 
   async function saveLab(id) {
     const note_lab = labDraft[id] ?? '';
     const { error } = await supabase.from('ordini').update({ note_lab }).eq('id', id);
     if (error) { setError(error.message); return; }
-    setOrders((os) => os.map((o) => (o.id === id ? { ...o, note_lab } : o)));
+    const o = orders.find((x) => x.id === id);
+    setOrders((os) => os.map((x) => (x.id === id ? { ...x, note_lab } : x)));
     setLabDraft((d) => { const n = { ...d }; delete n[id]; return n; });
+    logAction('Nota ordine aggiornata', o?.cliente_nome || 'ordine');
     setLabSaved(id);
     setTimeout(() => setLabSaved((s) => (s === id ? null : s)), 2000);
   }

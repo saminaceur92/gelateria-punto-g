@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/log';
 
 /**
  * Editor generico di una tabella di contenuti.
@@ -15,6 +16,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const rowLabel = (r) => r.nome || r.giorno || r.etichetta || 'voce';
 
   async function load() {
     setError('');
@@ -40,7 +42,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     for (const f of fields) patch[f.key] = row[f.key];
     const { error } = await supabase.from(table).update(patch).eq('id', row.id);
     if (error) setError(error.message);
-    else setDirty((d) => ({ ...d, [row.id]: false }));
+    else {
+      setDirty((d) => ({ ...d, [row.id]: false }));
+      logAction('Contenuto modificato', `${title}: ${rowLabel(row)}`);
+    }
     setBusy(false);
   }
 
@@ -50,7 +55,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     const next = !row.attivo;
     const { error } = await supabase.from(table).update({ attivo: next }).eq('id', row.id);
     if (error) setError(error.message);
-    else setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, attivo: next } : r)));
+    else {
+      setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, attivo: next } : r)));
+      logAction(next ? 'Contenuto attivato' : 'Contenuto disattivato', `${title}: ${rowLabel(row)}`);
+    }
     setBusy(false);
   }
 
@@ -64,7 +72,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       .select()
       .single();
     if (error) setError(error.message);
-    else setRows((rs) => [...rs, data]);
+    else {
+      setRows((rs) => [...rs, data]);
+      logAction('Contenuto aggiunto', title);
+    }
     setBusy(false);
   }
 
@@ -74,7 +85,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     setError('');
     const { error } = await supabase.from(table).delete().eq('id', row.id);
     if (error) setError(error.message);
-    else setRows((rs) => rs.filter((r) => r.id !== row.id));
+    else {
+      setRows((rs) => rs.filter((r) => r.id !== row.id));
+      logAction('Contenuto eliminato', `${title}: ${rowLabel(row)}`);
+    }
     setBusy(false);
   }
 

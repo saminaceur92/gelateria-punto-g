@@ -88,7 +88,7 @@ function NotAuthorized() {
 }
 
 function Gate() {
-  const { configured, loading, session, isOwner } = useAuth();
+  const { configured, loading, session, isStaff } = useAuth();
   if (!configured) {
     return (
       <div className="adm-login">
@@ -101,7 +101,7 @@ function Gate() {
   }
   if (loading) return <div className="adm-splash">Caricamento…</div>;
   if (!session) return <Login />;
-  if (!isOwner) return <NotAuthorized />;
+  if (!isStaff) return <NotAuthorized />;
   return <Dashboard />;
 }
 

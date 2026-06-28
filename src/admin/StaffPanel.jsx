@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Gestione accessi: chi può entrare nella dashboard (ruolo "owner").
+const fmt = (v) => {
+  try {
+    return new Date(v).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return v;
+  }
+};
+
+// Gestione accessi (ruolo "owner"/titolare) + storico attività dei dipendenti.
 export default function StaffPanel() {
   const [list, setList] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [who, setWho] = useState('tutti');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -11,9 +21,14 @@ export default function StaffPanel() {
 
   async function load() {
     setError('');
-    const { data, error } = await supabase.rpc('staff_list');
-    if (error) setError(error.message);
-    else setList(data || []);
+    const [{ data: l, error: e1 }, { data: a, error: e2 }] = await Promise.all([
+      supabase.rpc('staff_list'),
+      supabase.rpc('staff_activity', { p_limit: 200 }),
+    ]);
+    if (e1) setError(e1.message);
+    else setList(l || []);
+    if (e2) setError((p) => p || e2.message);
+    else setActivity(a || []);
     setLoaded(true);
   }
   useEffect(() => {
@@ -44,6 +59,9 @@ export default function StaffPanel() {
     else await load();
     setBusy(false);
   }
+
+  const emails = [...new Set(activity.map((a) => a.user_email).filter(Boolean))];
+  const shownActivity = activity.filter((a) => who === 'tutti' || a.user_email === who);
 
   return (
     <section className="adm-card">
@@ -91,6 +109,38 @@ export default function StaffPanel() {
           </div>
         ))}
       </div>
+
+      {/* ───── Storico attività ───── */}
+      <header className="adm-card-head staff-storico-head">
+        <div>
+          <h3>Storico attività</h3>
+          <p>Cosa fa ogni persona: accessi, torte create, ordini spostati o eliminati. (Ultime 200 azioni.)</p>
+        </div>
+        {emails.length > 0 && (
+          <select className="staff-filter" value={who} onChange={(e) => setWho(e.target.value)}>
+            <option value="tutti">Tutti</option>
+            {emails.map((em) => (
+              <option key={em} value={em}>{em}</option>
+            ))}
+          </select>
+        )}
+      </header>
+
+      {shownActivity.length === 0 ? (
+        <div className="adm-muted">Nessuna attività registrata{who !== 'tutti' ? ' per questa persona' : ''}.</div>
+      ) : (
+        <ul className="log-list">
+          {shownActivity.map((a, i) => (
+            <li key={i} className="log-row">
+              <span className="log-when">{fmt(a.created_at)}</span>
+              <span className="log-who">{a.user_email}</span>
+              <span className="log-act">
+                <strong>{a.action}</strong>{a.dettagli ? ` — ${a.dettagli}` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

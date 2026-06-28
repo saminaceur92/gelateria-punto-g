@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/log';
 
 const AuthCtx = createContext(null);
 
@@ -15,7 +16,14 @@ export function AuthProvider({ children }) {
       return;
     }
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      // Registra l'accesso effettivo (non i refresh del token). Il debounce
+      // lato DB evita doppioni ravvicinati.
+      if (event === 'SIGNED_IN') {
+        logAction('Accesso effettuato');
+      }
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -58,6 +66,7 @@ export function AuthProvider({ children }) {
     user: session?.user || null,
     profile,
     isOwner: profile?.role === 'owner',
+    isStaff: profile?.role === 'owner' || profile?.role === 'staff',
     // Login classico con email + password
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
     signUp: (email, password) => supabase.auth.signUp({ email, password }),
