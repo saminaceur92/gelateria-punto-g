@@ -100,8 +100,7 @@
 .ord-reload { font-size: 1rem; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .2rem .5rem; cursor: pointer; }
 .ord-list { display: flex; flex-direction: column; gap: .7rem; }
 .ord-card { border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; border-left-width: 4px; }
-.ord-card.urgente { border-left-color: #b03a3a; background: #fdf4f4; }
-.ord-card.presto { border-left-color: #eb911e; }
+.ord-card.scaduto { background: #fdf4f4; }
 .ord-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .ord-who strong { display: block; }
 .ord-meta { font-size: .85rem; color: #888; }
