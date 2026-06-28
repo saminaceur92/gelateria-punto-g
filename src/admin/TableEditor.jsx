@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase';
  *  - fields: [{ key, label, type: 'text'|'number'|'color'|'select', options?, placeholder? }]
  *  - newRow: () => oggetto coi valori di default per una nuova riga
  */
-export default function TableEditor({ table, title, subtitle, fields, newRow }) {
+export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
   const [busy, setBusy] = useState(false);
@@ -145,17 +145,23 @@ export default function TableEditor({ table, title, subtitle, fields, newRow }) 
                   Salva
                 </button>
               )}
-              <button type="button" className="adm-btn adm-btn-del" onClick={() => deleteRow(row)} disabled={busy} title="Elimina">
-                🗑
-              </button>
+              {!locked && (
+                <button type="button" className="adm-btn adm-btn-del" onClick={() => deleteRow(row)} disabled={busy} title="Elimina">
+                  🗑
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      <button type="button" className="adm-btn adm-btn-add" onClick={addRow} disabled={busy}>
-        + Aggiungi
-      </button>
+      {locked ? (
+        <p className="adm-locked-note">🔒 Queste voci sono legate alla grafica 3D: puoi <strong>attivarle o disattivarle</strong> in base a cosa hai disponibile. Per aggiungerne di nuove serve il supporto 3D.</p>
+      ) : (
+        <button type="button" className="adm-btn adm-btn-add" onClick={addRow} disabled={busy}>
+          + Aggiungi
+        </button>
+      )}
     </section>
   );
 }

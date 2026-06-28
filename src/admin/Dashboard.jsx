@@ -113,7 +113,8 @@ export default function Dashboard() {
         props: {
           table: 'coperture',
           title: 'Coperture / glasse',
-          subtitle: 'Le coperture sono legate al 3D: aggiungerne di nuove non avrà un aspetto dedicato.',
+          subtitle: 'Coperture legate alla grafica 3D: attiva o disattiva quelle disponibili.',
+          locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
@@ -129,7 +130,8 @@ export default function Dashboard() {
         props: {
           table: 'decorazioni',
           title: 'Topping / decorazioni',
-          subtitle: 'Le decorazioni sono legate al 3D: aggiungerne di nuove non avrà un aspetto dedicato.',
+          subtitle: 'Topping legati alla grafica 3D: attiva o disattiva quelli disponibili.',
+          locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
@@ -173,7 +175,8 @@ export default function Dashboard() {
         props: {
           table: 'forme',
           title: 'Forme torta',
-          subtitle: 'Le forme sono legate al 3D: aggiungerne di nuove non avrà un aspetto dedicato.',
+          subtitle: 'Forme legate alla grafica 3D: attiva o disattiva quelle disponibili.',
+          locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },

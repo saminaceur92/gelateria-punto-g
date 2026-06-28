@@ -38,7 +38,7 @@
 .adm-new-cake { background: var(--v-deep); color: #fff; border-color: var(--v-deep); font-weight: 700; }
 .adm-new-cake:hover { filter: brightness(1.08); }
 
-.adm-main { padding: 1.4rem; max-width: 980px; }
+.adm-main { padding: 1.4rem; }
 
 /* Card sezione */
 .adm-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 1.2rem; }
@@ -47,6 +47,8 @@
 .adm-card-head p { margin: .3rem 0 0; color: #888; font-size: .88rem; max-width: 60ch; }
 .adm-count { color: var(--v-deep); font-weight: 600; font-size: .82rem; text-align: right; }
 .adm-count-detail { color: #999; font-weight: 400; }
+.adm-locked-note { margin: 1rem 0 0; font-size: .85rem; color: #777; background: var(--cream); border: 1px dashed var(--line); border-radius: 10px; padding: .7rem .9rem; }
+.adm-locked-note strong { color: var(--v-deep); }
 
 /* Righe */
 .adm-rows { display: flex; flex-direction: column; gap: .5rem; }
@@ -111,6 +113,12 @@
 .ord-actions select { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
 .ord-riepilogo { background: #faf7fb; border: 1px solid var(--line); border-radius: 8px; padding: .8rem; font-size: .82rem; white-space: pre-wrap; font-family: inherit; margin: .7rem 0 0; color: #444; }
 .ord-note { font-size: .85rem; color: #555; margin: .5rem 0 0; }
+.ord-lab-preview { margin: .5rem 0 0; font-size: .85rem; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 8px; padding: .35rem .6rem; }
+.ord-lab { margin: .7rem 0 0; }
+.ord-lab > label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .3rem; }
+.ord-lab > label span { font-weight: 400; color: #999; }
+.ord-lab textarea { width: 100%; min-height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font: inherit; font-size: .85rem; resize: vertical; box-sizing: border-box; }
+.ord-lab .adm-btn-save { margin-top: .4rem; }
 .ord-row { display: flex; gap: 1rem; align-items: flex-start; }
 .ord-img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #faf7fb; flex-shrink: 0; }
 .ord-body { flex: 1; min-width: 0; }
