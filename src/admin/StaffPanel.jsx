@@ -15,6 +15,7 @@ export default function StaffPanel() {
   const [activity, setActivity] = useState([]);
   const [who, setWho] = useState('tutti');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState('staff');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -41,10 +42,11 @@ export default function StaffPanel() {
     if (!em) return;
     setBusy(true);
     setError('');
-    const { error } = await supabase.rpc('staff_add', { p_email: em });
+    const { error } = await supabase.rpc('staff_add', { p_email: em, p_role: role });
     if (error) setError(error.message);
     else {
       setEmail('');
+      setRole('staff');
       await load();
     }
     setBusy(false);
@@ -69,8 +71,9 @@ export default function StaffPanel() {
         <div>
           <h3>Accessi staff</h3>
           <p>
-            Chi può entrare nella gestione. Aggiungi l'email del dipendente: poi lui apre <code>/admin</code>,
-            sceglie "Crea il tuo account" con <strong>quella stessa email</strong> e una password, e potrà accedere.
+            Chi può entrare nella gestione. Aggiungi l'email e scegli il ruolo (dipendente o co-titolare):
+            poi la persona apre <code>/admin</code>, sceglie "Crea il tuo account" con <strong>quella stessa email</strong>
+            e una password, e potrà accedere. Solo i <strong>co-titolari</strong> vedono questa scheda.
           </p>
         </div>
         <span className="adm-count">{list.length} abilitati</span>
@@ -81,11 +84,15 @@ export default function StaffPanel() {
       <form className="staff-add" onSubmit={add}>
         <input
           type="email"
-          placeholder="email.dipendente@esempio.it"
+          placeholder="email@esempio.it"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+        <select className="staff-role-select" value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="staff">Dipendente</option>
+          <option value="owner">Co-titolare</option>
+        </select>
         <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>+ Abilita</button>
       </form>
 
@@ -97,6 +104,9 @@ export default function StaffPanel() {
             <span className="staff-email">
               {s.email}
               {s.e_tu && <em className="staff-you"> (tu)</em>}
+            </span>
+            <span className={`staff-rolechip ${s.role === 'owner' ? 'owner' : ''}`}>
+              {s.role === 'owner' ? '👑 Co-titolare' : 'Dipendente'}
             </span>
             <span className={`staff-badge ${s.registrato ? 'on' : ''}`}>
               {s.registrato ? '✓ Account attivo' : '⏳ In attesa di registrazione'}
