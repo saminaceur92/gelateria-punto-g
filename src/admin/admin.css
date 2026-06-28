@@ -50,6 +50,16 @@
 .adm-locked-note { margin: 1rem 0 0; font-size: .85rem; color: #777; background: var(--cream); border: 1px dashed var(--line); border-radius: 10px; padding: .7rem .9rem; }
 .adm-locked-note strong { color: var(--v-deep); }
 
+/* Accessi staff */
+.staff-add { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.staff-add input { flex: 1; min-width: 220px; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 10px; font-size: .95rem; }
+.staff-list { display: flex; flex-direction: column; gap: .5rem; }
+.staff-row { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 10px; padding: .6rem .9rem; background: #fff; }
+.staff-email { font-weight: 600; }
+.staff-you { color: var(--v-deep); font-style: normal; font-weight: 400; font-size: .85rem; }
+.staff-badge { margin-left: auto; font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #fff3d6; color: #8a5a00; }
+.staff-badge.on { background: #e3f5e9; color: #2f7d4f; }
+
 /* Righe */
 .adm-rows { display: flex; flex-direction: column; gap: .5rem; }
 .adm-row { display: flex; align-items: center; gap: .8rem; padding: .6rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
