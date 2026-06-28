@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, Send, Cake, Shuffle } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
 import { supabase } from '../lib/supabase';
+import { logAction } from '../lib/log';
 import CakePreview from './CakePreview';
 
 const STEPS = [
@@ -253,7 +254,11 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
           note: config.notes || null,
         })
         .then(({ error }) => {
-          if (error) console.warn('[ordine] non salvato:', error.message);
+          if (error) { console.warn('[ordine] non salvato:', error.message); return; }
+          // In gelateria (staff) registra l'azione nello storico
+          if (staff) {
+            logAction('Torta creata', config.name || 'cliente');
+          }
         });
     }
 

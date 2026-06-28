@@ -15,7 +15,7 @@ const TAG_OPTIONS = [
 ];
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOwner } = useAuth();
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
@@ -234,18 +234,20 @@ export default function Dashboard() {
             {s.label}
           </button>
         ))}
-        <button
-          className={`adm-tab ${active === 'staff' ? 'active' : ''}`}
-          onClick={() => setActive('staff')}
-        >
-          👥 Accessi staff
-        </button>
+        {isOwner && (
+          <button
+            className={`adm-tab ${active === 'staff' ? 'active' : ''}`}
+            onClick={() => setActive('staff')}
+          >
+            👥 Accessi staff
+          </button>
+        )}
       </nav>
 
       <main className="adm-main">
         {active === 'ordini' ? (
           <OrdersPanel key={ordersKey} />
-        ) : active === 'staff' ? (
+        ) : active === 'staff' && isOwner ? (
           <StaffPanel />
         ) : (
           <TableEditor key={current.key} {...current.props} />

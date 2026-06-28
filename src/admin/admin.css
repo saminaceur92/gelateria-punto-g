@@ -59,6 +59,13 @@
 .staff-you { color: var(--v-deep); font-style: normal; font-weight: 400; font-size: .85rem; }
 .staff-badge { margin-left: auto; font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #fff3d6; color: #8a5a00; }
 .staff-badge.on { background: #e3f5e9; color: #2f7d4f; }
+.staff-storico-head { margin-top: 1.8rem; border-top: 1px solid var(--line); padding-top: 1.2rem; }
+.staff-filter { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
+.log-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.log-row { display: flex; gap: .8rem; align-items: baseline; padding: .5rem .2rem; border-bottom: 1px solid var(--line); font-size: .87rem; flex-wrap: wrap; }
+.log-when { color: #999; font-size: .8rem; white-space: nowrap; min-width: 92px; }
+.log-who { color: var(--v-deep); font-weight: 600; }
+.log-act { color: #444; }
 
 /* Righe */
 .adm-rows { display: flex; flex-direction: column; gap: .5rem; }
