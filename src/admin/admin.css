@@ -59,6 +59,9 @@
 .staff-you { color: var(--v-deep); font-style: normal; font-weight: 400; font-size: .85rem; }
 .staff-badge { margin-left: auto; font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #fff3d6; color: #8a5a00; }
 .staff-badge.on { background: #e3f5e9; color: #2f7d4f; }
+.staff-role-select { padding: .6rem .7rem; border: 1px solid var(--line); border-radius: 10px; font-size: .9rem; background: #fff; }
+.staff-rolechip { font-size: .75rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: #eee; color: #666; white-space: nowrap; }
+.staff-rolechip.owner { background: #efe2fb; color: var(--v-deep); }
 .staff-storico-head { margin-top: 1.8rem; border-top: 1px solid var(--line); padding-top: 1.2rem; }
 .staff-filter { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
 .log-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
