@@ -53,6 +53,8 @@ export default function OrdersPanel() {
   const [filter, setFilter] = useState('da_fare');
   const [sortBy, setSortBy] = useState('ritiro');
   const [openId, setOpenId] = useState(null);
+  const [labDraft, setLabDraft] = useState({}); // id -> testo nota in modifica
+  const [labSaved, setLabSaved] = useState(null); // id appena salvato (feedback)
 
   async function load() {
     setLoading(true);
@@ -77,6 +79,16 @@ export default function OrdersPanel() {
     const { error } = await supabase.from('ordini').delete().eq('id', id);
     if (error) setError(error.message);
     else setOrders((os) => os.filter((o) => o.id !== id));
+  }
+
+  async function saveLab(id) {
+    const note_lab = labDraft[id] ?? '';
+    const { error } = await supabase.from('ordini').update({ note_lab }).eq('id', id);
+    if (error) { setError(error.message); return; }
+    setOrders((os) => os.map((o) => (o.id === id ? { ...o, note_lab } : o)));
+    setLabDraft((d) => { const n = { ...d }; delete n[id]; return n; });
+    setLabSaved(id);
+    setTimeout(() => setLabSaved((s) => (s === id ? null : s)), 2000);
   }
 
   // Filtro per stato (+ vista trasversale "Scaduto")
@@ -163,6 +175,7 @@ export default function OrdersPanel() {
                   </div>
 
                   {gusti && <div className="ord-gusti">🍰 {gusti}</div>}
+                  {o.note_lab && <div className="ord-lab-preview">📝 {o.note_lab}</div>}
 
                   <div className="ord-info">
                     <span>🗓️ Prenotato {fmtDateTime(o.created_at)}</span>
@@ -192,7 +205,22 @@ export default function OrdersPanel() {
               {open && (
                 <>
                   {o.riepilogo && <pre className="ord-riepilogo">{o.riepilogo}</pre>}
-                  {o.note && <p className="ord-note"><strong>Note:</strong> {o.note}</p>}
+                  {o.note && <p className="ord-note"><strong>Note cliente:</strong> {o.note}</p>}
+                  <div className="ord-lab">
+                    <label>📝 Note di laboratorio <span>(interne, non visibili al cliente)</span></label>
+                    <textarea
+                      value={labDraft[o.id] ?? o.note_lab ?? ''}
+                      placeholder="Es. allergie, scaffale, da richiamare…"
+                      onChange={(e) => setLabDraft((d) => ({ ...d, [o.id]: e.target.value }))}
+                    />
+                    <button
+                      className="adm-btn adm-btn-save"
+                      onClick={() => saveLab(o.id)}
+                      disabled={(labDraft[o.id] ?? o.note_lab ?? '') === (o.note_lab ?? '')}
+                    >
+                      {labSaved === o.id ? '✓ Salvata' : 'Salva nota'}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
