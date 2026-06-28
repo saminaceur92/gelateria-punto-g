@@ -19,11 +19,15 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Dipendiamo dall'ID utente (stabile), non dall'oggetto session: così il
+  // refresh periodico del token (es. tornando sul tab) NON rimonta la dashboard.
+  const userId = session?.user?.id || null;
+
   // Carica il profilo (per sapere se è "owner")
   useEffect(() => {
     let alive = true;
     async function load() {
-      if (!supabase || !session?.user) {
+      if (!supabase || !userId) {
         if (alive) {
           setProfile(null);
           setLoading(false);
@@ -33,7 +37,7 @@ export function AuthProvider({ children }) {
       const { data } = await supabase
         .from('profiles')
         .select('role, email')
-        .eq('id', session.user.id)
+        .eq('id', userId)
         .maybeSingle();
       if (alive) {
         setProfile(data);
@@ -45,7 +49,7 @@ export function AuthProvider({ children }) {
     return () => {
       alive = false;
     };
-  }, [session]);
+  }, [userId]);
 
   const value = {
     configured: !!supabase,

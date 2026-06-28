@@ -156,10 +156,12 @@ export default function OrdersPanel() {
           // Il countdown alla scadenza c'è sempre, finché l'ordine non è chiuso.
           const urg = FINALI.includes(o.stato) ? null : urgency(o.ritiro_data);
           const gusti = Array.isArray(o.dettagli?.flavors) ? o.dettagli.flavors.map((f) => f.name).filter(Boolean).join(', ') : '';
-          const accent = urg && urg.level >= 2 ? 'urgente' : urg && urg.level === 1 ? 'presto' : '';
+          // Bordo sinistro: rosso se scaduto, grigio se annullato, altrimenti il colore dello stato.
+          const overdue = isScaduto(o);
+          const borderCol = overdue ? '#b03a3a' : o.stato === 'annullato' ? '#c9c9c9' : stato.color;
 
           return (
-            <div key={o.id} className={`ord-card ${accent}`}>
+            <div key={o.id} className={`ord-card ${overdue ? 'scaduto' : ''}`} style={{ borderLeftColor: borderCol }}>
               <div className="ord-row">
                 {o.immagine && <img className="ord-img" src={o.immagine} alt="Torta configurata" loading="lazy" />}
                 <div className="ord-body">
