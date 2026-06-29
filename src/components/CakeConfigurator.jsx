@@ -4,6 +4,7 @@ import { X, ArrowLeft, ArrowRight, Check, Cake, Shuffle } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
+import { sendOrderEmail } from '../lib/email';
 import CakePreview from './CakePreview';
 
 const STEPS = [
@@ -21,6 +22,7 @@ const STEPS = [
 ];
 const MAX_FLAVORS = 4;
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
+const emailOk = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((s || '').trim());
 
 // Telefono valido: 10 cifre (es. 348 5556677), con prefisso +39 / 0039 opzionale.
 const phoneOk = (s) => {
@@ -55,6 +57,7 @@ function makeInitialConfig(cake) {
     pickupDate: '',
     name: '',
     phone: '',
+    email: '',
     notes: '',
   };
 }
@@ -158,7 +161,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       case 'filling': return !!config.fillingId;
       case 'covering': return !!config.coveringId;
       case 'base': return !!config.baseId;
-      case 'details': return config.name.trim() && phoneOk(config.phone) && !!config.pickupDate && config.pickupDate >= minPickup(staff);
+      case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= minPickup(staff);
       default: return true;
     }
   }, [step, config, staff]);
@@ -215,6 +218,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       `*Da ritirare:* ${config.pickupDate}`,
       `*Cliente:* ${config.name}`,
       `*Telefono:* ${config.phone}`,
+      config.email ? `*Email:* ${config.email}` : '',
       config.notes ? `*Note:* ${config.notes}` : '',
       ``,
       staff ? '' : `💰 *Importo pagato:* €${total.toFixed(2)}`,
@@ -252,6 +256,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       stato: 'da_fare',
       cliente_nome: config.name,
       cliente_telefono: config.phone,
+      cliente_email: config.email || null,
       ritiro_data: config.pickupDate || null,
       totale: total,
       tipo: type?.name || null,
@@ -267,6 +272,29 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       return;
     }
     if (staff) logAction('Torta creata', config.name || 'cliente');
+
+    // Conferma via email al cliente (best-effort: non blocca la conferma a schermo)
+    if (config.email) {
+      const ordineEmail = [
+        `Tipo: ${type?.name}`,
+        `Forma: ${shape?.name}`,
+        `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
+        `Base: ${base?.name}`,
+        `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
+        filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
+        covering ? `Copertura: ${covering.name}` : '',
+        `Decorazione: ${deco?.name}`,
+        config.message ? `Scritta: "${config.message}"` : '',
+      ].filter(Boolean).join(' · ');
+      sendOrderEmail({
+        email: config.email,
+        cliente: config.name,
+        ordine: ordineEmail,
+        ritiro: config.pickupDate ? config.pickupDate.split('-').reverse().join('/') : '',
+        importo: total.toFixed(2),
+      });
+    }
+
     setSubmitting(false);
     setSent(true);
   };
@@ -783,6 +811,7 @@ function StepMessage({ config, set, staff }) {
 function StepDetails({ config, set, staff }) {
   const minDate = minPickup(staff);
   const phoneInvalid = config.phone.trim() && !phoneOk(config.phone);
+  const emailInvalid = config.email.trim() && !emailOk(config.email);
   return (
     <>
       <StepHeader
@@ -814,6 +843,20 @@ function StepDetails({ config, set, staff }) {
           />
           {phoneInvalid && <p className="hint" style={{ color: '#b03a3a' }}>Numero non valido: servono 10 cifre (es. 348 5556677).</p>}
         </div>
+      </div>
+
+      <div className="cfg-field">
+        <label>Email {staff ? '(facoltativa)' : '*'}</label>
+        <input
+          type="email"
+          placeholder="nome@esempio.it"
+          value={config.email}
+          onChange={(e) => set({ email: e.target.value })}
+          required={!staff}
+        />
+        <p className="hint" style={emailInvalid ? { color: '#b03a3a' } : undefined}>
+          {emailInvalid ? "Inserisci un'email valida." : 'Ti invieremo qui la conferma dell’ordine.'}
+        </p>
       </div>
 
       <div className="cfg-field">
