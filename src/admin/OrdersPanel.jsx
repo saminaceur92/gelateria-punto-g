@@ -245,7 +245,11 @@ export default function OrdersPanel() {
 
               {open && (
                 <>
-                  {o.riepilogo && <pre className="ord-riepilogo">{o.riepilogo}</pre>}
+                  {o.riepilogo && (
+                    <pre className="ord-riepilogo">
+                      {o.riepilogo.replace(/[*_]/g, '').replace('Stima:', 'Importo pagato:')}
+                    </pre>
+                  )}
                   {o.note && <p className="ord-note"><strong>Note cliente:</strong> {o.note}</p>}
                   <div className="ord-lab">
                     <label>📝 Note di laboratorio <span>(interne, non visibili al cliente)</span></label>
