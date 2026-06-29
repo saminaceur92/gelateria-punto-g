@@ -37,6 +37,8 @@
 .adm-tab.active { background: var(--v-deep); color: #fff; border-color: var(--v-deep); }
 .adm-new-cake { background: var(--v-deep); color: #fff; border-color: var(--v-deep); font-weight: 700; }
 .adm-new-cake:hover { filter: brightness(1.08); }
+.adm-badge-new { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; background: #e23b3b; color: #fff; border-radius: 999px; font-size: .7rem; font-weight: 700; vertical-align: middle; animation: badgePulse 1.6s ease-in-out infinite; }
+@keyframes badgePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(226,59,59,0.55); } 50% { box-shadow: 0 0 0 5px rgba(226,59,59,0); } }
 
 .adm-main { padding: 1.4rem; }
 

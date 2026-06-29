@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import TableEditor from './TableEditor';
@@ -6,6 +6,7 @@ import OrdersPanel from './OrdersPanel';
 import StaffPanel from './StaffPanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
+import { playPing } from '../lib/ping';
 
 const uuid = () => (window.crypto?.randomUUID ? window.crypto.randomUUID() : `id-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
 
@@ -20,10 +21,44 @@ export default function Dashboard() {
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
   const [ordersKey, setOrdersKey] = useState(0);
+  const [newCount, setNewCount] = useState(0); // ordini arrivati mentre NON sei su "Ordini"
+  const activeRef = useRef(active);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
 
   useEffect(() => {
     supabase.from('categorie').select('id, nome').order('ordine').then(({ data }) => setCats(data || []));
   }, []);
+
+  // Avviso globale nuovi ordini: pallino rosso + suono anche se sei su un'altra scheda.
+  useEffect(() => {
+    if (!supabase) return undefined;
+    const ch = supabase
+      .channel('dash-nuovi-ordini')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ordini' }, () => {
+        if (activeRef.current !== 'ordini') {
+          playPing();
+          setNewCount((c) => c + 1);
+        }
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  // Azzera il contatore quando apri la scheda Ordini
+  useEffect(() => {
+    if (active === 'ordini') setNewCount(0);
+  }, [active]);
+
+  // Notifica anche nel titolo della scheda del browser (se è in secondo piano)
+  useEffect(() => {
+    const base = 'Punto G! — Gestione';
+    document.title = newCount > 0 ? `(${newCount}) ${base}` : base;
+  }, [newCount]);
 
   const catOptions = useMemo(() => cats.map((c) => ({ value: c.id, label: c.nome })), [cats]);
   const firstCat = cats[0]?.id || '';
@@ -224,6 +259,7 @@ export default function Dashboard() {
           onClick={() => setActive('ordini')}
         >
           📦 Ordini
+          {newCount > 0 && <span className="adm-badge-new">{newCount > 9 ? '9+' : newCount}</span>}
         </button>
         {sections.map((s) => (
           <button
