@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
+import { playPing } from '../lib/ping';
 
 const STATI = [
   { value: 'da_fare', label: 'Da fare', color: '#b651e4' },
@@ -46,30 +47,6 @@ function urgency(ritiro) {
 
 // Ordine "scaduto": ritiro già passato e ancora da gestire (non chiuso).
 const isScaduto = (o) => !FINALI.includes(o.stato) && urgency(o.ritiro_data)?.label === 'Scaduto';
-
-// Breve "ping" sonoro all'arrivo di un nuovo ordine (se il browser lo consente).
-function playPing() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.type = 'sine';
-    o.frequency.setValueAtTime(880, ctx.currentTime);
-    o.frequency.setValueAtTime(1175, ctx.currentTime + 0.12);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.45);
-    o.start();
-    o.stop(ctx.currentTime + 0.45);
-    setTimeout(() => ctx.close(), 700);
-  } catch {
-    /* audio non disponibile: pazienza */
-  }
-}
 
 export default function OrdersPanel() {
   const [orders, setOrders] = useState([]);
