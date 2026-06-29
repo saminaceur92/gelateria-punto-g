@@ -1161,3 +1161,13 @@
 .cfg-staff .price-tag,
 .cfg-staff .combo-counter { display: none; }
 
+/* Messaggio di errore in fase di conferma ordine */
+.cfg-submit-error {
+  background: #fdecec;
+  color: #b03a3a;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border-top: 1px solid #f3c9c9;
+}
+

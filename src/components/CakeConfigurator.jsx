@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, Send, Cake, Shuffle } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Check, Cake, Shuffle } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
@@ -21,7 +21,6 @@ const STEPS = [
 ];
 const MAX_FLAVORS = 4;
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
-const WHATSAPP = '393203306009';
 
 // Telefono valido: 10 cifre (es. 348 5556677), con prefisso +39 / 0039 opzionale.
 const phoneOk = (s) => {
@@ -76,6 +75,8 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState(() => makeInitialConfig(cake));
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const bodyRef = useRef(null);
   const [showAllerg, setShowAllerg] = useState(false);
 
@@ -85,6 +86,8 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       setStep(0);
       setConfig(makeInitialConfig(cake));
       setSent(false);
+      setSubmitting(false);
+      setSubmitError('');
     }
   }, [open]);
 
@@ -184,7 +187,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
     });
   };
 
-  const sendWhatsApp = () => {
+  const submitOrder = async () => {
     const type = cakeTypes.find((t) => t.id === config.type);
     const shape = cakeShapes.find((sh) => sh.id === config.shape);
     const size = cakeSizes.find((s) => s.id === config.sizeId);
@@ -236,38 +239,35 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
     }
 
-    // Salva l'ordine su Supabase (non blocca l'invio WhatsApp se fallisce)
-    if (supabase) {
-      const { photo, ...dettagli } = config;
-      supabase
-        .from('ordini')
-        .insert({
-          stato: 'da_fare',
-          cliente_nome: config.name,
-          cliente_telefono: config.phone,
-          ritiro_data: config.pickupDate || null,
-          totale: total,
-          tipo: type?.name || null,
-          riepilogo: msg,
-          immagine,
-          dettagli: { ...dettagli, conFoto: !!photo },
-          note: config.notes || null,
-        })
-        .then(({ error }) => {
-          if (error) { console.warn('[ordine] non salvato:', error.message); return; }
-          // In gelateria (staff) registra l'azione nello storico
-          if (staff) {
-            logAction('Torta creata', config.name || 'cliente');
-          }
-        });
+    // Niente più WhatsApp: l'ordine viene salvato e il sistema avvisa la
+    // gelateria su Telegram in automatico (trigger sul database).
+    if (!supabase) {
+      setSent(true);
+      return;
     }
-
-    // Solo per il sito pubblico: apre WhatsApp con la richiesta già pronta.
-    // In gelateria (staff) l'ordine viene solo salvato, senza WhatsApp.
-    if (!staff) {
-      const url = `https://api.whatsapp.com/send?phone=${WHATSAPP}&text=${encodeURIComponent(msg)}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
+    setSubmitError('');
+    setSubmitting(true);
+    const { photo, ...dettagli } = config;
+    const { error } = await supabase.from('ordini').insert({
+      stato: 'da_fare',
+      cliente_nome: config.name,
+      cliente_telefono: config.phone,
+      ritiro_data: config.pickupDate || null,
+      totale: total,
+      tipo: type?.name || null,
+      riepilogo: msg,
+      immagine,
+      dettagli: { ...dettagli, conFoto: !!photo },
+      note: config.notes || null,
+    });
+    if (error) {
+      console.warn('[ordine] non salvato:', error.message);
+      setSubmitError("Non è stato possibile inviare l'ordine. Controlla la connessione e riprova.");
+      setSubmitting(false);
+      return;
     }
+    if (staff) logAction('Torta creata', config.name || 'cliente');
+    setSubmitting(false);
     setSent(true);
   };
 
@@ -379,6 +379,10 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
             )}
           </div>
 
+          {!sent && submitError && (
+            <div className="cfg-submit-error">⚠️ {submitError}</div>
+          )}
+
           {!sent && (
             <footer className="cfg-footer">
               <div className="price-tag">
@@ -398,8 +402,8 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
                     Avanti <ArrowRight size={16} />
                   </button>
                 ) : (
-                  <button className="cfg-btn cfg-btn-send" onClick={sendWhatsApp} disabled={!canNext}>
-                    {staff ? (<><Check size={16} /> Crea ordine</>) : (<><Send size={16} /> Invia su WhatsApp</>)}
+                  <button className="cfg-btn cfg-btn-send" onClick={submitOrder} disabled={!canNext || submitting}>
+                    {submitting ? 'Invio…' : (<><Check size={16} /> {staff ? 'Crea ordine' : 'Conferma ordine'}</>)}
                   </button>
                 )}
               </div>
@@ -847,7 +851,7 @@ function StepReview({ config, total, staff }) {
   const deco = cakeDecorations.find((d) => d.id === config.decoration);
   return (
     <>
-      <StepHeader num={11} title="Riepilogo" lead={staff ? "Controlla i dettagli e crea l'ordine: finirà tra gli ordini da fare." : 'Controlla tutto e invia la richiesta su WhatsApp. Ti rispondiamo a mano!'} />
+      <StepHeader num={11} title="Riepilogo" lead={staff ? "Controlla i dettagli e crea l'ordine: finirà tra gli ordini da fare." : 'Controlla tutto e conferma il tuo ordine.'} />
       <div className="summary-box">
         <dl>
           <dt>Tipo</dt><dd>{type?.name}</dd>
@@ -885,11 +889,11 @@ function SuccessView({ name, onClose, staff }) {
   return (
     <div className="cfg-success">
       <div className="check"><Check size={36} /></div>
-      <h2>{staff ? 'Ordine creato!' : 'Richiesta inviata!'}</h2>
+      <h2>{staff ? 'Ordine creato!' : 'Ordine confermato! 🎉'}</h2>
       <p className="lead" style={{ maxWidth: 420 }}>
         {staff
           ? `Ordine per ${name?.split(' ')[0] || 'il cliente'} salvato: lo trovi tra gli ordini "Da fare".`
-          : `Grazie ${name?.split(' ')[0] || ''}! La tua richiesta è stata aperta su WhatsApp. Inviala per confermare e ti rispondiamo entro poche ore per finalizzare l'ordine.`}
+          : `Grazie ${name?.split(' ')[0] || ''}! Il tuo ordine è stato confermato e inviato alla gelateria. Ti aspettiamo per il ritiro 🍰`}
       </p>
       <button className="cfg-btn cfg-btn-next" onClick={onClose} style={{ marginTop: '1rem' }}>
         {staff ? 'Chiudi' : 'Torna al sito'}
