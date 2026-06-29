@@ -115,6 +115,9 @@
 .ord-filters .ord-f-scaduto { border-color: #e3b4b4; color: #b03a3a; font-weight: 600; }
 .ord-filters .ord-f-scaduto.active { background: #b03a3a; color: #fff; border-color: #b03a3a; }
 .ord-count-scaduti { color: #b03a3a; font-weight: 700; }
+.ord-alert { display: flex; align-items: center; gap: .5rem; background: #efe2fb; border: 1px solid #d9bdf2; color: var(--v-deep); border-radius: 10px; padding: .6rem .9rem; margin-bottom: 1rem; font-size: .9rem; animation: ordAlertIn .25s ease; }
+.ord-alert-x { margin-left: auto; border: none; background: transparent; cursor: pointer; color: var(--v-deep); font-size: 1rem; line-height: 1; }
+@keyframes ordAlertIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 .ord-sort { margin-left: auto; display: flex; align-items: center; gap: .4rem; font-size: .82rem; color: #888; }
 .ord-sort select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 8px; font-size: .82rem; }
 .ord-reload { font-size: 1rem; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .2rem .5rem; cursor: pointer; }
