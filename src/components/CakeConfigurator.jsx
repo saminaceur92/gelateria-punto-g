@@ -214,7 +214,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       `*Telefono:* ${config.phone}`,
       config.notes ? `*Note:* ${config.notes}` : '',
       ``,
-      staff ? '' : `💰 *Stima:* €${total.toFixed(2)}`,
+      staff ? '' : `💰 *Importo pagato:* €${total.toFixed(2)}`,
       ``,
       staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
