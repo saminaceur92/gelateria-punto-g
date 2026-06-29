@@ -357,7 +357,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
               <div className="price-row">
                 <div className="price">
                   €{total.toFixed(0)}
-                  <small>stima</small>
+                  <small>totale</small>
                 </div>
                 {config.flavors.length > 0 && (
                   <button type="button" className="allergeni-btn" onClick={() => setShowAllerg(true)}>
@@ -414,7 +414,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
           {!sent && (
             <footer className="cfg-footer">
               <div className="price-tag">
-                <span>Totale stimato</span>
+                <span>Prezzo totale</span>
                 <strong>€{total.toFixed(2)}</strong>
               </div>
               {/* su mobile, al posto del totale, c'è Sorprendimi */}
@@ -917,10 +917,8 @@ function StepReview({ config, total, staff }) {
       </div>
       {!staff && (
         <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(182,81,228,0.2)' }}>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ink)' }}>
-            <strong style={{ color: 'var(--violet-deep)' }}>Totale stimato: €{total.toFixed(2)}</strong>
-            <br />
-            Il prezzo definitivo viene confermato dal nostro staff in base alle decorazioni richieste.
+          <p style={{ margin: 0, fontSize: '1rem', color: 'var(--ink)' }}>
+            <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{total.toFixed(2)}</strong>
           </p>
         </div>
       )}
