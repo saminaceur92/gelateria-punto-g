@@ -163,7 +163,7 @@ export const cakeRecipes = [
     decoration: 'granella-nocciola-pistacchio',
   },
   {
-    name: 'Punto G! signature',
+    name: 'Punto Gi! signature',
     shape: 'tonda',
     flavors: ['Pistacchio', 'Punto Gi'],
     filling: 'pistacchio',

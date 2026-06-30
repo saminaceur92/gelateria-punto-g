@@ -1,4 +1,4 @@
-# Gestione menù da Airtable — Gelateria Punto G!
+# Gestione menù da Airtable — Gelateria Punto Gi!
 
 Questa guida spiega come i proprietari possono **aggiungere, togliere e attivare/disattivare**
 gusti, basi e topping **in autonomia**, senza toccare il codice del sito.

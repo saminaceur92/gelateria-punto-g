@@ -3,7 +3,7 @@
  *
  * Filosofia: OGNI GUSTO È UNO STRATO DI COLORE PIENO, impilato come una vera
  * torta gelato. Materiali tipo gelato/panna (clearcoat + sheen), luci da studio
- * con ombre morbide, vassoio viola Punto G! con bordo dorato, rotazione
+ * con ombre morbide, vassoio viola Punto Gi! con bordo dorato, rotazione
  * automatica + trascinamento col mouse/dito.
  *
  * Forme supportate: tonda (cilindro), cuore (extrude), quadrata/rettangolare
@@ -917,7 +917,7 @@ function CakeModel({ shape, flavors, base, filling, covering, candle, photo, pho
 
   return (
     <group>
-      {/* ---- Vassoio viola Punto G! ---- */}
+      {/* ---- Vassoio viola Punto Gi! ---- */}
       <mesh position={[0, platterY, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[platterR, platterR * 0.97, platterH, 80]} />
         <meshPhysicalMaterial color="#5a2b94" roughness={0.28} clearcoat={0.7} clearcoatRoughness={0.18} envMapIntensity={0.9} />
