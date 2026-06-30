@@ -285,6 +285,10 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
         covering ? `Copertura: ${covering.name}` : '',
         `Decorazione: ${deco?.name}`,
         config.message ? `Scritta: "${config.message}"` : '',
+        config.photo ? `Foto su cialda: sì` : '',
+        config.candle ? `Candelina: sì` : '',
+        config.occasion ? `Occasione: ${config.occasion}` : '',
+        config.notes ? `Note: ${config.notes}` : '',
       ].filter(Boolean).join(' · ');
       sendOrderEmail({
         email: config.email,
