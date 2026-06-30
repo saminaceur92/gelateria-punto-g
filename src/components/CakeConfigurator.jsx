@@ -36,6 +36,28 @@ const todayISO = () => new Date().toLocaleDateString('en-CA');
 const tomorrowISO = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-CA');
 const minPickup = (staff) => (staff ? todayISO() : tomorrowISO());
 
+// Fasce orarie di ritiro per la data scelta: ogni ora, da un'ora dopo
+// l'apertura a un'ora prima della chiusura (dagli orari della gelateria).
+const GIORNI = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+function pickupSlots(dateStr, orari) {
+  if (!dateStr) return [];
+  let d;
+  try { d = new Date(`${dateStr}T00:00:00`); } catch { return []; }
+  if (Number.isNaN(d.getTime())) return [];
+  const row = (orari || []).find((o) => o.giorno === GIORNI[d.getDay()]);
+  const orario = (row && row.orario) || '11:00-23:00'; // fallback prudente
+  const nums = orario.match(/\d{1,2}:\d{2}/g) || [];
+  if (nums.length < 2) return [];
+  const toMin = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+  const open = toMin(nums[0]);
+  const close = toMin(nums[nums.length - 1]);
+  const slots = [];
+  for (let t = open + 60; t <= close - 60; t += 60) {
+    slots.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+  }
+  return slots;
+}
+
 // Config iniziale calcolata dai dati disponibili (validi anche se il proprietario
 // disattiva la dimensione/base/decorazione di default).
 function makeInitialConfig(cake) {
@@ -55,6 +77,7 @@ function makeInitialConfig(cake) {
     photo: null,
     photoTransform: { zoom: 1, posX: 50, posY: 50 },
     pickupDate: '',
+    pickupTime: '',
     name: '',
     phone: '',
     email: '',
@@ -82,6 +105,15 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
   const [submitError, setSubmitError] = useState('');
   const bodyRef = useRef(null);
   const [showAllerg, setShowAllerg] = useState(false);
+  const [orari, setOrari] = useState([]);
+
+  // Orari di apertura (per calcolare le fasce di ritiro)
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from('orari').select('giorno, orario').eq('attivo', true).then(({ data }) => {
+      if (data) setOrari(data);
+    });
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -161,7 +193,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       case 'filling': return !!config.fillingId;
       case 'covering': return !!config.coveringId;
       case 'base': return !!config.baseId;
-      case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= minPickup(staff);
+      case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= minPickup(staff) && !!config.pickupTime;
       default: return true;
     }
   }, [step, config, staff]);
@@ -215,7 +247,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       config.candle ? `*Candelina:* sì` : '',
       config.occasion ? `*Occasione:* ${config.occasion}` : '',
       ``,
-      `*Da ritirare:* ${config.pickupDate}`,
+      `*Da ritirare:* ${config.pickupDate}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}`,
       `*Cliente:* ${config.name}`,
       `*Telefono:* ${config.phone}`,
       config.email ? `*Email:* ${config.email}` : '',
@@ -258,6 +290,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
       cliente_telefono: config.phone,
       cliente_email: config.email || null,
       ritiro_data: config.pickupDate || null,
+      ritiro_ora: config.pickupTime || null,
       totale: total,
       tipo: type?.name || null,
       riepilogo: msg,
@@ -294,7 +327,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
         email: config.email,
         cliente: config.name,
         ordine: ordineEmail,
-        ritiro: config.pickupDate ? config.pickupDate.split('-').reverse().join('/') : '',
+        ritiro: config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '',
         importo: total.toFixed(2),
       });
     }
@@ -404,7 +437,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
                   {STEPS[step] === 'base' && <StepBase config={config} set={set} />}
                   {STEPS[step] === 'decoration' && <StepDecoration config={config} set={set} />}
                   {STEPS[step] === 'message' && <StepMessage config={config} set={set} staff={staff} />}
-                  {STEPS[step] === 'details' && <StepDetails config={config} set={set} staff={staff} />}
+                  {STEPS[step] === 'details' && <StepDetails config={config} set={set} staff={staff} orari={orari} />}
                   {STEPS[step] === 'review' && <StepReview config={config} total={total} staff={staff} />}
                 </motion.div>
               </AnimatePresence>
@@ -812,10 +845,11 @@ function StepMessage({ config, set, staff }) {
   );
 }
 
-function StepDetails({ config, set, staff }) {
+function StepDetails({ config, set, staff, orari }) {
   const minDate = minPickup(staff);
   const phoneInvalid = config.phone.trim() && !phoneOk(config.phone);
   const emailInvalid = config.email.trim() && !emailOk(config.email);
+  const slots = pickupSlots(config.pickupDate, orari);
   return (
     <>
       <StepHeader
@@ -863,16 +897,35 @@ function StepDetails({ config, set, staff }) {
         </p>
       </div>
 
-      <div className="cfg-field">
-        <label>Quando vuoi ritirarla? *</label>
-        <input
-          type="date"
-          min={minDate}
-          value={config.pickupDate}
-          onChange={(e) => set({ pickupDate: e.target.value })}
-          required
-        />
-        <p className="hint">{staff ? 'Da oggi in poi (anche oggi stesso).' : "Minimo 24h dall'ordine. Ti chiameremo per concordare l'orario."}</p>
+      <div className="cfg-field-row">
+        <div className="cfg-field">
+          <label>Giorno di ritiro *</label>
+          <input
+            type="date"
+            min={minDate}
+            value={config.pickupDate}
+            onChange={(e) => set({ pickupDate: e.target.value, pickupTime: '' })}
+            required
+          />
+          <p className="hint">{staff ? 'Da oggi in poi (anche oggi stesso).' : "Minimo 24h dall'ordine."}</p>
+        </div>
+        <div className="cfg-field">
+          <label>Ora di ritiro *</label>
+          <select
+            value={config.pickupTime}
+            onChange={(e) => set({ pickupTime: e.target.value })}
+            disabled={!config.pickupDate || slots.length === 0}
+            required
+          >
+            <option value="">
+              {!config.pickupDate ? 'Scegli prima il giorno' : slots.length ? 'Scegli un orario…' : 'Chiuso quel giorno'}
+            </option>
+            {slots.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <p className="hint">Fasce ogni ora, negli orari di apertura.</p>
+        </div>
       </div>
 
       <div className="cfg-field">
@@ -913,7 +966,7 @@ function StepReview({ config, total, staff }) {
           {config.photo && (<><dt>Foto</dt><dd>su cialda alimentare</dd></>)}
           {config.candle && (<><dt>Candelina</dt><dd>sì</dd></>)}
           {config.occasion && (<><dt>Occasione</dt><dd>{config.occasion}</dd></>)}
-          <dt>Ritiro</dt><dd>{config.pickupDate || '—'}</dd>
+          <dt>Ritiro</dt><dd>{config.pickupDate || '—'}{config.pickupTime ? ` alle ${config.pickupTime}` : ''}</dd>
           <dt>Cliente</dt><dd>{config.name}</dd>
           <dt>Tel</dt><dd>{config.phone}</dd>
           {config.notes && (<><dt>Note</dt><dd>{config.notes}</dd></>)}
