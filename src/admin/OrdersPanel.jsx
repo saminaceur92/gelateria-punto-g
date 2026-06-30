@@ -220,7 +220,7 @@ export default function OrdersPanel() {
 
                   <div className="ord-info">
                     <span>🗓️ Prenotato {fmtDateTime(o.created_at)}</span>
-                    {o.ritiro_data && <span>🛍️ Ritiro {fmtDate(o.ritiro_data)}</span>}
+                    {o.ritiro_data && <span>🛍️ Ritiro {fmtDate(o.ritiro_data)}{o.ritiro_ora ? ` alle ${o.ritiro_ora}` : ''}</span>}
                     {o.cliente_telefono && <span>📞 {o.cliente_telefono}</span>}
                   </div>
 
