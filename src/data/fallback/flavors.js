@@ -1,7 +1,7 @@
 // Catalogo gusti — COPIA DI SICUREZZA (fallback)
 // Questi dati vengono usati solo se Airtable non è raggiungibile o non è ancora
 // configurato. La fonte normale dei dati è Airtable (vedi GESTIONE-MENU.md).
-// Fonte originale: brochure ufficiale Gelateria Punto G! Carpi.
+// Fonte originale: brochure ufficiale Gelateria Punto Gi! Carpi.
 
 export const flavorCategories = [
   {

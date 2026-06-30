@@ -56,7 +56,7 @@ export default function CakePreview({ config }) {
       transition={{ duration: 0.4 }}
     >
       <div className="cake-card-ribbon">
-        <span>Punto G!</span>
+        <span>Punto Gi!</span>
         <span className="dot" />
         <span>Pasticceria</span>
       </div>
@@ -198,7 +198,7 @@ function CakeSvg({ shape, flavors, base, filling, covering, candle, photo, decor
   const baseColor = base?.color || '#e8d2a8';
   const fillingColor = filling?.color;
 
-  // Vassoio viola Punto G! (più largo e prominente)
+  // Vassoio viola Punto Gi! (più largo e prominente)
   const platterRx = halfW + 55;
   const platterRy = topRy + 24;
   const platterCy = baseY + 14;

@@ -33,7 +33,7 @@ function Login() {
   return (
     <div className="adm-login">
       <div className="adm-login-card">
-        <div className="adm-login-brand"><strong>Punto G!</strong><span>Area gestione</span></div>
+        <div className="adm-login-brand"><strong>Punto Gi!</strong><span>Area gestione</span></div>
         <form onSubmit={submit}>
           <h2>{mode === 'up' ? 'Crea account' : 'Accedi'}</h2>
           <p className="adm-muted">

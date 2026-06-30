@@ -56,7 +56,7 @@ export default function Dashboard() {
 
   // Notifica anche nel titolo della scheda del browser (se è in secondo piano)
   useEffect(() => {
-    const base = 'Punto G! — Gestione';
+    const base = 'Punto Gi! — Gestione';
     document.title = newCount > 0 ? `(${newCount}) ${base}` : base;
   }, [newCount]);
 
@@ -242,7 +242,7 @@ export default function Dashboard() {
     <div className="adm">
       <header className="adm-top">
         <div className="adm-brand">
-          <strong>Punto G!</strong> <span>Gestione contenuti</span>
+          <strong>Punto Gi!</strong> <span>Gestione contenuti</span>
         </div>
         <div className="adm-user">
           <span>{user?.email}</span>

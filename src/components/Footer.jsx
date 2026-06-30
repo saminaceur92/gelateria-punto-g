@@ -12,7 +12,7 @@ export default function Footer() {
                 <img src="/logo.png" alt="" />
               </span>
               <span>
-                Punto G<span style={{ color: 'var(--orange)' }}>!</span>
+                Punto Gi<span style={{ color: 'var(--orange)' }}>!</span>
                 <small>Gelateria · Carpi</small>
               </span>
             </div>
@@ -55,7 +55,7 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <span>© {year} Gelateria Punto G! · Tutti i diritti riservati</span>
+          <span>© {year} Gelateria Punto Gi! · Tutti i diritti riservati</span>
           <span>Fatto con <span className="heart">♥</span> a Carpi</span>
         </div>
       </div>

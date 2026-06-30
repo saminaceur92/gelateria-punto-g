@@ -232,7 +232,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
     const deco = cakeDecorations.find((d) => d.id === config.decoration);
 
     const msg = [
-      staff ? `🎂 *Nuovo ordine in gelateria — Punto G!*` : `🎂 *Nuova richiesta torta — Punto G!*`,
+      staff ? `🎂 *Nuovo ordine in gelateria — Punto Gi!*` : `🎂 *Nuova richiesta torta — Punto Gi!*`,
       ``,
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
@@ -362,7 +362,7 @@ export default function CakeConfigurator({ open, onClose, staff = false }) {
             <div className="cfg-title">
               <Cake size={20} color="var(--violet-deep)" />
               {staff ? 'Nuovo ordine' : 'Crea la tua torta'}
-              <small style={{ marginLeft: '0.5rem' }}>· Punto G!</small>
+              <small style={{ marginLeft: '0.5rem' }}>· Punto Gi!</small>
             </div>
             {!sent && (
               <div className="cfg-stepper" aria-hidden="true">
