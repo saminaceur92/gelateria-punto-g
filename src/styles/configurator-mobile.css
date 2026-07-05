@@ -28,7 +28,7 @@
     min-height: auto;
     max-height: none;
     background:
-      radial-gradient(ellipse at 50% 30%, rgba(182,81,228,0.18), transparent 65%),
+      radial-gradient(ellipse at 50% 30%, rgba(90,163,155,0.18), transparent 65%),
       var(--cream-warm);
   }
   .cfg-preview-stage { max-width: 240px; }

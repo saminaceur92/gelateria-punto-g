@@ -14,9 +14,10 @@ import CakeConfigurator from './components/CakeConfigurator';
 import { CakeDataProvider } from './data/CakeDataProvider';
 
 export default function App() {
-  const [cfgOpen, setCfgOpen] = useState(false);
-  const openCfg = () => setCfgOpen(true);
-  const closeCfg = () => setCfgOpen(false);
+  const [cfg, setCfg] = useState({ open: false, initial: undefined });
+  // openCfg può ricevere un filtro iniziale ({ allergies: [...] }) dai link "alternative".
+  const openCfg = (initial) => setCfg({ open: true, initial: initial && initial.allergies ? initial : undefined });
+  const closeCfg = () => setCfg((c) => ({ ...c, open: false }));
 
   return (
     <>
@@ -34,7 +35,7 @@ export default function App() {
       <Footer />
       <WhatsAppFab />
       <CakeDataProvider>
-        <CakeConfigurator open={cfgOpen} onClose={closeCfg} />
+        <CakeConfigurator open={cfg.open} initial={cfg.initial} onClose={closeCfg} />
       </CakeDataProvider>
     </>
   );

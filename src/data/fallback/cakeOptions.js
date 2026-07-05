@@ -29,16 +29,16 @@ export const cakeTypes = [
   },
   {
     id: 'crock',
-    name: 'CROCK',
-    desc: 'Base croccante + semifreddo: la nostra firma',
+    name: 'Gi Selection',
+    desc: 'La nostra firma: selezione speciale Punto Gi',
     basePrice: 28,
     img: '/semifreddi.jpg',
     color: '#eb911e',
   },
   {
     id: 'piani',
-    name: 'A piani',
-    desc: 'Per occasioni speciali — scenografica e golosa',
+    name: 'Alta',
+    desc: 'Alta 7 cm — scenografica, fino a 4 gusti',
     basePrice: 38,
     img: '/torte.jpg',
     color: '#a5cdcb',
@@ -81,9 +81,9 @@ export const cakeFlavors = [
 
 export const cakeBases = [
   { id: 'classica', name: 'Classica', desc: 'Pan di Spagna sottile', priceDelta: 0, color: '#e8d2a8', allergeni: ['glutine', 'uova'] },
-  { id: 'crock', name: 'Crock croccante', desc: 'Base biscottata e croccante', priceDelta: 3, color: '#b88c5a', allergeni: ['glutine', 'soia'] },
-  { id: 'cacao', name: 'Frolla al cacao', desc: 'Friabile, intensa', priceDelta: 3, color: '#5a3520', allergeni: ['glutine', 'uova'] },
-  { id: 'glutenfree', name: 'Senza glutine', desc: 'Per intolleranze', priceDelta: 4, color: '#d8c098', allergeni: [] },
+  { id: 'crock', name: 'Crumble croccante', desc: 'Biscottino croccante', priceDelta: 3, color: '#b88c5a', allergeni: ['soia'] },
+  { id: 'cacao', name: 'Senza base', desc: 'Gelato/semifreddo direttamente sul piatto', priceDelta: 0, color: '#efe7da', allergeni: [] },
+  { id: 'glutenfree', name: 'Salame al cioccolato', desc: 'Sfiziosa base con il nostro salame al cioccolato – solo per i golosoni', priceDelta: 3, color: '#5a3520', allergeni: ['glutine', 'latte'] },
 ];
 
 // Farciture (variegato/cuore tra gli strati)
@@ -125,7 +125,6 @@ export const cakeOccasions = [
   'Battesimo',
   'Comunione',
   'Festa di famiglia',
-  'Solo per coccolarmi',
 ];
 
 // Ricette suggerite ("Sorprendimi!")

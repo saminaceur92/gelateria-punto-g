@@ -829,7 +829,7 @@ function Candle({ y }) {
       {/* righine decorative */}
       <mesh position={[0, 0.28, 0]}>
         <cylinderGeometry args={[0.0365, 0.0365, 0.03, 20]} />
-        <meshStandardMaterial color="#b651e4" roughness={0.5} />
+        <meshStandardMaterial color="#5aa39b" roughness={0.5} />
       </mesh>
       <mesh position={[0, 0.16, 0]}>
         <cylinderGeometry args={[0.0365, 0.0365, 0.03, 20]} />
@@ -852,7 +852,7 @@ function Candle({ y }) {
 
 /* ============================ corpo torta ============================ */
 
-function CakeModel({ shape, flavors, base, filling, covering, candle, photo, photoTransform, decorationId, message, messageFont }) {
+function CakeModel({ shape, plateShape, flavors, base, filling, covering, candle, photo, photoTransform, decorationId, message, messageFont }) {
   // Torta gelato vera: BASSA e LARGA. Dischi di gelato netti e impilati.
   const R = 1.18;
   const layers = Math.max(1, flavors.length);
@@ -895,7 +895,21 @@ function CakeModel({ shape, flavors, base, filling, covering, candle, photo, pho
     };
   }, [shape, R, bandH, baseH, capH, layers, useCover, fillingColor]);
 
-  const platterR = R * 1.16; // piatto contenuto, appena più largo della torta
+  // ---- Piatto (vassoio) ORO, con forma dedicata ----
+  const pShape = plateShape || (shape === 'quadrata' ? 'quadrata' : shape === 'rettangolare' ? 'rettangolare' : 'tonda');
+  // footprint (larghezza, profondità) della torta, per dimensionare il piatto
+  const foot = shape === 'rettangolare' ? boxDims('rettangolare', R)
+    : shape === 'quadrata' ? boxDims('quadrata', R)
+    : [2 * R, 2 * R]; // tonda / cuore (diametro)
+  const plateMargin = R * 0.42;
+  const plateRound = Math.max(foot[0], foot[1]) / 2 + plateMargin;
+  const plateW = (pShape === 'rettangolare' ? Math.max(foot[0], 2 * R) : Math.max(foot[0], foot[1])) + plateMargin * 2;
+  const plateD = (pShape === 'rettangolare' ? Math.max(foot[1], R * 1.15) : Math.max(foot[0], foot[1])) + plateMargin * 2;
+  const goldPlate = { color: '#d9ad54', metalness: 0.85, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.28, envMapIntensity: 1.15 };
+  const plateGeo = useMemo(
+    () => (pShape === 'tonda' ? null : new RoundedBoxGeometry(plateW, platterH, plateD, 4, Math.min(0.12, platterH * 0.4))),
+    [pShape, plateW, plateD, platterH]
+  );
   const showRosetteRing = (shape === 'tonda' || shape === 'cuore') && (covering?.id === 'panna' || covering?.id === 'meringa');
 
   // Scritta / foto al centro → il topping si sagoma con un buco al centro
@@ -917,16 +931,24 @@ function CakeModel({ shape, flavors, base, filling, covering, candle, photo, pho
 
   return (
     <group>
-      {/* ---- Vassoio viola Punto Gi! ---- */}
-      <mesh position={[0, platterY, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[platterR, platterR * 0.97, platterH, 80]} />
-        <meshPhysicalMaterial color="#5a2b94" roughness={0.28} clearcoat={0.7} clearcoatRoughness={0.18} envMapIntensity={0.9} />
-      </mesh>
-      {/* bordo dorato del vassoio */}
-      <mesh position={[0, platterY + platterH / 2 - 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[platterR - 0.03, 0.022, 16, 90]} />
-        <meshStandardMaterial color="#e8c069" metalness={0.95} roughness={0.22} envMapIntensity={1.3} />
-      </mesh>
+      {/* ---- Piatto ORO Punto Gi! (forma in base alla torta / n° persone) ---- */}
+      {pShape === 'tonda' ? (
+        <mesh position={[0, platterY, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[plateRound, plateRound * 0.97, platterH, 80]} />
+          <meshPhysicalMaterial {...goldPlate} />
+        </mesh>
+      ) : (
+        <mesh geometry={plateGeo} position={[0, platterY, 0]} castShadow receiveShadow>
+          <meshPhysicalMaterial {...goldPlate} />
+        </mesh>
+      )}
+      {/* bordo lucido più scuro (rifinitura, solo piatto rotondo) */}
+      {pShape === 'tonda' && (
+        <mesh position={[0, platterY + platterH / 2 - 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[plateRound - 0.03, 0.02, 16, 90]} />
+          <meshStandardMaterial color="#b98e34" metalness={0.95} roughness={0.25} envMapIntensity={1.3} />
+        </mesh>
+      )}
 
       {/* ---- Base biscotto / pan di spagna ---- */}
       <LayerMesh geometry={geos.base} y={baseY}>
@@ -1041,13 +1063,13 @@ function Scene({ spin = true, ...props }) {
         shadow-camera-bottom={-4}
         shadow-bias={-0.0004}
       />
-      <directionalLight position={[-5, 3, -3]} intensity={0.6} color="#dcccff" />
+      <directionalLight position={[-5, 3, -3]} intensity={0.6} color="#e2efec" />
       <directionalLight position={[0, 2, -6]} intensity={0.5} color="#ffe6c8" />
 
       {/* environment auto-contenuto (nessun download esterno) per riflessi cremosi */}
       <Environment resolution={256}>
         <Lightformer form="rect" intensity={3} position={[0, 5, 1]} scale={[8, 4, 1]} color="#ffffff" />
-        <Lightformer form="rect" intensity={1.4} position={[-4, 2, 2]} scale={[4, 6, 1]} color="#f0e6ff" />
+        <Lightformer form="rect" intensity={1.4} position={[-4, 2, 2]} scale={[4, 6, 1]} color="#e9f2ef" />
         <Lightformer form="rect" intensity={1.2} position={[4, 1, -2]} scale={[4, 6, 1]} color="#fff1dc" />
         <Lightformer form="ring" intensity={1.5} position={[0, 3, -4]} scale={3} color="#ffffff" />
       </Environment>
@@ -1061,7 +1083,7 @@ function Scene({ spin = true, ...props }) {
           blur={2.6}
           far={3}
           resolution={512}
-          color="#3a1466"
+          color="#233a36"
         />
       </group>
 

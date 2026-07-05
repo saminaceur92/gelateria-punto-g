@@ -3,17 +3,18 @@
    =========================================================== */
 
 :root {
-  /* Brand palette (estratta dal Canva ufficiale) */
-  --cream: #fff9ed;
-  --cream-warm: #faeae1;
+  /* Brand palette — colori del negozio (salvia/verde acqua + legno + panna + testa di moro).
+     NB: i nomi --violet* sono mantenuti per non toccare tutti i file: ora valgono verde salvia. */
+  --cream: #fbf6ec;
+  --cream-warm: #f1e9da;
   --sage: #a5cdcb;
-  --violet: #b651e4;
-  --violet-deep: #602e9e;
-  --violet-darker: #4905ad;
-  --orange: #eb911e;
-  --ink: #2a1a3e;
-  --grey: #6c6d64;
-  --grey-soft: #b8b6ad;
+  --violet: #5aa39b;        /* verde salvia acceso (accento) */
+  --violet-deep: #357168;   /* verde profondo (bottoni, titoli, testo accento) */
+  --violet-darker: #284f49; /* verde molto scuro (hover) */
+  --orange: #c0894c;        /* legno / caramello caldo (accento) */
+  --ink: #33291f;           /* testa di moro (testo) */
+  --grey: #7a7166;
+  --grey-soft: #bdb7ab;
 
   /* Surfaces */
   --bg: var(--cream);
@@ -32,9 +33,9 @@
   --radius-lg: 36px;
 
   /* Shadows */
-  --shadow-sm: 0 4px 14px rgba(60, 20, 100, 0.08);
-  --shadow: 0 18px 40px -12px rgba(60, 20, 100, 0.18);
-  --shadow-lg: 0 30px 80px -20px rgba(60, 20, 100, 0.28);
+  --shadow-sm: 0 4px 14px rgba(45, 70, 66, 0.08);
+  --shadow: 0 18px 40px -12px rgba(45, 70, 66, 0.18);
+  --shadow-lg: 0 30px 80px -20px rgba(45, 70, 66, 0.28);
 
   /* Motion */
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -238,7 +239,7 @@ p {
   backdrop-filter: saturate(160%) blur(14px);
   -webkit-backdrop-filter: saturate(160%) blur(14px);
   padding-block: 0.7rem;
-  box-shadow: 0 2px 24px rgba(60, 20, 100, 0.06);
+  box-shadow: 0 2px 24px rgba(45, 70, 66, 0.06);
 }
 
 .nav-inner {
@@ -373,7 +374,7 @@ p {
   overflow: hidden;
   width: 100%;
   background:
-    radial-gradient(ellipse at 80% 10%, rgba(182, 81, 228, 0.18), transparent 55%),
+    radial-gradient(ellipse at 80% 10%, rgba(90, 163, 155, 0.18), transparent 55%),
     radial-gradient(ellipse at 10% 90%, rgba(165, 205, 203, 0.35), transparent 55%),
     var(--cream);
 }
@@ -815,7 +816,7 @@ p {
 }
 
 .menu-tab:not(.active) .count {
-  background: rgba(96, 46, 158, 0.1);
+  background: rgba(53, 113, 104, 0.1);
   color: var(--violet-deep);
 }
 
