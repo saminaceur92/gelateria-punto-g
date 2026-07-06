@@ -456,8 +456,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         cliente: config.name,
         ordine: ordineEmail,
         ritiro: config.delivery ? `Consegna a domicilio${quando ? ` il ${quando}` : ''} — ${config.deliveryAddress}` : quando,
-        // Modalità e saluto finale: per rendere la mail dinamica (ritiro vs consegna)
-        modalita: config.delivery ? '🛵 Consegna a domicilio' : '🏪 Ritiro in gelateria',
+        // Modalità (emoji calendario per il ritiro) + data/ora, e saluto finale
+        modalita: (config.delivery ? '🛵 Consegna a domicilio' : '📅 Ritiro in gelateria') + (quando ? ` — ${quando}` : ''),
         saluto: config.delivery
           ? 'Ti consegneremo la torta all’indirizzo e all’orario indicato 🛵'
           : 'Ti aspettiamo in gelateria per il ritiro 🍰',
