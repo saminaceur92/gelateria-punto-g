@@ -127,6 +127,19 @@ export const cakeOccasions = [
   'Festa di famiglia',
 ];
 
+// Allergeni ufficiali (Reg. UE 1169/2011) selezionabili nel configuratore.
+// L'`id` coincide con le chiavi usate negli `allergeni` di gusti/basi/ecc.
+// (per l'ingrigimento a cascata): NON cambiarlo per glutine/latte/uova/soia/frutta a guscio.
+export const cakeAllergens = [
+  { id: 'glutine', name: 'Glutine', emoji: '🌾' },
+  { id: 'latte', name: 'Latte', emoji: '🥛' },
+  { id: 'uova', name: 'Uova', emoji: '🥚' },
+  { id: 'soia', name: 'Soia', emoji: '🌱' },
+  { id: 'arachidi', name: 'Arachidi', emoji: '🥜' },
+  { id: 'frutta a guscio', name: 'Frutta a guscio', emoji: '🌳' },
+  { id: 'solfiti', name: 'Solfiti', emoji: '🍷' },
+];
+
 // Ricette suggerite ("Sorprendimi!")
 export const cakeRecipes = [
   {

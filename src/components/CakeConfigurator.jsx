@@ -159,6 +159,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     cakeFillings,
     cakeCoverings,
     cakeDecorations,
+    cakeAllergens,
     cakeRecipes,
   } = cake;
   const [step, setStep] = useState(0);
@@ -235,15 +236,6 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
   // "Sorprendimi" si sblocca solo dopo aver scelto il numero di persone.
   const canSurprise = !!config.sizeId;
-
-  // Elenco allergeni presenti nel catalogo (per lo step Allergie).
-  const allergyUniverse = useMemo(() => {
-    const s = new Set();
-    [...cakeFlavors, ...cakeBases, ...cakeFillings, ...cakeCoverings].forEach((x) =>
-      (x.allergeni || []).forEach((a) => s.add(a))
-    );
-    return [...s].sort();
-  }, [cakeFlavors, cakeBases, cakeFillings, cakeCoverings]);
 
   const total = useMemo(() => {
     const type = cakeTypes.find((t) => t.id === config.type);
@@ -354,6 +346,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
     const deco = cakeDecorations.find((d) => d.id === config.decoration);
+    // Allergeni scelti dal cliente, in MAIUSCOLO (per riepilogo/Telegram/mail)
+    const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
+    const allergLine = allergNames.length ? allergNames.join(', ').toUpperCase() : '';
 
     const msg = [
       staff ? `🎂 *Nuovo ordine in gelateria — Punto Gi!*` : `🎂 *Nuova richiesta torta — Punto Gi!*`,
@@ -363,6 +358,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
       `*Base:* ${base?.name}${base?.desc ? ` (${base.desc})` : ''}`,
       `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
+      allergLine ? `*ALLERGENI:* ${allergLine}` : '',
       filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
       covering ? `*Copertura:* ${covering.name}` : '',
       `*Decorazione:* ${deco?.name}`,
@@ -443,6 +439,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
         `Base: ${base?.name}`,
         `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
+        allergLine ? `ALLERGENI: ${allergLine}` : '',
         filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
         covering ? `Copertura: ${covering.name}` : '',
         `Decorazione: ${deco?.name}`,
@@ -568,7 +565,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                 >
                   {STEPS[step] === 'type' && <StepType config={config} set={set} />}
                   {STEPS[step] === 'size' && <StepSize config={config} set={set} />}
-                  {STEPS[step] === 'allergies' && <StepAllergies config={config} set={set} allergyUniverse={allergyUniverse} />}
+                  {STEPS[step] === 'allergies' && <StepAllergies config={config} set={set} />}
                   {STEPS[step] === 'shape' && <StepShape config={config} set={set} />}
                   {STEPS[step] === 'base' && <StepBase config={config} set={set} />}
                   {STEPS[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} staff={staff} />}
@@ -744,45 +741,41 @@ function StepSize({ config, set }) {
 }
 
 // Etichette leggibili per gli allergeni tecnici.
-const ALLERGEN_LABEL = {
-  latte: '🥛 Latte / lattosio',
-  uova: '🥚 Uova',
-  glutine: '🌾 Glutine',
-  soia: '🫘 Soia',
-  'frutta a guscio': '🥜 Frutta a guscio',
-};
-
-function StepAllergies({ config, set, allergyUniverse }) {
-  const toggle = (a) => {
-    const has = config.allergies.includes(a);
-    set({ allergies: has ? config.allergies.filter((x) => x !== a) : [...config.allergies, a] });
+function StepAllergies({ config, set }) {
+  const { cakeAllergens } = useCakeData();
+  const toggle = (id) => {
+    const has = config.allergies.includes(id);
+    set({ allergies: has ? config.allergies.filter((x) => x !== id) : [...config.allergies, id] });
   };
+  const chosenNames = config.allergies.map((id) => cakeAllergens.find((a) => a.id === id)?.name || id);
   return (
     <>
       <StepHeader
         stepKey="allergies"
         title="Allergie o intolleranze?"
-        lead="Seleziona cosa evitare: da qui in poi ingrigiamo automaticamente le opzioni che le contengono. Se non ne hai, vai avanti."
+        lead="Seleziona cosa vuoi evitare: lo segnaliamo al laboratorio e ingrigiamo le opzioni incompatibili. Se non ne hai, vai avanti."
       />
       <div className="toggle-row">
-        {allergyUniverse.map((a) => (
+        {cakeAllergens.map((a) => (
           <button
-            key={a}
+            key={a.id}
             type="button"
-            className={`toggle-pill ${config.allergies.includes(a) ? 'active' : ''}`}
-            onClick={() => toggle(a)}
+            className={`toggle-pill ${config.allergies.includes(a.id) ? 'active' : ''}`}
+            onClick={() => toggle(a.id)}
           >
-            {ALLERGEN_LABEL[a] || a}
+            {a.emoji ? `${a.emoji} ` : ''}{a.name}
           </button>
         ))}
       </div>
       {config.allergies.length > 0 && (
         <div className="flavor-hint" style={{ marginTop: '1.2rem' }}>
-          Eviteremo: <strong>{config.allergies.join(', ')}</strong>. Le scelte incompatibili appariranno in grigio.
+          Segnaleremo: <strong>{chosenNames.join(', ')}</strong>. Le scelte incompatibili appariranno in grigio.
         </div>
       )}
-      <p className="cfg-field hint" style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--grey)' }}>
-        Indicazioni sui gusti/basi in catalogo. Per allergie gravi conferma sempre con lo staff al ritiro.
+      <p className="cfg-field hint" style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--grey)', lineHeight: 1.5 }}>
+        ⚠️ <strong>Sicurezza alimentare:</strong> tutti i nostri prodotti sono lavorati nello stesso laboratorio,
+        quindi non possiamo garantire l'assenza totale di contaminazioni crociate — ogni torta può contenere
+        tracce di glutine, latte, uova, soia, frutta a guscio e arachidi. Per allergie gravi conferma sempre con lo staff.
       </p>
     </>
   );
@@ -1194,7 +1187,8 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
 }
 
 function StepReview({ config, total, staff }) {
-  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
+  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations, cakeAllergens } = useCakeData();
+  const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
   const type = cakeTypes.find((t) => t.id === config.type);
   const shape = cakeShapes.find((sh) => sh.id === config.shape);
   const size = cakeSizes.find((s) => s.id === config.sizeId);
@@ -1212,6 +1206,7 @@ function StepReview({ config, total, staff }) {
           <dt>Dimensione</dt><dd>{size?.label} · Ø {size?.diameter}cm</dd>
           <dt>Base</dt><dd>{base?.name}</dd>
           <dt>Strati</dt><dd>{config.flavors.map((f) => f.name).join(' · ') || '—'}</dd>
+          {allergNames.length > 0 && (<><dt>Allergeni</dt><dd>{allergNames.join(', ').toUpperCase()}</dd></>)}
           {filling && filling.id !== 'nessuna' && (<><dt>Inserto</dt><dd>{filling.name}</dd></>)}
           <dt>Copertura</dt><dd>{covering?.name}</dd>
           <dt>Decorazione</dt><dd>{deco?.name}</dd>

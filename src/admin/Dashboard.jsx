@@ -232,6 +232,20 @@ export default function Dashboard() {
           newRow: () => ({ nome: '' }),
         },
       },
+      {
+        key: 'allergeni',
+        label: '⚠️ Allergeni',
+        props: {
+          table: 'allergeni',
+          title: 'Allergeni',
+          subtitle: 'Gli allergeni che il cliente può selezionare nel configuratore torte. Spegni o aggiungi voci qui.',
+          fields: [
+            { key: 'nome', label: 'Nome', type: 'text' },
+            { key: 'emoji', label: 'Emoji', type: 'text' },
+          ],
+          newRow: () => ({ id: uuid(), nome: 'Nuovo allergene', emoji: '⚠️' }),
+        },
+      },
     ],
     [catOptions, firstCat]
   );

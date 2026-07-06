@@ -77,6 +77,13 @@ export async function fetchCakeOptions() {
     );
     if (results.some((r) => r.error)) return null;
     const [forme, tipi, dim, gt, basi, farc, cop, dec, occ] = results.map((r) => r.data || []);
+    // Allergeni: tabella opzionale. Se manca (o errore) si usa la copia di sicurezza,
+    // così il resto del menù non si rompe finché la tabella non viene creata.
+    const { data: allerg, error: eAll } = await supabase
+      .from('allergeni').select('*').eq('attivo', true).order('ordine');
+    const cakeAllergens = (!eAll && allerg && allerg.length)
+      ? allerg.map((a) => ({ id: a.id, name: a.nome, emoji: a.emoji || '' }))
+      : fbCake.cakeAllergens;
     return {
       cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
       cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore })),
@@ -91,6 +98,7 @@ export async function fetchCakeOptions() {
       cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: COV_ALLERG[c.id] || [] })),
       cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '' })),
       cakeOccasions: occ.map((o) => o.nome).filter(Boolean),
+      cakeAllergens,
     };
   } catch {
     return null;
