@@ -436,6 +436,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
     // Conferma via email al cliente (best-effort: non blocca la conferma a schermo)
     if (config.email) {
+      const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
       const ordineEmail = [
         `Tipo: ${type?.name}`,
         `Forma: ${shape?.name}`,
@@ -450,18 +451,18 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         config.candle ? `Candelina: sì` : '',
         config.occasion ? `Occasione: ${config.occasion}` : '',
         config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
+        quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
         config.notes ? `Note: ${config.notes}` : '',
       ].filter(Boolean).join(' · ');
-      const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
       sendOrderEmail({
         email: config.email,
         cliente: config.name,
         ordine: ordineEmail,
         ritiro: config.delivery ? `Consegna a domicilio${quando ? ` il ${quando}` : ''} — ${config.deliveryAddress}` : quando,
         // Modalità e saluto finale: per rendere la mail dinamica (ritiro vs consegna)
-        modalita: config.delivery ? 'Consegna a domicilio' : 'Ritiro in gelateria',
+        modalita: config.delivery ? '🛵 Consegna a domicilio' : '🏪 Ritiro in gelateria',
         saluto: config.delivery
-          ? 'Ti consegneremo la torta all’indirizzo indicato 🛵'
+          ? 'Ti consegneremo la torta all’indirizzo e all’orario indicato 🛵'
           : 'Ti aspettiamo in gelateria per il ritiro 🍰',
         importo: total.toFixed(2),
       });
@@ -1244,7 +1245,7 @@ const SOCIALS = [
 
 function SuccessView({ name, onClose, staff, delivery }) {
   const chiusura = delivery
-    ? 'Ti consegneremo la torta all’indirizzo indicato 🛵'
+    ? 'Ti consegneremo la torta all’indirizzo e all’orario indicato 🛵'
     : 'Ti aspettiamo in gelateria per il ritiro 🍰';
   return (
     <div className="cfg-success">
