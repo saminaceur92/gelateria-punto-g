@@ -22,4 +22,5 @@ export const cakeFillings = pick(g.cakeFillings, fallback.cakeFillings);
 export const cakeCoverings = pick(g.cakeCoverings, fallback.cakeCoverings);
 export const cakeDecorations = pick(g.cakeDecorations, fallback.cakeDecorations);
 export const cakeOccasions = pick(g.cakeOccasions, fallback.cakeOccasions);
+export const cakeAllergens = pick(g.cakeAllergens, fallback.cakeAllergens);
 export const cakeRecipes = pick(g.cakeRecipes, fallback.cakeRecipes);

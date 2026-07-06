@@ -15,6 +15,7 @@ const fallback = {
   cakeCoverings: fb.cakeCoverings,
   cakeDecorations: fb.cakeDecorations,
   cakeOccasions: fb.cakeOccasions,
+  cakeAllergens: fb.cakeAllergens,
 };
 
 const CakeDataCtx = createContext({ ...fallback, cakeRecipes: fb.cakeRecipes });
