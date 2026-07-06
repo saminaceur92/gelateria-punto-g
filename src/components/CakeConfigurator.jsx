@@ -353,12 +353,12 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const msg = [
       staff ? `🎂 *Nuovo ordine in gelateria — Punto Gi!*` : `🎂 *Nuova richiesta torta — Punto Gi!*`,
       ``,
+      allergLine ? `⚠️ *ALLERGENI:* ${allergLine}` : '',
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
       `*Base:* ${base?.name}${base?.desc ? ` (${base.desc})` : ''}`,
       `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
-      allergLine ? `*ALLERGENI:* ${allergLine}` : '',
       filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
       covering ? `*Copertura:* ${covering.name}` : '',
       `*Decorazione:* ${deco?.name}`,
@@ -434,12 +434,12 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     if (config.email) {
       const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
       const ordineEmail = [
+        allergLine ? `ALLERGENI: ${allergLine}` : '',
         `Tipo: ${type?.name}`,
         `Forma: ${shape?.name}`,
         `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
         `Base: ${base?.name}`,
         `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
-        allergLine ? `ALLERGENI: ${allergLine}` : '',
         filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
         covering ? `Copertura: ${covering.name}` : '',
         `Decorazione: ${deco?.name}`,
@@ -1201,12 +1201,12 @@ function StepReview({ config, total, staff }) {
       <StepHeader stepKey="review" title="Riepilogo" lead={staff ? "Controlla i dettagli e crea l'ordine: finirà tra gli ordini da fare." : 'Controlla tutto e conferma il tuo ordine.'} />
       <div className="summary-box">
         <dl>
+          {allergNames.length > 0 && (<><dt>Allergeni</dt><dd>{allergNames.join(', ').toUpperCase()}</dd></>)}
           <dt>Tipo</dt><dd>{type?.name}</dd>
           <dt>Forma</dt><dd>{shape?.name}</dd>
           <dt>Dimensione</dt><dd>{size?.label} · Ø {size?.diameter}cm</dd>
           <dt>Base</dt><dd>{base?.name}</dd>
           <dt>Strati</dt><dd>{config.flavors.map((f) => f.name).join(' · ') || '—'}</dd>
-          {allergNames.length > 0 && (<><dt>Allergeni</dt><dd>{allergNames.join(', ').toUpperCase()}</dd></>)}
           {filling && filling.id !== 'nessuna' && (<><dt>Inserto</dt><dd>{filling.name}</dd></>)}
           <dt>Copertura</dt><dd>{covering?.name}</dd>
           <dt>Decorazione</dt><dd>{deco?.name}</dd>
