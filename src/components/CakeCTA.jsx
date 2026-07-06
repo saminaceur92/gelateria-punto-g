@@ -40,13 +40,25 @@ export default function CakeCTA({ onOpen }) {
 
           <div className="cake-cta-features">
             <span><Sparkles size={14} color="var(--violet-deep)" /> Tutto personalizzato</span>
-            <span><Cake size={14} color="var(--violet-deep)" /> 8 passaggi</span>
-            <span><Clock size={14} color="var(--violet-deep)" /> Min. 24h preavviso</span>
-            <span>✻ Senza glutine disponibile</span>
+            <span><Cake size={14} color="var(--violet-deep)" /> Passo per passo</span>
+            <span><Clock size={14} color="var(--violet-deep)" /> Min. 5 ore</span>
+          </div>
+
+          <div className="cake-cta-diets">
+            <span className="cake-cta-diets-label">Alternative:</span>
+            <button type="button" className="diet-chip" onClick={() => onOpen({ allergies: ['glutine'] })}>
+              ✻ Senza glutine
+            </button>
+            <button type="button" className="diet-chip" onClick={() => onOpen({ allergies: ['latte'] })}>
+              ✻ Senza lattosio
+            </button>
+            <button type="button" className="diet-chip" onClick={() => onOpen({ allergies: ['latte', 'uova'] })}>
+              ✻ Vegana
+            </button>
           </div>
 
           <div className="cake-cta-actions">
-            <button className="btn btn-primary" onClick={onOpen}>
+            <button className="btn btn-primary" onClick={() => onOpen()}>
               <Cake size={18} /> Inizia ora
             </button>
             <a className="btn btn-ghost" href="#contatti">

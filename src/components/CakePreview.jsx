@@ -32,6 +32,15 @@ export default function CakePreview({ config }) {
   const sh = cakeShapes.find((x) => x.id === shape) || cakeShapes[0];
   const t = cakeTypes.find((x) => x.id === type);
   const s = cakeSizes.find((x) => x.id === sizeId);
+
+  // Forma del piatto: rettangolare per la rettangolare (e per 20+ persone),
+  // quadrato per la quadrata, rotondo per tonda e cuore.
+  const persone = s ? (parseInt(s.id, 10) || parseInt(String(s.label), 10) || 0) : 0;
+  const plateShape =
+    persone >= 20 ? 'rettangolare'
+    : shape === 'quadrata' ? 'quadrata'
+    : shape === 'rettangolare' ? 'rettangolare'
+    : 'tonda';
   const b = cakeBases.find((x) => x.id === baseId);
   const filling = cakeFillings.find((x) => x.id === fillingId);
   const covering = cakeCoverings.find((x) => x.id === coveringId);
@@ -66,6 +75,7 @@ export default function CakePreview({ config }) {
         <Suspense fallback={<div className="cake3d-stage cake3d-loading" aria-hidden="true" />}>
           <Cake3D
             shape={shape}
+            plateShape={plateShape}
             flavors={flavors}
             base={b}
             filling={filling}
