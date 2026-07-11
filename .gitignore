@@ -7,3 +7,7 @@ dist-ssr
 .DS_Store
 *.log
 _research
+
+# Supabase CLI
+supabase/.temp
+.branches
