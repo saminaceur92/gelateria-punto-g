@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, Cake, Shuffle, Instagram, Facebook, MessageCircle } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Check, Cake, Shuffle, Instagram, Facebook, MessageCircle, CreditCard } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
@@ -399,74 +399,88 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
     }
 
-    // Niente più WhatsApp: l'ordine viene salvato e il sistema avvisa la
-    // gelateria su Telegram in automatico (trigger sul database).
-    if (!supabase) {
-      setSent(true);
-      return;
-    }
-    setSubmitError('');
-    setSubmitting(true);
+    // Riga ordine (senza immagine). Per gli ordini pagati la salva il webhook
+    // (imposta lì totale/immagine); lo staff invece salva subito qui.
     const { photo, ...dettagli } = config;
-    const { error } = await supabase.from('ordini').insert({
+    const insertBase = {
       stato: 'da_fare',
       cliente_nome: config.name,
       cliente_telefono: config.phone,
       cliente_email: config.email || null,
       ritiro_data: config.pickupDate || null,
       ritiro_ora: config.pickupTime || null,
-      totale: total,
       tipo: type?.name || null,
       riepilogo: msg,
-      immagine,
       dettagli: { ...dettagli, conFoto: !!photo },
       note: config.notes || null,
-    });
-    if (error) {
-      console.warn('[ordine] non salvato:', error.message);
-      setSubmitError("Non è stato possibile inviare l'ordine. Controlla la connessione e riprova.");
+    };
+
+    // Parametri email di conferma (staff: subito; cliente: al ritorno dal pagamento)
+    const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
+    const ordineEmail = [
+      allergLine ? `ALLERGENI: ${allergLine}` : '',
+      `Tipo: ${type?.name}`,
+      `Forma: ${shape?.name}`,
+      `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
+      `Base: ${base?.name}`,
+      `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
+      filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
+      covering ? `Copertura: ${covering.name}` : '',
+      `Decorazione: ${deco?.name}`,
+      config.message ? `Scritta: "${config.message}"` : '',
+      config.photo ? `Foto su cialda: sì` : '',
+      config.candle ? `Candelina: sì` : '',
+      config.occasion ? `Occasione: ${config.occasion}` : '',
+      config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
+      quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
+      config.notes ? `Note: ${config.notes}` : '',
+    ].filter(Boolean).join(' · ');
+    const emailParams = config.email ? {
+      email: config.email,
+      cliente: config.name,
+      ordine: ordineEmail,
+      ritiro: config.delivery ? `Consegna a domicilio${quando ? ` il ${quando}` : ''} — ${config.deliveryAddress}` : quando,
+      modalita: (config.delivery ? '🛵 Consegna a domicilio' : '📅 Ritiro in gelateria') + (quando ? ` — ${quando}` : ''),
+      saluto: config.delivery
+        ? 'Ti consegneremo la torta all’indirizzo e all’orario indicato 🛵'
+        : 'Ti aspettiamo in gelateria per il ritiro 🍰',
+      importo: total.toFixed(2),
+    } : null;
+
+    if (!supabase) { setSent(true); return; }
+    setSubmitError('');
+    setSubmitting(true);
+
+    // STAFF: ordine creato in gelateria, nessun pagamento online → salva subito.
+    if (staff) {
+      const { error } = await supabase.from('ordini').insert({ ...insertBase, totale: total, immagine });
+      if (error) {
+        console.warn('[ordine] non salvato:', error.message);
+        setSubmitError("Non è stato possibile creare l'ordine. Riprova.");
+        setSubmitting(false);
+        return;
+      }
+      logAction('Torta creata', config.name || 'cliente');
+      if (emailParams) sendOrderEmail(emailParams);
       setSubmitting(false);
+      setSent(true);
       return;
     }
-    if (staff) logAction('Torta creata', config.name || 'cliente');
 
-    // Conferma via email al cliente (best-effort: non blocca la conferma a schermo)
-    if (config.email) {
-      const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
-      const ordineEmail = [
-        allergLine ? `ALLERGENI: ${allergLine}` : '',
-        `Tipo: ${type?.name}`,
-        `Forma: ${shape?.name}`,
-        `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
-        `Base: ${base?.name}`,
-        `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
-        filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
-        covering ? `Copertura: ${covering.name}` : '',
-        `Decorazione: ${deco?.name}`,
-        config.message ? `Scritta: "${config.message}"` : '',
-        config.photo ? `Foto su cialda: sì` : '',
-        config.candle ? `Candelina: sì` : '',
-        config.occasion ? `Occasione: ${config.occasion}` : '',
-        config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
-        quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
-        config.notes ? `Note: ${config.notes}` : '',
-      ].filter(Boolean).join(' · ');
-      sendOrderEmail({
-        email: config.email,
-        cliente: config.name,
-        ordine: ordineEmail,
-        ritiro: config.delivery ? `Consegna a domicilio${quando ? ` il ${quando}` : ''} — ${config.deliveryAddress}` : quando,
-        // Modalità (emoji calendario per il ritiro) + data/ora, e saluto finale
-        modalita: (config.delivery ? '🛵 Consegna a domicilio' : '📅 Ritiro in gelateria') + (quando ? ` — ${quando}` : ''),
-        saluto: config.delivery
-          ? 'Ti consegneremo la torta all’indirizzo e all’orario indicato 🛵'
-          : 'Ti aspettiamo in gelateria per il ritiro 🍰',
-        importo: total.toFixed(2),
+    // CLIENTE: paga con Stripe. L'ordine lo salva il webhook a pagamento avvenuto
+    // (+ trigger Telegram); l'email di conferma parte al ritorno sul sito.
+    try {
+      if (emailParams) sessionStorage.setItem('pg_order_email', JSON.stringify(emailParams));
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { config, insert: insertBase },
       });
+      if (error) throw error;
+      if (data?.url) { window.location.href = data.url; return; }
+      throw new Error(data?.error || 'Risposta non valida dal server');
+    } catch (e) {
+      setSubmitError(e?.message || 'Errore durante il pagamento. Riprova.');
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
-    setSent(true);
   };
 
   if (!open) return null;
@@ -610,7 +624,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                   </button>
                 ) : (
                   <button className="cfg-btn cfg-btn-send" onClick={submitOrder} disabled={!canNext || submitting}>
-                    {submitting ? 'Invio…' : (<><Check size={16} /> {staff ? 'Crea ordine' : 'Conferma ordine'}</>)}
+                    {submitting
+                      ? (staff ? 'Invio…' : 'Attendi…')
+                      : staff
+                        ? (<><Check size={16} /> Crea ordine</>)
+                        : (<><CreditCard size={16} /> Ordina e paga €{total.toFixed(2)}</>)}
                   </button>
                 )}
               </div>
