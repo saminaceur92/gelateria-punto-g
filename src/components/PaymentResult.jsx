@@ -1,7 +1,7 @@
 import { CheckCircle2, XCircle } from 'lucide-react';
 
 // Overlay mostrato al ritorno da Stripe Checkout (?pagamento=ok | annullato).
-export default function PaymentResult({ result, onClose }) {
+export default function PaymentResult({ result, delivery = false, onClose }) {
   if (!result) return null;
   const ok = result === 'ok';
 
@@ -32,7 +32,7 @@ export default function PaymentResult({ result, onClose }) {
         </h2>
         <p style={{ color: 'var(--grey, #6b6b7b)', fontSize: '0.95rem', lineHeight: 1.5, maxWidth: 380, margin: '0 auto 1.4rem' }}>
           {ok
-            ? 'Grazie! Abbiamo ricevuto il tuo ordine e il pagamento. Ti arriva la conferma via email e prepariamo tutto per il ritiro.'
+            ? `Grazie! Abbiamo ricevuto il tuo ordine e il pagamento. Ti arriva la conferma via email e prepariamo tutto per ${delivery ? 'la consegna' : 'il ritiro'}.`
             : 'Nessun importo è stato addebitato. Puoi riprovare quando vuoi.'}
         </p>
         <button

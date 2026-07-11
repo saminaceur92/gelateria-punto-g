@@ -471,6 +471,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // (+ trigger Telegram); l'email di conferma parte al ritorno sul sito.
     try {
       if (emailParams) sessionStorage.setItem('pg_order_email', JSON.stringify(emailParams));
+      sessionStorage.setItem('pg_order_delivery', config.delivery ? '1' : '0');
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { config, insert: insertBase },
       });

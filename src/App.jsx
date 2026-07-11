@@ -25,6 +25,8 @@ export default function App() {
   const [payResult, setPayResult] = useState(
     () => new URLSearchParams(window.location.search).get('pagamento'),
   );
+  // Consegna a domicilio? (salvato prima del redirect: cambia il testo di conferma)
+  const [payDelivery] = useState(() => sessionStorage.getItem('pg_order_delivery') === '1');
   useEffect(() => {
     if (payResult === 'ok') {
       // Email di conferma (best-effort): i parametri sono stati salvati prima del redirect.
@@ -36,6 +38,7 @@ export default function App() {
           sessionStorage.removeItem('pg_order_email');
         }
       } catch { /* ignora */ }
+      sessionStorage.removeItem('pg_order_delivery');
     }
     if (payResult) window.history.replaceState({}, '', window.location.pathname);
   }, [payResult]);
@@ -59,7 +62,7 @@ export default function App() {
       <CakeDataProvider>
         <CakeConfigurator open={cfg.open} initial={cfg.initial} onClose={closeCfg} />
       </CakeDataProvider>
-      <PaymentResult result={payResult} onClose={clearPayResult} />
+      <PaymentResult result={payResult} delivery={payDelivery} onClose={clearPayResult} />
     </>
   );
 }
