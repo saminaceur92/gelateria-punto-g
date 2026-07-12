@@ -18,8 +18,7 @@ export default function Hero({ onOpenConfigurator }) {
 
           <motion.h1 {...fade(0.2)} style={{ marginTop: '1.5rem' }}>
             Il gelato<br />
-            che <span className="accent">ti emoziona</span>
-            <span className="dot">.</span>
+            che <span className="accent">ti emoziona<span className="dot">.</span></span>
           </motion.h1>
 
           <motion.p className="lead" {...fade(0.4)} style={{ marginTop: '1.8rem' }}>
