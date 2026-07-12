@@ -84,17 +84,14 @@ export default function Dashboard() {
         props: {
           table: 'gusti',
           title: 'Gusti del menù gelato',
-          subtitle: 'I gusti mostrati nella "carta del gelato". Spegni quelli finiti, aggiungi i nuovi.',
+          subtitle: 'I gusti mostrati nella "carta del gelato". Spegni quelli finiti, aggiungi i nuovi. I badge dieta (Vegan / Senza glutine / Senza lattosio) si gestiscono ora nella scheda Allergeni: il menu li prende da lì.',
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'categoria_id', label: 'Categoria', type: 'select', options: catOptions },
             { key: 'colore', label: 'Colore', type: 'color' },
             { key: 'tag', label: 'Tag', type: 'select', options: TAG_OPTIONS },
-            { key: 'vegan', label: 'Vegan', type: 'checkbox' },
-            { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
-            { key: 'senza_lattosio', label: 'Senza lattosio', type: 'checkbox' },
           ],
-          newRow: () => ({ nome: 'Nuovo gusto', categoria_id: firstCat, colore: '#f5d97a', tag: null, vegan: false, senza_glutine: false, senza_lattosio: false }),
+          newRow: () => ({ nome: 'Nuovo gusto', categoria_id: firstCat, colore: '#f5d97a', tag: null }),
         },
       },
       {
@@ -118,11 +115,12 @@ export default function Dashboard() {
             { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'checkboxes', options: ALLERGENI_OPTIONS },
             { key: 'vegan', label: 'Vegan', type: 'checkbox' },
             { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
+            { key: 'senza_lattosio', label: 'Senza lattosio', type: 'checkbox' },
             { key: 'senza_zucchero', label: 'Senza zuccheri', type: 'checkbox' },
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
             { key: 'ordine', label: 'Ordine', type: 'number' },
           ],
-          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_zucchero: false, attivo: true, ordine: 100 }),
+          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, attivo: true, ordine: 100 }),
         },
       },
       {
