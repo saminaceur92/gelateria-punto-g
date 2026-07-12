@@ -32,6 +32,7 @@ export default function Footer() {
               <li><a href="#menu">Gusti</a></li>
               <li><a href="#gallery">Gallery</a></li>
               <li><a href="#contatti">Contatti</a></li>
+              <li><a href="/allergeni">Allergeni</a></li>
             </ul>
           </div>
 
