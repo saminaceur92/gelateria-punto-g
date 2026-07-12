@@ -86,6 +86,34 @@ export default function Dashboard() {
         },
       },
       {
+        key: 'allergeni',
+        label: '🛡️ Allergeni',
+        props: {
+          table: 'allergeni_prodotti',
+          title: 'Allergeni per gusto',
+          subtitle: 'Alimenta la pagina pubblica "Allergeni". Scrivi gli allergeni separati da virgola (es. "Latte, Uova"). ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
+          fields: [
+            { key: 'categoria', label: 'Categoria', type: 'select', options: [
+              { value: 'base', label: 'Basi' },
+              { value: 'crema', label: 'Creme Classiche' },
+              { value: 'golosone', label: 'Golosoni' },
+              { value: 'frutta-vegan', label: 'Frutta e Vegan' },
+            ] },
+            { key: 'gusto', label: 'Gusto', type: 'text' },
+            { key: 'base', label: 'Base', type: 'text', placeholder: 'Bianca / Vegan / Frutta' },
+            { key: 'ingredienti', label: 'Ingredienti', type: 'text' },
+            { key: 'allergeni_certi', label: 'Allergeni presenti', type: 'text', placeholder: 'Latte, Uova' },
+            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'text', placeholder: 'Soia, Arachidi' },
+            { key: 'vegan', label: 'Vegan', type: 'checkbox' },
+            { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
+            { key: 'senza_zucchero', label: 'Senza zuccheri', type: 'checkbox' },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+            { key: 'ordine', label: 'Ordine', type: 'number' },
+          ],
+          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_zucchero: false, attivo: true, ordine: 100 }),
+        },
+      },
+      {
         key: 'orari',
         label: '🕒 Orari',
         props: {
