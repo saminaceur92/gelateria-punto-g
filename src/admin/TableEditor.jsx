@@ -7,9 +7,34 @@ import { logAction } from '../lib/log';
  * props:
  *  - table: nome tabella Supabase
  *  - title, subtitle
- *  - fields: [{ key, label, type: 'text'|'number'|'color'|'select', options?, placeholder? }]
+ *  - fields: [{ key, label, type: 'text'|'number'|'color'|'select'|'checkbox'|'checkboxes', options?, placeholder? }]
+ *    'checkboxes' = spunte multiple salvate come stringa separata da virgola (options: [{value, label?, emoji?}])
  *  - newRow: () => oggetto coi valori di default per una nuova riga
  */
+
+// Spunte multiple <-> stringa "A, B, C". Preserva eventuali valori non standard.
+function MultiCheckField({ value, options, onChange }) {
+  const current = (value || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const known = options.map((o) => o.value);
+  const toggle = (val, on) => {
+    const set = new Set(current);
+    if (on) set.add(val); else set.delete(val);
+    const ordered = options.filter((o) => set.has(o.value)).map((o) => o.value);
+    const extras = [...set].filter((v) => !known.includes(v)); // non perdere valori scritti a mano
+    onChange([...ordered, ...extras].join(', '));
+  };
+  return (
+    <span className="adm-checks" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem' }}>
+      {options.map((o) => (
+        <label key={o.value} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer' }}>
+          <input type="checkbox" checked={current.includes(o.value)} onChange={(e) => toggle(o.value, e.target.checked)} />
+          <span>{o.emoji ? `${o.emoji} ` : ''}{o.label || o.value}</span>
+        </label>
+      ))}
+    </span>
+  );
+}
+
 export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
@@ -140,6 +165,12 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                       className="adm-check"
                       checked={!!row[f.key]}
                       onChange={(e) => edit(row.id, f.key, e.target.checked)}
+                    />
+                  ) : f.type === 'checkboxes' ? (
+                    <MultiCheckField
+                      value={row[f.key]}
+                      options={f.options}
+                      onChange={(v) => edit(row.id, f.key, v)}
                     />
                   ) : (
                     <input

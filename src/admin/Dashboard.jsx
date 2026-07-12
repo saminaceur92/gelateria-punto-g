@@ -15,6 +15,18 @@ const TAG_OPTIONS = [
   { value: 'stagione', label: 'stagione' },
 ];
 
+// I 7 allergeni (Reg. UE 1169/2011). I `value` DEVONO combaciare con la pagina
+// pubblica /allergeni (ALLERGEN_META in src/pages/Allergeni.jsx) per icone e link.
+const ALLERGENI_OPTIONS = [
+  { value: 'Glutine', emoji: '🌾' },
+  { value: 'Latte', emoji: '🥛' },
+  { value: 'Uova', emoji: '🥚' },
+  { value: 'Soia', emoji: '🫛' },
+  { value: 'Arachidi', emoji: '🥜' },
+  { value: 'Frutta a guscio', emoji: '🌰' },
+  { value: 'Solfiti', emoji: '🍷' },
+];
+
 export default function Dashboard() {
   const { user, signOut, isOwner } = useAuth();
   const [cats, setCats] = useState([]);
@@ -91,7 +103,7 @@ export default function Dashboard() {
         props: {
           table: 'allergeni_prodotti',
           title: 'Allergeni per gusto',
-          subtitle: 'Alimenta la pagina pubblica "Allergeni". Scrivi gli allergeni separati da virgola (es. "Latte, Uova"). ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
+          subtitle: 'Alimenta la pagina pubblica "Allergeni". Spunta gli allergeni presenti e le possibili tracce per ogni gusto. ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
           fields: [
             { key: 'categoria', label: 'Categoria', type: 'select', options: [
               { value: 'base', label: 'Basi' },
@@ -102,8 +114,8 @@ export default function Dashboard() {
             { key: 'gusto', label: 'Gusto', type: 'text' },
             { key: 'base', label: 'Base', type: 'text', placeholder: 'Bianca / Vegan / Frutta' },
             { key: 'ingredienti', label: 'Ingredienti', type: 'text' },
-            { key: 'allergeni_certi', label: 'Allergeni presenti', type: 'text', placeholder: 'Latte, Uova' },
-            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'text', placeholder: 'Soia, Arachidi' },
+            { key: 'allergeni_certi', label: 'Allergeni presenti', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'checkboxes', options: ALLERGENI_OPTIONS },
             { key: 'vegan', label: 'Vegan', type: 'checkbox' },
             { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
             { key: 'senza_zucchero', label: 'Senza zuccheri', type: 'checkbox' },
@@ -258,20 +270,6 @@ export default function Dashboard() {
           title: 'Occasioni',
           fields: [{ key: 'nome', label: 'Nome', type: 'text' }],
           newRow: () => ({ nome: '' }),
-        },
-      },
-      {
-        key: 'allergeni',
-        label: '⚠️ Allergeni',
-        props: {
-          table: 'allergeni',
-          title: 'Allergeni',
-          subtitle: 'Gli allergeni che il cliente può selezionare nel configuratore torte. Spegni o aggiungi voci qui.',
-          fields: [
-            { key: 'nome', label: 'Nome', type: 'text' },
-            { key: 'emoji', label: 'Emoji', type: 'text' },
-          ],
-          newRow: () => ({ id: uuid(), nome: 'Nuovo allergene', emoji: '⚠️' }),
         },
       },
     ],
