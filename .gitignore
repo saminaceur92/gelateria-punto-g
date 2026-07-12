@@ -11,3 +11,6 @@ _research
 # Supabase CLI
 supabase/.temp
 .branches
+
+# Foto sorgente originali (non parte del sito)
+immagini gallery/

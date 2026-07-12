@@ -1,13 +1,10 @@
-import { motion } from 'framer-motion';
+import galleryImages from '../data/galleryImages';
 
-const items = [
-  { src: '/hero-cup.jpg', caption: 'Pistacchio & cremino', cls: 'g1' },
-  { src: '/torte.jpg', caption: 'Torte gelato', cls: 'g2' },
-  { src: '/semifreddi.jpg', caption: 'Semifreddi', cls: 'g3' },
-  { src: '/pasticcini.jpg', caption: 'Pasticcini', cls: 'g4' },
-  { src: '/gelato.jpg', caption: 'Gusti del giorno', cls: 'g5' },
-  { src: '/hero-cup.jpg', caption: 'In coppetta o cono', cls: 'g6' },
-];
+// Se il batch non ha ancora generato le foto, usa i placeholder esistenti.
+const FALLBACK = ['/hero-cup.jpg', '/torte.jpg', '/semifreddi.jpg', '/pasticcini.jpg', '/gelato.jpg'];
+const imgs = galleryImages && galleryImages.length ? galleryImages : FALLBACK;
+// Duplico la lista per uno scorrimento a nastro senza stacchi.
+const loop = [...imgs, ...imgs];
 
 export default function Gallery() {
   return (
@@ -22,20 +19,14 @@ export default function Gallery() {
             Ogni vassoio è una piccola opera. Lasciati ispirare e scegli la tua coccola.
           </p>
         </div>
+      </div>
 
-        <div className="gallery-grid">
-          {items.map((it, i) => (
-            <motion.div
-              key={i}
-              className={`gallery-item ${it.cls}`}
-              initial={{ opacity: 0, scale: 0.96 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.7, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <img src={it.src} alt={it.caption} loading="lazy" />
-              <span className="caption">{it.caption}</span>
-            </motion.div>
+      <div className="gallery-scroll" aria-label="Le nostre creazioni">
+        <div className="gallery-track">
+          {loop.map((src, i) => (
+            <figure className="gallery-shot" key={i} aria-hidden={i >= imgs.length ? 'true' : undefined}>
+              <img src={src} alt="Creazione della Gelateria Punto Gi!" loading="lazy" />
+            </figure>
           ))}
         </div>
       </div>
