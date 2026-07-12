@@ -829,7 +829,7 @@ function Candle({ y }) {
       {/* righine decorative */}
       <mesh position={[0, 0.28, 0]}>
         <cylinderGeometry args={[0.0365, 0.0365, 0.03, 20]} />
-        <meshStandardMaterial color="#5aa39b" roughness={0.5} />
+        <meshStandardMaterial color="#7cb7d7" roughness={0.5} />
       </mesh>
       <mesh position={[0, 0.16, 0]}>
         <cylinderGeometry args={[0.0365, 0.0365, 0.03, 20]} />

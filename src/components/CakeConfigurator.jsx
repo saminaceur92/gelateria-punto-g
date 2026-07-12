@@ -1241,7 +1241,7 @@ function StepReview({ config, total, staff }) {
         </dl>
       </div>
       {!staff && (
-        <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(90,163,155,0.2)' }}>
+        <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(124,183,215,0.2)' }}>
           <p style={{ margin: 0, fontSize: '1rem', color: 'var(--ink)' }}>
             <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{total.toFixed(2)}</strong>
           </p>
