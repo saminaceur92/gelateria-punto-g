@@ -17,11 +17,29 @@ const COV_ALLERG = allergMap(fbCake.cakeCoverings, 'id');
 export async function fetchMenu() {
   if (!supabase) return null;
   try {
-    const [{ data: cats, error: e1 }, { data: gusti, error: e2 }] = await Promise.all([
+    const [{ data: cats, error: e1 }, { data: gusti, error: e2 }, ap] = await Promise.all([
       supabase.from('categorie').select('*').eq('attivo', true).order('ordine'),
       supabase.from('gusti').select('*').eq('attivo', true).order('ordine'),
+      // Flag dieta gestiti nella scheda "Allergeni" (per gusto). Non blocca il menu se assente.
+      supabase.from('allergeni_prodotti').select('gusto, vegan, senza_glutine, senza_lattosio'),
     ]);
     if (e1 || e2 || !cats || !gusti) return null;
+    // Mappa gusto->flag dalla scheda Allergeni (per nome). Il menu li prende da lì;
+    // se un gusto non ha ancora la scheda allergeni, fallback ai flag storici del gusto.
+    const norm = (s) => (s || '').trim().toLowerCase();
+    const apByName = {};
+    (ap && ap.data ? ap.data : []).forEach((r) => { apByName[norm(r.gusto)] = r; });
+    const dietOf = (g) => {
+      const a = apByName[norm(g.nome)];
+      const vegan = a ? a.vegan : g.vegan;
+      const sg = a ? a.senza_glutine : g.senza_glutine;
+      const sl = a ? a.senza_lattosio : g.senza_lattosio;
+      return [
+        vegan && { short: 'VEG', label: 'Vegan' },
+        sg && { short: 'SG', label: 'Senza glutine' },
+        sl && { short: 'SL', label: 'Senza lattosio' },
+      ].filter(Boolean);
+    };
     return cats
       .map((c) => ({
         id: c.id,
@@ -33,11 +51,7 @@ export async function fetchMenu() {
             name: g.nome,
             color: g.colore,
             tag: g.tag ?? null,
-            diet: [
-              g.vegan && { short: 'VEG', label: 'Vegan' },
-              g.senza_glutine && { short: 'SG', label: 'Senza glutine' },
-              g.senza_lattosio && { short: 'SL', label: 'Senza lattosio' },
-            ].filter(Boolean),
+            diet: dietOf(g),
           })),
       }))
       .filter((c) => c.flavors.length > 0);
