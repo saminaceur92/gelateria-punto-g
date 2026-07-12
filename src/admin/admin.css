@@ -1,7 +1,7 @@
 /* ───────── Dashboard /admin ───────── */
 .adm, .adm-login, .adm-splash {
-  --v: #5aa39b;
-  --v-deep: #357168;
+  --v: #7cb7d7;
+  --v-deep: #2c7699;
   --ink: #33291f;
   --cream: #fbf7ef;
   --line: #e6e0d4;
@@ -13,7 +13,7 @@
 
 /* Login */
 .adm-login { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, #e6f0ee, #fbf7ef); padding: 1.5rem; }
-.adm-login-card { width: 100%; max-width: 420px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 2rem; box-shadow: 0 20px 50px rgba(53,113,104,0.12); }
+.adm-login-card { width: 100%; max-width: 420px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 2rem; box-shadow: 0 20px 50px rgba(44, 118, 153,0.12); }
 .adm-login-brand { display: flex; gap: .5rem; align-items: baseline; margin-bottom: 1.4rem; }
 .adm-login-brand strong { color: var(--v-deep); font-size: 1.3rem; }
 .adm-login-brand span { color: #999; font-size: .85rem; }
