@@ -395,6 +395,9 @@ p {
 .hero h1 {
   font-style: italic;
   font-weight: 900;
+  /* max ridotto: a 7.5rem la parola "emoziona." sborda la colonna e il titolo
+     si spezzava male (che / ti / emoziona). */
+  font-size: clamp(2.6rem, 7vw, 6rem);
 }
 
 .hero h1 .accent {
@@ -541,6 +544,12 @@ p {
 @keyframes scroll-line {
   0%, 100% { transform: scaleY(0.4); transform-origin: top; }
   50% { transform: scaleY(1); transform-origin: top; }
+}
+
+/* Su mobile l'hero è impilato: lo "Scrolla" finirebbe dietro la coppetta.
+   (Regola DOPO la base .scroll-cue, altrimenti verrebbe sovrascritta.) */
+@media (max-width: 920px) {
+  .scroll-cue { display: none; }
 }
 
 /* Marquee */
@@ -777,8 +786,13 @@ p {
   font-size: 0.95rem;
   line-height: 1.4;
 }
+.stat-card { min-width: 0; }
 @media (max-width: 860px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  /* i numeri grandi (+12.000kg) non stanno in mezza schermata: una colonna */
+  .stats-grid { grid-template-columns: 1fr; max-width: 380px; margin-inline: auto; }
 }
 @media (max-width: 460px) {
   .stat-card { padding: 1.4rem 0.9rem; }
