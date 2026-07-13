@@ -49,6 +49,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 92px; /* le ancore non finiscono sotto l'header fisso */
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
   width: 100%;
@@ -338,13 +339,14 @@ p {
   inset: 0;
   background: var(--violet-deep);
   color: var(--cream);
-  z-index: 99;
+  z-index: 200; /* sopra l'header (100), così lo copre invece di sovrapporsi */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 1.6rem;
-  padding: 2rem;
+  padding: 5rem 2rem 3rem; /* spazio in alto per la X di chiusura */
+  overflow-y: auto;
 }
 
 .mobile-menu a {
@@ -619,7 +621,9 @@ p {
 }
 
 @media (max-width: 900px) {
-  .about-images { max-width: 480px; margin-inline: auto; }
+  /* width:100% è necessario: senza, con margin-inline:auto e figli in position:absolute
+     il box collassa a 0×0 (le foto spariscono e il badge finisce sul testo). */
+  .about-images { width: 100%; max-width: 480px; margin-inline: auto; }
   .about-badge { width: 100px; height: 100px; font-size: 0.8rem; top: -0.5rem; right: 0; }
 }
 
@@ -690,6 +694,96 @@ p {
 }
 
 .feature p { font-size: 0.85rem; line-height: 1.45; }
+
+/* ===========================================================
+   NUMERI / PRODUZIONE
+   =========================================================== */
+.stats-band {
+  background: var(--cream-warm);
+  overflow: hidden;
+}
+.stats-band::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -8%;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, var(--sage) 0%, transparent 70%);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+.stats-head {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto clamp(2.5rem, 5vw, 4rem);
+}
+.stats-head .eyebrow { justify-content: center; }
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(1rem, 2vw, 1.6rem);
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid rgba(44, 118, 153, 0.14);
+  border-radius: var(--radius);
+  padding: clamp(1.6rem, 2.4vw, 2.4rem) 1.4rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+.stat-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow);
+}
+.stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--sage);
+  color: var(--violet-deep);
+  margin-bottom: 1.1rem;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 4.2vw, 3.4rem);
+  line-height: 1;
+  color: var(--violet-deep);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.08em;
+  min-height: 1.1em;
+}
+.stat-value .affix {
+  font-size: 0.5em;
+  font-weight: 600;
+  color: var(--violet);
+}
+.stat-value .stat-word {
+  font-size: 0.62em;
+  font-style: italic;
+}
+.stat-label {
+  margin-top: 0.8rem;
+  color: var(--grey);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+@media (max-width: 860px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 460px) {
+  .stat-card { padding: 1.4rem 0.9rem; }
+  .stat-icon { width: 44px; height: 44px; margin-bottom: 0.8rem; }
+}
 
 /* ===========================================================
    SERVICES

@@ -79,28 +79,12 @@ export default function Dashboard() {
   const sections = useMemo(
     () => [
       {
-        key: 'gusti',
-        label: '🍦 Gusti (menù)',
-        props: {
-          table: 'gusti',
-          title: 'Gusti del menù gelato',
-          subtitle: 'I gusti mostrati nella "carta del gelato". Spegni quelli finiti, aggiungi i nuovi. I badge dieta (Vegan / Senza glutine / Senza lattosio) si gestiscono ora nella scheda Allergeni: il menu li prende da lì.',
-          fields: [
-            { key: 'nome', label: 'Nome', type: 'text' },
-            { key: 'categoria_id', label: 'Categoria', type: 'select', options: catOptions },
-            { key: 'colore', label: 'Colore', type: 'color' },
-            { key: 'tag', label: 'Tag', type: 'select', options: TAG_OPTIONS },
-          ],
-          newRow: () => ({ nome: 'Nuovo gusto', categoria_id: firstCat, colore: '#f5d97a', tag: null }),
-        },
-      },
-      {
         key: 'allergeni',
-        label: '🛡️ Allergeni',
+        label: '🍦 Gusti e allergeni',
         props: {
           table: 'allergeni_prodotti',
-          title: 'Allergeni per gusto',
-          subtitle: 'Alimenta la pagina pubblica "Allergeni". Spunta gli allergeni presenti e le possibili tracce per ogni gusto. ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
+          title: 'Gusti e allergeni',
+          subtitle: 'Lista unica: alimenta sia la carta del gelato (menu) sia la pagina pubblica "Allergeni". Per ogni gusto imposta categoria, colore, allergeni e flag dieta. ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
           fields: [
             { key: 'categoria', label: 'Categoria', type: 'select', options: [
               { value: 'base', label: 'Basi' },
@@ -109,6 +93,8 @@ export default function Dashboard() {
               { value: 'frutta-vegan', label: 'Frutta e Vegan' },
             ] },
             { key: 'gusto', label: 'Gusto', type: 'text' },
+            { key: 'colore', label: 'Colore', type: 'color' },
+            { key: 'tag', label: 'Tag', type: 'select', options: TAG_OPTIONS },
             { key: 'base', label: 'Base', type: 'text', placeholder: 'Bianca / Vegan / Frutta' },
             { key: 'ingredienti', label: 'Ingredienti', type: 'text' },
             { key: 'allergeni_certi', label: 'Allergeni presenti', type: 'checkboxes', options: ALLERGENI_OPTIONS },
@@ -117,10 +103,11 @@ export default function Dashboard() {
             { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
             { key: 'senza_lattosio', label: 'Senza lattosio', type: 'checkbox' },
             { key: 'senza_zucchero', label: 'Senza zuccheri', type: 'checkbox' },
+            { key: 'per_torte', label: '🎂 Per torte', type: 'checkbox' },
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
             { key: 'ordine', label: 'Ordine', type: 'number' },
           ],
-          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, attivo: true, ordine: 100 }),
+          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', colore: '#f5d97a', tag: null, base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, per_torte: false, attivo: true, ordine: 100 }),
         },
       },
       {
@@ -138,20 +125,6 @@ export default function Dashboard() {
         },
       },
       {
-        key: 'gusti_torte',
-        label: '🎂 Gusti torte',
-        props: {
-          table: 'gusti_torte',
-          title: 'Gusti selezionabili per le torte',
-          subtitle: 'Lista separata dal menù: i gusti scegliibili nel configuratore torte.',
-          fields: [
-            { key: 'nome', label: 'Nome', type: 'text' },
-            { key: 'colore', label: 'Colore', type: 'color' },
-          ],
-          newRow: () => ({ nome: 'Nuovo gusto', colore: '#f5d97a' }),
-        },
-      },
-      {
         key: 'basi',
         label: 'Basi',
         props: {
@@ -162,8 +135,9 @@ export default function Dashboard() {
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuova base', descrizione: '', supplemento: 0, colore: '#e8d2a8' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuova base', descrizione: '', supplemento: 0, colore: '#e8d2a8', allergeni: '' }),
         },
       },
       {
@@ -177,8 +151,9 @@ export default function Dashboard() {
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuova farcitura', descrizione: '', supplemento: 0, colore: '#c8842b' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuova farcitura', descrizione: '', supplemento: 0, colore: '#c8842b', allergeni: '' }),
         },
       },
       {
@@ -194,8 +169,9 @@ export default function Dashboard() {
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuova copertura', descrizione: '', supplemento: 0, colore: '#fff8e6' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuova copertura', descrizione: '', supplemento: 0, colore: '#fff8e6', allergeni: '' }),
         },
       },
       {
@@ -210,8 +186,9 @@ export default function Dashboard() {
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'emoji', label: 'Emoji', type: 'text' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuovo topping', descrizione: '', emoji: '✨' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuovo topping', descrizione: '', emoji: '✨', allergeni: '' }),
         },
       },
       {
@@ -225,8 +202,9 @@ export default function Dashboard() {
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'prezzo_base', label: 'Prezzo base €', type: 'number' },
             { key: 'colore', label: 'Colore', type: 'color' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuovo tipo', descrizione: '', prezzo_base: 0, immagine: '/torte.jpg', colore: '#b651e4' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuovo tipo', descrizione: '', prezzo_base: 0, immagine: '/torte.jpg', colore: '#b651e4', allergeni: '' }),
         },
       },
       {
