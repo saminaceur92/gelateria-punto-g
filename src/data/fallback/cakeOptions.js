@@ -18,6 +18,7 @@ export const cakeTypes = [
     basePrice: 24,
     img: '/torte.jpg',
     color: '#b651e4',
+    allergeni: [],
   },
   {
     id: 'gelato',
@@ -26,6 +27,7 @@ export const cakeTypes = [
     basePrice: 26,
     img: '/gelato.jpg',
     color: '#602e9e',
+    allergeni: [],
   },
   {
     id: 'crock',
@@ -34,6 +36,7 @@ export const cakeTypes = [
     basePrice: 28,
     img: '/semifreddi.jpg',
     color: '#eb911e',
+    allergeni: [],
   },
   {
     id: 'piani',
@@ -42,6 +45,7 @@ export const cakeTypes = [
     basePrice: 38,
     img: '/torte.jpg',
     color: '#a5cdcb',
+    allergeni: [],
   },
 ];
 
@@ -112,10 +116,10 @@ export const cakeCoverings = [
 
 // Topping: granelle croccanti sopra la torta
 export const cakeDecorations = [
-  { id: 'nessuna', name: 'Nessuna', desc: 'Top liscio, senza granella', emoji: '∅' },
-  { id: 'granella-nocciola-pistacchio', name: 'Granella nocciola e pistacchio', desc: 'Croccante e tostata', emoji: '🌰' },
-  { id: 'zuccherini', name: 'Zuccherini colorati', desc: 'Allegri e golosi', emoji: '🌈' },
-  { id: 'granella-frutta-secca', name: 'Granella di frutta secca', desc: 'Mandorla, nocciola, noce', emoji: '🥜' },
+  { id: 'nessuna', name: 'Nessuna', desc: 'Top liscio, senza granella', emoji: '∅', allergeni: [] },
+  { id: 'granella-nocciola-pistacchio', name: 'Granella nocciola e pistacchio', desc: 'Croccante e tostata', emoji: '🌰', allergeni: ['frutta a guscio'] },
+  { id: 'zuccherini', name: 'Zuccherini colorati', desc: 'Allegri e golosi', emoji: '🌈', allergeni: [] },
+  { id: 'granella-frutta-secca', name: 'Granella di frutta secca', desc: 'Mandorla, nocciola, noce', emoji: '🥜', allergeni: ['frutta a guscio'] },
 ];
 
 export const cakeOccasions = [
@@ -153,7 +157,7 @@ export const cakeRecipes = [
   {
     name: 'Cioccolato lover',
     shape: 'tonda',
-    flavors: ['Cioccolato fondente', 'Nocciola'],
+    flavors: ['Cioccolato Fondente', 'Nocciola'],
     filling: 'ganache',
     covering: 'ganache-cop',
     decoration: 'granella-nocciola-pistacchio',
@@ -161,7 +165,7 @@ export const cakeRecipes = [
   {
     name: 'Romantica',
     shape: 'cuore',
-    flavors: ['Cheesecake frutti rossi', 'Yogurt bianco'],
+    flavors: ['Fragola', 'Fior di Latte'],
     filling: 'amarena',
     covering: 'panna',
     decoration: 'granella-frutta-secca',
@@ -177,7 +181,7 @@ export const cakeRecipes = [
   {
     name: 'Punto Gi! signature',
     shape: 'tonda',
-    flavors: ['Pistacchio', 'Punto Gi'],
+    flavors: ['Pistacchio', 'Bacio'],
     filling: 'pistacchio',
     covering: 'meringa',
     decoration: 'zuccherini',

@@ -6,6 +6,7 @@ const links = [
   { href: '#about', label: 'La nostra storia' },
   { href: '#servizi', label: 'Servizi' },
   { href: '#menu', label: 'Gusti' },
+  { href: '/allergeni', label: 'Allergeni' },
   { href: '#torte', label: 'Crea la torta' },
   { href: '#gallery', label: 'Gallery' },
   { href: '#contatti', label: 'Contatti' },

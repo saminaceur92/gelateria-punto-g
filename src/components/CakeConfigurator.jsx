@@ -217,6 +217,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       if (conflictsAllergies(filling, c.allergies)) patch.fillingId = 'nessuna';
       const covering = cakeCoverings.find((cc) => cc.id === c.coveringId);
       if (conflictsAllergies(covering, c.allergies)) patch.coveringId = '';
+      const deco = cakeDecorations.find((d) => d.id === c.decoration);
+      if (conflictsAllergies(deco, c.allergies)) patch.decoration = 'nessuna';
       const flavors = c.flavors.filter((f) => !conflictsAllergies(f, c.allergies));
       if (flavors.length !== c.flavors.length) patch.flavors = flavors;
       return Object.keys(patch).length ? { ...c, ...patch } : c;
@@ -322,12 +324,27 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   const surpriseMe = () => {
     const max = maxFlavorsFor(config.type);
     const recipe = cakeRecipes[Math.floor(Math.random() * cakeRecipes.length)];
-    // rispetta le allergie scelte e il numero massimo di gusti del tipo
-    const flavors = recipe.flavors
-      .map((n) => cakeFlavors.find((f) => f.name === n))
-      .filter(Boolean)
-      .filter((f) => !conflictsAllergies(f, config.allergies))
-      .slice(0, max);
+    // rispetta le allergie scelte e il numero massimo di gusti del tipo.
+    // Match per nome case-insensitive: i gusti sono editabili dalla dashboard,
+    // quindi un nome della ricetta potrebbe non combaciare più.
+    const ok = (f) => f && !conflictsAllergies(f, config.allergies);
+    let flavors = recipe.flavors
+      .map((n) => cakeFlavors.find((f) => f.name.toLowerCase() === n.toLowerCase()))
+      .filter(ok);
+    // Se la ricetta dà troppo pochi gusti (nomi cambiati o esclusi dalle allergie),
+    // completa con gusti disponibili a caso: "Sorprendimi" non resta mai vuoto.
+    const want = Math.min(2, max);
+    if (flavors.length < want) {
+      const pool = cakeFlavors
+        .filter(ok)
+        .filter((f) => !flavors.some((x) => x.name === f.name));
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      while (flavors.length < want && pool.length) flavors.push(pool.shift());
+    }
+    flavors = flavors.slice(0, max);
     const filling = cakeFillings.find((f) => f.id === recipe.filling);
     const covering = cakeCoverings.find((c) => c.id === recipe.covering);
     set({
@@ -948,18 +965,23 @@ function StepDecoration({ config, set }) {
     <>
       <StepHeader stepKey="decoration" title="Decorazioni" lead="Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff." />
       <div className="opt-grid cols-3">
-        {cakeDecorations.map((d) => (
-          <button
-            key={d.id}
-            className={`opt-card ${config.decoration === d.id ? 'selected' : ''}`}
-            onClick={() => set({ decoration: d.id })}
-          >
-            <div className="opt-name">
-              <span style={{ fontSize: '1.2rem' }}>{d.emoji}</span> {d.name}
-            </div>
-            <div className="opt-desc">{d.desc}</div>
-          </button>
-        ))}
+        {cakeDecorations.map((d) => {
+          const blocked = conflictsAllergies(d, config.allergies);
+          return (
+            <button
+              key={d.id}
+              className={`opt-card ${config.decoration === d.id ? 'selected' : ''}`}
+              onClick={() => !blocked && set({ decoration: d.id })}
+              disabled={blocked}
+              style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+            >
+              <div className="opt-name">
+                <span style={{ fontSize: '1.2rem' }}>{d.emoji}</span> {d.name}
+              </div>
+              <div className="opt-desc">{blocked ? `Contiene: ${(d.allergeni || []).join(', ')}` : d.desc}</div>
+            </button>
+          );
+        })}
       </div>
     </>
   );

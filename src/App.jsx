@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Marquee from './components/Marquee';
 import About from './components/About';
+import Stats from './components/Stats';
 import Services from './components/Services';
 import Menu from './components/Menu';
 import CakeCTA from './components/CakeCTA';
@@ -51,6 +52,7 @@ export default function App() {
         <Hero onOpenConfigurator={openCfg} />
         <Marquee />
         <About />
+        <Stats />
         <Services />
         <Menu />
         <CakeCTA onOpen={openCfg} />

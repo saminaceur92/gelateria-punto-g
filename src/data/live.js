@@ -13,45 +13,43 @@ const FLAV_ALLERG = allergMap(fbCake.cakeFlavors, 'name');
 const BASE_ALLERG = allergMap(fbCake.cakeBases, 'id');
 const FILL_ALLERG = allergMap(fbCake.cakeFillings, 'id');
 const COV_ALLERG = allergMap(fbCake.cakeCoverings, 'id');
+const DECO_ALLERG = allergMap(fbCake.cakeDecorations, 'id');
+
+// Categorie del menu = quelle della lista unica "Gusti e allergeni" (allergeni_prodotti).
+const MENU_CATS = [
+  { key: 'crema', name: 'Creme' },
+  { key: 'golosone', name: 'Golosoni' },
+  { key: 'frutta-vegan', name: 'Frutta e Vegan' },
+  { key: 'base', name: 'Basi' },
+];
 
 export async function fetchMenu() {
   if (!supabase) return null;
   try {
-    const [{ data: cats, error: e1 }, { data: gusti, error: e2 }, ap] = await Promise.all([
-      supabase.from('categorie').select('*').eq('attivo', true).order('ordine'),
-      supabase.from('gusti').select('*').eq('attivo', true).order('ordine'),
-      // Flag dieta gestiti nella scheda "Allergeni" (per gusto). Non blocca il menu se assente.
-      supabase.from('allergeni_prodotti').select('gusto, vegan, senza_glutine, senza_lattosio'),
-    ]);
-    if (e1 || e2 || !cats || !gusti) return null;
-    // Mappa gusto->flag dalla scheda Allergeni (per nome). Il menu li prende da lì;
-    // se un gusto non ha ancora la scheda allergeni, fallback ai flag storici del gusto.
-    const norm = (s) => (s || '').trim().toLowerCase();
-    const apByName = {};
-    (ap && ap.data ? ap.data : []).forEach((r) => { apByName[norm(r.gusto)] = r; });
-    const dietOf = (g) => {
-      const a = apByName[norm(g.nome)];
-      const vegan = a ? a.vegan : g.vegan;
-      const sg = a ? a.senza_glutine : g.senza_glutine;
-      const sl = a ? a.senza_lattosio : g.senza_lattosio;
-      return [
-        vegan && { short: 'VEG', label: 'Vegan' },
-        sg && { short: 'SG', label: 'Senza glutine' },
-        sl && { short: 'SL', label: 'Senza lattosio' },
-      ].filter(Boolean);
-    };
-    return cats
+    // Lista unica: la stessa tabella alimenta la carta del gelato e la pagina /allergeni.
+    const { data, error } = await supabase
+      .from('allergeni_prodotti')
+      .select('*')
+      .eq('attivo', true)
+      .order('ordine');
+    if (error || !data) return null;
+    const dietOf = (r) => [
+      r.vegan && { short: 'VEG', label: 'Vegan' },
+      r.senza_glutine && { short: 'SG', label: 'Senza glutine' },
+      r.senza_lattosio && { short: 'SL', label: 'Senza lattosio' },
+    ].filter(Boolean);
+    return MENU_CATS
       .map((c) => ({
-        id: c.id,
-        name: c.nome,
-        description: c.descrizione || '',
-        flavors: gusti
-          .filter((g) => g.categoria_id === c.id)
-          .map((g) => ({
-            name: g.nome,
-            color: g.colore,
-            tag: g.tag ?? null,
-            diet: dietOf(g),
+        id: c.key,
+        name: c.name,
+        description: '',
+        flavors: data
+          .filter((r) => r.categoria === c.key)
+          .map((r) => ({
+            name: r.gusto,
+            color: r.colore || '#f5d97a',
+            tag: r.tag ?? null,
+            diet: dietOf(r),
           })),
       }))
       .filter((c) => c.flavors.length > 0);
@@ -98,19 +96,28 @@ export async function fetchCakeOptions() {
     const cakeAllergens = (!eAll && allerg && allerg.length)
       ? allerg.map((a) => ({ id: a.id, name: a.nome, emoji: a.emoji || '' }))
       : fbCake.cakeAllergens;
+    // Gusti torte: dalla lista unica "Gusti e allergeni" (flag per_torte). Colore e
+    // allergeni presi da lì. Fallback ai vecchi gusti_torte finché nessuno è spuntato.
+    const { data: apRows } = await supabase
+      .from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine');
+    const splitLower = (s) => (s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    const perTorte = (apRows || []).filter((r) => r.per_torte);
+    const cakeFlavors = perTorte.length
+      ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi) }))
+      : gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] }));
     return {
       cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
-      cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore })),
+      cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore, allergeni: splitLower(t.allergeni) })),
       cakeSizes: dim.map((s) => {
         const o = { id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento) };
         if (s.popolare) o.popular = true;
         return o;
       }),
-      cakeFlavors: gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] })),
-      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: BASE_ALLERG[b.id] || [] })),
-      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: FILL_ALLERG[f.id] || [] })),
-      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: COV_ALLERG[c.id] || [] })),
-      cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '' })),
+      cakeFlavors,
+      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: b.allergeni != null ? splitLower(b.allergeni) : (BASE_ALLERG[b.id] || []) })),
+      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []) })),
+      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []) })),
+      cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '', allergeni: d.allergeni != null ? splitLower(d.allergeni) : (DECO_ALLERG[d.id] || []) })),
       cakeOccasions: occ.map((o) => o.nome).filter(Boolean),
       cakeAllergens,
     };
