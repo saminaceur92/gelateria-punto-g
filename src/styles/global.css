@@ -673,6 +673,13 @@ p {
   margin-top: 2rem;
 }
 
+/* Evita che un figlio (le feature a 2 colonne) forzi la larghezza della colonna
+   testo, spingendo paragrafo e titolo oltre il bordo destro su mobile. */
+.about-grid > * { min-width: 0; }
+@media (max-width: 600px) {
+  .about-features { grid-template-columns: 1fr; }
+}
+
 .feature {
   background: var(--surface);
   border-radius: var(--radius-sm);

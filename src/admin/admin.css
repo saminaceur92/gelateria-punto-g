@@ -147,3 +147,37 @@
 .ord-img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #faf7fb; flex-shrink: 0; }
 .ord-body { flex: 1; min-width: 0; }
 @media (max-width: 560px) { .ord-row { flex-direction: column; } .ord-img { width: 100%; height: 160px; } }
+
+/* ───────── Mobile: dashboard responsive ───────── */
+@media (max-width: 640px) {
+  /* Top bar: può andare a capo, meno padding, testi più piccoli */
+  .adm-top { padding: .7rem .9rem; gap: .5rem; flex-wrap: wrap; }
+  .adm-brand strong { font-size: 1rem; }
+  .adm-user { font-size: .8rem; gap: .5rem; min-width: 0; flex-wrap: wrap; }
+
+  /* Nav schede e contenuto: meno margini per guadagnare larghezza */
+  .adm-nav { padding: .8rem .9rem 0; }
+  .adm-main { padding: .9rem; }
+  .adm-card { padding: 1rem .9rem; border-radius: 14px; }
+
+  /* Intestazione card: titolo e conteggio impilati */
+  .adm-card-head { flex-direction: column; gap: .4rem; }
+  .adm-count { text-align: left; }
+
+  /* Righe editor: intestazione (interruttore a sx, azioni a dx) e sotto i campi
+     a TUTTA larghezza impilati, invece che schiacciati in una colonnina centrale */
+  .adm-row { flex-wrap: wrap; align-items: center; }
+  .adm-toggle { order: 1; }
+  .adm-row-actions { order: 2; margin-left: auto; }
+  .adm-fields { order: 3; flex-basis: 100%; }
+  .adm-field.f-text { min-width: 120px; }
+
+  /* Input a larghezza fissa che potrebbero sforare */
+  .staff-add input { min-width: 0; flex-basis: 100%; }
+  .staff-badge { margin-left: 0; }
+
+  /* Ordini: filtri e ordinamento non si accavallano */
+  .ord-sort { margin-left: 0; }
+  .ord-top { flex-direction: column; gap: .4rem; }
+  .ord-badges { justify-content: flex-start; }
+}
