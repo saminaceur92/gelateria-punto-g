@@ -6,6 +6,8 @@
   "devCommand": "npm run dev",
   "rewrites": [
     { "source": "/admin", "destination": "/index.html" },
-    { "source": "/admin/:path*", "destination": "/index.html" }
+    { "source": "/admin/:path*", "destination": "/index.html" },
+    { "source": "/allergeni", "destination": "/index.html" },
+    { "source": "/allergeni/:path*", "destination": "/index.html" }
   ]
 }
