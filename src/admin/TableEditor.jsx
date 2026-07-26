@@ -43,11 +43,21 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
   const [loaded, setLoaded] = useState(false);
   const rowLabel = (r) => r.nome || r.giorno || r.etichetta || 'voce';
 
+  // La riga si legge male se i campi sono tutti in fila: li dividiamo in tre
+  // fasce — dati, gruppi di spunte (allergeni presenti / tracce), sì/no.
+  const campiNormali = fields.filter((f) => f.type !== 'checkbox' && f.type !== 'checkboxes');
+  const gruppiSpunte = fields.filter((f) => f.type === 'checkboxes');
+  const flag = fields.filter((f) => f.type === 'checkbox');
+
   async function load() {
     setError('');
     const { data, error } = await supabase.from(table).select('*').order('ordine', { ascending: true });
-    if (error) setError(error.message);
-    else setRows(data || []);
+    // Tabella non ancora creata: messaggio comprensibile invece dell'errore Postgres.
+    if (error) {
+      setError(/does not exist|schema cache/i.test(error.message)
+        ? `Questa scheda non è ancora attiva: la tabella "${table}" va creata su Supabase eseguendo la migrazione SQL della cartella migrations/. (${error.message})`
+        : error.message);
+    } else setRows(data || []);
     setLoaded(true);
   }
   useEffect(() => {
@@ -144,7 +154,8 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
             </button>
 
             <div className="adm-fields">
-              {fields.map((f) => (
+              {/* 1ª riga: i campi normali */}
+              {campiNormali.map((f) => (
                 <label key={f.key} className={`adm-field f-${f.type}`}>
                   <span className="adm-flabel">{f.label}</span>
                   {f.type === 'select' ? (
@@ -159,19 +170,6 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                       <input type="color" value={row[f.key] || '#cccccc'} onChange={(e) => edit(row.id, f.key, e.target.value)} />
                       <code>{row[f.key] || '—'}</code>
                     </span>
-                  ) : f.type === 'checkbox' ? (
-                    <input
-                      type="checkbox"
-                      className="adm-check"
-                      checked={!!row[f.key]}
-                      onChange={(e) => edit(row.id, f.key, e.target.checked)}
-                    />
-                  ) : f.type === 'checkboxes' ? (
-                    <MultiCheckField
-                      value={row[f.key]}
-                      options={f.options}
-                      onChange={(v) => edit(row.id, f.key, v)}
-                    />
                   ) : (
                     <input
                       type={f.type === 'number' ? 'number' : 'text'}
@@ -182,6 +180,36 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                   )}
                 </label>
               ))}
+
+              {/* Un riquadro per gruppo di spunte (allergeni presenti / tracce):
+                  ognuno a tutta larghezza, così non si confondono tra loro. */}
+              {gruppiSpunte.map((f) => (
+                <div key={f.key} className={`adm-group tone-${f.tone || 'neutro'}`}>
+                  <span className="adm-flabel">{f.label}</span>
+                  <MultiCheckField
+                    value={row[f.key]}
+                    options={f.options}
+                    onChange={(v) => edit(row.id, f.key, v)}
+                  />
+                </div>
+              ))}
+
+              {/* Ultima riga: tutti i sì/no insieme (vegan, senza glutine, …) */}
+              {flag.length > 0 && (
+                <div className="adm-flags">
+                  {flag.map((f) => (
+                    <label key={f.key} className="adm-flag">
+                      <input
+                        type="checkbox"
+                        className="adm-check"
+                        checked={!!row[f.key]}
+                        onChange={(e) => edit(row.id, f.key, e.target.checked)}
+                      />
+                      <span>{f.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="adm-row-actions">

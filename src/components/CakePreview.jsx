@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useCakeData } from '../data/CakeDataProvider';
+import { CRUMBLE_BASE_ID } from '../data/cakeOptions';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
@@ -17,6 +18,7 @@ export default function CakePreview({ config }) {
     sizeId,
     flavors = [],
     baseId,
+    crumbleId,
     fillingId = 'nessuna',
     coveringId = 'panna',
     decoration,
@@ -27,7 +29,7 @@ export default function CakePreview({ config }) {
     photoTransform = { zoom: 1, posX: 50, posY: 50 },
   } = config;
 
-  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
+  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeCrumbles = [], cakeFillings, cakeCoverings, cakeDecorations } = useCakeData();
 
   const sh = cakeShapes.find((x) => x.id === shape) || cakeShapes[0];
   const t = cakeTypes.find((x) => x.id === type);
@@ -41,7 +43,13 @@ export default function CakePreview({ config }) {
     : shape === 'quadrata' ? 'quadrata'
     : shape === 'rettangolare' ? 'rettangolare'
     : 'tonda';
-  const b = cakeBases.find((x) => x.id === baseId);
+  // Base: se è il crumble croccante e il cliente ha scelto il tipo, la torta 3D
+  // e la scheda mostrano nome e colore di quel crumble (es. "crumble al cacao").
+  const baseRow = cakeBases.find((x) => x.id === baseId);
+  const crumble = baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((x) => x.id === crumbleId) : null;
+  const b = baseRow && crumble
+    ? { ...baseRow, name: crumble.name, color: crumble.color || baseRow.color }
+    : baseRow;
   const filling = cakeFillings.find((x) => x.id === fillingId);
   const covering = cakeCoverings.find((x) => x.id === coveringId);
   const d = cakeDecorations.find((x) => x.id === decoration);

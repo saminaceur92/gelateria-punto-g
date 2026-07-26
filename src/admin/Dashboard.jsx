@@ -4,6 +4,8 @@ import { useAuth } from './auth';
 import TableEditor from './TableEditor';
 import OrdersPanel from './OrdersPanel';
 import StaffPanel from './StaffPanel';
+import DocumentiPanel from './DocumentiPanel';
+import PromemoriaPanel from './PromemoriaPanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 import { playPing } from '../lib/ping';
@@ -97,8 +99,10 @@ export default function Dashboard() {
             { key: 'tag', label: 'Tag', type: 'select', options: TAG_OPTIONS },
             { key: 'base', label: 'Base', type: 'text', placeholder: 'Bianca / Vegan / Frutta' },
             { key: 'ingredienti', label: 'Ingredienti', type: 'text' },
-            { key: 'allergeni_certi', label: 'Allergeni presenti', type: 'checkboxes', options: ALLERGENI_OPTIONS },
-            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+            // `tone` colora i due riquadri come nella pagina pubblica /allergeni
+            // (azzurro = presenti, ambra = tracce): non si confondono a colpo d'occhio.
+            { key: 'allergeni_certi', label: '⚠️ Allergeni presenti', type: 'checkboxes', options: ALLERGENI_OPTIONS, tone: 'certo' },
+            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'checkboxes', options: ALLERGENI_OPTIONS, tone: 'traccia' },
             { key: 'vegan', label: 'Vegan', type: 'checkbox' },
             { key: 'senza_glutine', label: 'Senza glutine', type: 'checkbox' },
             { key: 'senza_lattosio', label: 'Senza lattosio', type: 'checkbox' },
@@ -108,20 +112,6 @@ export default function Dashboard() {
             { key: 'ordine', label: 'Ordine', type: 'number' },
           ],
           newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', colore: '#f5d97a', tag: null, base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, per_torte: false, attivo: true, ordine: 100 }),
-        },
-      },
-      {
-        key: 'orari',
-        label: '🕒 Orari',
-        props: {
-          table: 'orari',
-          title: 'Orari di apertura',
-          subtitle: 'Cambia gli orari per la stagione (scrivi "Chiuso" se serve).',
-          fields: [
-            { key: 'giorno', label: 'Giorno', type: 'text' },
-            { key: 'orario', label: 'Orario', type: 'text', placeholder: '15:00 – 23:00' },
-          ],
-          newRow: () => ({ giorno: '', orario: '' }),
         },
       },
       {
@@ -138,6 +128,23 @@ export default function Dashboard() {
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
           newRow: () => ({ id: uuid(), nome: 'Nuova base', descrizione: '', supplemento: 0, colore: '#e8d2a8', allergeni: '' }),
+        },
+      },
+      {
+        key: 'crumble',
+        label: 'Crumble',
+        props: {
+          table: 'crumble',
+          title: 'Tipi di crumble',
+          subtitle: 'Compaiono nel configuratore solo a chi sceglie la base "Crumble croccante": aggiungi o disattiva i tipi che hai in laboratorio.',
+          fields: [
+            { key: 'nome', label: 'Nome', type: 'text' },
+            { key: 'descrizione', label: 'Descrizione', type: 'text' },
+            { key: 'supplemento', label: 'Supplemento €', type: 'number' },
+            { key: 'colore', label: 'Colore (3D)', type: 'color' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+          ],
+          newRow: () => ({ id: uuid(), nome: 'Nuovo crumble', descrizione: '', supplemento: 0, colore: '#b88c5a', allergeni: '' }),
         },
       },
       {
@@ -248,6 +255,34 @@ export default function Dashboard() {
           newRow: () => ({ nome: '' }),
         },
       },
+      // ── In fondo, appena prima di "Accessi staff": le schede che non sono
+      //    contenuti del menù ma strumenti (documenti, promemoria, orari).
+      {
+        // PDF allergeni caricabile dallo staff + QR Code da stampare.
+        key: 'documenti',
+        label: '📄 PDF e QR allergeni',
+        custom: true,
+      },
+      {
+        // Promemoria compleanno: coda + storico degli invii automatici.
+        key: 'promemoria',
+        label: '🎂 Promemoria',
+        custom: true,
+      },
+      {
+        key: 'orari',
+        label: '🕒 Orari',
+        props: {
+          table: 'orari',
+          title: 'Orari di apertura',
+          subtitle: 'Cambia gli orari per la stagione (scrivi "Chiuso" se serve).',
+          fields: [
+            { key: 'giorno', label: 'Giorno', type: 'text' },
+            { key: 'orario', label: 'Orario', type: 'text', placeholder: '15:00 – 23:00' },
+          ],
+          newRow: () => ({ giorno: '', orario: '' }),
+        },
+      },
     ],
     [catOptions, firstCat]
   );
@@ -301,6 +336,10 @@ export default function Dashboard() {
           <OrdersPanel key={ordersKey} />
         ) : active === 'staff' && isOwner ? (
           <StaffPanel />
+        ) : active === 'documenti' ? (
+          <DocumentiPanel />
+        ) : active === 'promemoria' ? (
+          <PromemoriaPanel />
         ) : (
           <TableEditor key={current.key} {...current.props} />
         )}

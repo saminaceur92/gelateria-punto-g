@@ -88,6 +88,22 @@
 .adm-field.f-checkbox { align-items: center; }
 .adm-check { width: 22px; height: 22px; accent-color: var(--v-deep); cursor: pointer; }
 
+/* Gruppi di spunte (allergeni presenti / possibili tracce): riquadro a tutta
+   larghezza, con colore diverso per non confonderli tra loro. */
+.adm-group { flex-basis: 100%; display: flex; flex-direction: column; gap: .4rem; border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; padding: .55rem .7rem; background: #fcfbf8; }
+.adm-group .adm-flabel { font-size: .7rem; font-weight: 700; letter-spacing: .06em; }
+.adm-group.tone-certo { border-left-color: var(--v-deep); background: rgba(44,118,153,.05); }
+.adm-group.tone-certo .adm-flabel { color: var(--v-deep); }
+.adm-group.tone-traccia { border-left-color: #c0894c; background: rgba(192,137,76,.06); }
+.adm-group.tone-traccia .adm-flabel { color: #9a6a2f; }
+.adm-group.tone-neutro { border-left-color: var(--line); }
+.adm-group .adm-checks { gap: .35rem .9rem; }
+
+/* Riga finale con tutti i sì/no (vegan, senza glutine, per torte, …) */
+.adm-flags { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .4rem .9rem; align-items: center; border-top: 1px dashed var(--line); padding-top: .6rem; }
+.adm-flag { display: inline-flex; align-items: center; gap: .35rem; font-size: .84rem; font-weight: 500; color: #555; cursor: pointer; white-space: nowrap; }
+.adm-flag .adm-check { width: 18px; height: 18px; }
+
 /* Interruttore on/off */
 .adm-toggle { width: 46px; height: 26px; border-radius: 999px; border: none; background: #d7cfdb; position: relative; cursor: pointer; flex-shrink: 0; transition: background .2s; }
 .adm-toggle.on { background: #46c46a; }
@@ -148,6 +164,54 @@
 .ord-body { flex: 1; min-width: 0; }
 @media (max-width: 560px) { .ord-row { flex-direction: column; } .ord-img { width: 100%; height: 160px; } }
 
+/* ───────── Scheda PDF + QR allergeni ───────── */
+.doc-wrap { display: flex; flex-direction: column; gap: 1.2rem; }
+.doc-wrap code { background: var(--cream); border: 1px solid var(--line); border-radius: 5px; padding: 0 .25rem; font-size: .82em; }
+
+.doc-current { display: flex; align-items: center; gap: .9rem; border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1rem; background: var(--cream); }
+.doc-ico { font-size: 1.6rem; line-height: 1; }
+.doc-current-txt { display: flex; flex-direction: column; gap: .15rem; flex: 1; min-width: 0; }
+.doc-current-txt strong { word-break: break-word; }
+.doc-current-txt span { font-size: .82rem; }
+
+.doc-drop { margin: 1rem auto 0; max-width: 620px; border: 2px dashed var(--line); border-radius: 14px; padding: 1.3rem 1rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: .6rem; transition: border-color .15s, background .15s; }
+.doc-drop.over { border-color: var(--v-deep); background: #f2f9fc; }
+.doc-drop-title { margin: 0; font-weight: 600; }
+.doc-drop p { margin: 0; }
+.doc-drop input[type=file] { font-size: .85rem; max-width: 100%; }
+.doc-chosen { font-size: .9rem; }
+.doc-hint { font-size: .8rem; max-width: 52ch; }
+
+.doc-versioni { margin-top: 1rem; border-top: 1px solid var(--line); padding-top: .6rem; }
+.doc-vlist { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.doc-vlist li { display: flex; align-items: center; gap: .6rem; font-size: .85rem; border: 1px solid var(--line); border-radius: 9px; padding: .35rem .6rem; }
+.doc-vlist a { color: var(--v-deep); word-break: break-all; }
+.doc-vlist span { margin-left: auto; white-space: nowrap; }
+.doc-badge { background: #e3f5e9; color: #2f7d4f; font-size: .72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+
+.doc-qr { display: flex; gap: 1.4rem; flex-wrap: wrap; align-items: flex-start; }
+.doc-qr-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: .8rem; box-shadow: 0 10px 26px -18px rgba(50,40,31,.5); }
+.doc-qr-side { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: .7rem; }
+.doc-field { display: flex; flex-direction: column; gap: .2rem; }
+.doc-field input { padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 9px; font-size: .92rem; width: 100%; box-sizing: border-box; }
+.doc-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.doc-actions .adm-btn { text-decoration: none; }
+
+/* ───────── Scheda Promemoria compleanno ───────── */
+.prom-title { margin: 1.4rem 0 .6rem; font-size: .95rem; color: var(--v-deep); }
+.prom-title:first-of-type { margin-top: .8rem; }
+.prom-list { display: flex; flex-direction: column; gap: .5rem; }
+.prom-row { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: .6rem .8rem; background: #fff; }
+.prom-when, .prom-who { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.prom-when { min-width: 130px; }
+.prom-who { flex: 1; min-width: 160px; }
+.prom-who span, .prom-when span { font-size: .78rem; }
+.prom-who span { word-break: break-all; }
+.prom-tipo { font-size: .78rem; color: #777; white-space: nowrap; }
+.prom-badge { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.prom-nota { font-size: .78rem; font-style: italic; }
+.prom-actions { display: flex; gap: .4rem; margin-left: auto; }
+
 /* ───────── Mobile: dashboard responsive ───────── */
 @media (max-width: 640px) {
   /* Top bar: può andare a capo, meno padding, testi più piccoli */
@@ -180,4 +244,18 @@
   .ord-sort { margin-left: 0; }
   .ord-top { flex-direction: column; gap: .4rem; }
   .ord-badges { justify-content: flex-start; }
+
+  /* PDF + QR: tutto impilato e a tutta larghezza */
+  .doc-current { flex-wrap: wrap; }
+  .doc-current .adm-btn { margin-left: auto; }
+  .doc-qr { justify-content: center; }
+  .doc-qr-side { min-width: 0; flex-basis: 100%; }
+  .doc-actions .adm-btn { flex: 1; text-align: center; }
+  .doc-vlist li { flex-wrap: wrap; }
+  .doc-vlist span { margin-left: 0; }
+
+  /* Promemoria: righe impilate, azioni a tutta larghezza */
+  .prom-when, .prom-who { min-width: 0; flex-basis: 100%; }
+  .prom-actions { margin-left: 0; flex-basis: 100%; }
+  .prom-actions .adm-btn { flex: 1; }
 }

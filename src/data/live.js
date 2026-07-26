@@ -101,6 +101,21 @@ export async function fetchCakeOptions() {
     const { data: apRows } = await supabase
       .from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine');
     const splitLower = (s) => (s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    // Tipi di crumble: tabella opzionale (come `allergeni`). Se manca — o è vuota —
+    // si usa la copia di sicurezza, così il configuratore funziona anche prima
+    // della migrazione 2026-07-26-crumble.sql.
+    const { data: crumbleRows, error: eCrumble } = await supabase
+      .from('crumble').select('*').eq('attivo', true).order('ordine');
+    const cakeCrumbles = (!eCrumble && crumbleRows && crumbleRows.length)
+      ? crumbleRows.map((c) => ({
+        id: c.id,
+        name: c.nome,
+        desc: c.descrizione || '',
+        priceDelta: num(c.supplemento),
+        color: c.colore || null,
+        allergeni: splitLower(c.allergeni),
+      }))
+      : fbCake.cakeCrumbles;
     const perTorte = (apRows || []).filter((r) => r.per_torte);
     const cakeFlavors = perTorte.length
       ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi) }))
@@ -115,6 +130,7 @@ export async function fetchCakeOptions() {
       }),
       cakeFlavors,
       cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: b.allergeni != null ? splitLower(b.allergeni) : (BASE_ALLERG[b.id] || []) })),
+      cakeCrumbles,
       cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []) })),
       cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []) })),
       cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '', allergeni: d.allergeni != null ? splitLower(d.allergeni) : (DECO_ALLERG[d.id] || []) })),
