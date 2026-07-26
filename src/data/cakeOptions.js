@@ -18,9 +18,14 @@ export const cakeTypes = pick(g.cakeTypes, fallback.cakeTypes);
 export const cakeSizes = pick(g.cakeSizes, fallback.cakeSizes);
 export const cakeFlavors = pick(g.cakeFlavors, fallback.cakeFlavors);
 export const cakeBases = pick(g.cakeBases, fallback.cakeBases);
+export const cakeCrumbles = pick(g.cakeCrumbles, fallback.cakeCrumbles);
 export const cakeFillings = pick(g.cakeFillings, fallback.cakeFillings);
 export const cakeCoverings = pick(g.cakeCoverings, fallback.cakeCoverings);
 export const cakeDecorations = pick(g.cakeDecorations, fallback.cakeDecorations);
 export const cakeOccasions = pick(g.cakeOccasions, fallback.cakeOccasions);
 export const cakeAllergens = pick(g.cakeAllergens, fallback.cakeAllergens);
 export const cakeRecipes = pick(g.cakeRecipes, fallback.cakeRecipes);
+
+// Base che apre lo step di scelta del tipo di crumble ("Crumble croccante").
+// È l'id della riga in `basi` su Supabase: non va cambiato.
+export const CRUMBLE_BASE_ID = 'crock';

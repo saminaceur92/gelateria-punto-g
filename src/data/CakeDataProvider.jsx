@@ -11,6 +11,7 @@ const fallback = {
   cakeSizes: fb.cakeSizes,
   cakeFlavors: fb.cakeFlavors,
   cakeBases: fb.cakeBases,
+  cakeCrumbles: fb.cakeCrumbles,
   cakeFillings: fb.cakeFillings,
   cakeCoverings: fb.cakeCoverings,
   cakeDecorations: fb.cakeDecorations,

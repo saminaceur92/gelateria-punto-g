@@ -90,6 +90,15 @@ export const cakeBases = [
   { id: 'glutenfree', name: 'Salame al cioccolato', desc: 'Sfiziosa base con il nostro salame al cioccolato – solo per i golosoni', priceDelta: 3, color: '#5a3520', allergeni: ['glutine', 'latte'] },
 ];
 
+// Tipi di crumble: si scelgono SOLO se la base è il "Crumble croccante"
+// (base id `crock`, vedi CRUMBLE_BASE_ID in ../cakeOptions.js). Gestibili dalla
+// dashboard nella scheda "Crumble" (tabella Supabase `crumble`).
+// NB: gli allergeni sono quelli della base crumble, da confermare col laboratorio.
+export const cakeCrumbles = [
+  { id: 'cacao', name: 'Crumble al cacao', desc: 'Biscottino croccante al cacao', priceDelta: 0, color: '#5a3520', allergeni: ['soia'] },
+  { id: 'bianco', name: 'Crumble bianco', desc: 'Biscottino croccante classico', priceDelta: 0, color: '#e0c49a', allergeni: ['soia'] },
+];
+
 // Farciture (variegato/cuore tra gli strati)
 export const cakeFillings = [
   { id: 'nessuna', name: 'Nessuna', desc: 'Strati puri', priceDelta: 0, color: null, allergeni: [] },

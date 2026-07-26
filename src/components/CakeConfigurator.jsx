@@ -1,20 +1,25 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, Cake, Shuffle, Instagram, Facebook, MessageCircle, CreditCard } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
+import { CRUMBLE_BASE_ID } from '../data/cakeOptions';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
-import { sendOrderEmail } from '../lib/email';
+import { uploadCakePhoto } from '../lib/cakePhoto';
 import CakePreview from './CakePreview';
 
-// Ordine passi: tipo → n° persone → allergie → forma → base → gusti →
+// Ordine passi: tipo → n° persone → allergie → forma → base → [crumble] → gusti →
 // inserto (farcitura) → copertura → decorazioni → scritta → dati → riepilogo.
+// 'crumble' è un passo CONDIZIONALE: compare solo se la base scelta è il crumble
+// croccante. I passi effettivi si calcolano a runtime (vedi `steps` più sotto):
+// usa sempre quelli, non STEPS, per numerazione e navigazione.
 const STEPS = [
   'type',       // tipo torta (semifreddo / gelato / Gi Selection / Alta)
   'size',       // n° persone
   'allergies',  // allergie/intolleranze da evitare (ingrigisce le scelte dopo)
   'shape',      // forma
   'base',       // base sotto
+  'crumble',    // tipo di crumble (solo se la base è il crumble croccante)
   'flavors',    // strati / gusti
   'filling',    // inserto (farcitura tra strati)
   'covering',   // copertura esterna
@@ -23,6 +28,10 @@ const STEPS = [
   'details',    // dati cliente
   'review',     // riepilogo
 ];
+
+// Passi effettivi del wizard (STEPS meno quelli non applicabili): reso
+// disponibile agli step figli per la numerazione "Passo N di M".
+const StepsCtx = createContext(STEPS);
 // La torta "Alta" (id tipo 'piani') consente 4 gusti; le altre (basse) 3.
 const TALL_TYPE = 'piani';
 const maxFlavorsFor = (typeId) => (typeId === TALL_TYPE ? 4 : 3);
@@ -118,16 +127,26 @@ function addWorkingHours(from, hoursNeeded, orari) {
   return cur;
 }
 
+// Campi che si possono precompilare da fuori: dai link "alternative" (allergie)
+// e dal link "Rifai questa torta" del promemoria compleanno. Fuori da questa
+// lista non si precompila nulla: dati di contatto e date si reinseriscono sempre.
+const PREFILL_KEYS = [
+  'type', 'shape', 'sizeId', 'allergies', 'flavors', 'baseId', 'crumbleId',
+  'fillingId', 'coveringId', 'decoration', 'message', 'messageFont', 'candle',
+  'occasion', 'name',
+];
+
 // Config iniziale calcolata dai dati disponibili (validi anche se il proprietario
 // disattiva la dimensione/base/decorazione di default).
 function makeInitialConfig(cake, initial = {}) {
-  return {
+  const base = {
     type: '',
     shape: cake.cakeShapes[0]?.id || 'tonda',
     sizeId: '', // scelta esplicita: sblocca "Sorprendimi" e le regole legate alle persone
     allergies: initial.allergies || [], // allergeni da evitare (ingrigiscono le scelte)
     flavors: [], // [{name,color}]
     baseId: cake.cakeBases[0]?.id || '',
+    crumbleId: '', // tipo di crumble: usato solo con la base crumble croccante
     fillingId: 'nessuna',
     coveringId: '',
     decoration: cake.cakeDecorations[0]?.id || 'nessuna',
@@ -146,6 +165,37 @@ function makeInitialConfig(cake, initial = {}) {
     email: '',
     notes: '',
   };
+
+  // Precompilazione (es. torta dell'anno scorso): solo i campi previsti e solo
+  // se l'opzione esiste ancora a menù, altrimenti resta il valore di partenza.
+  const exists = (list, id) => !id || (list || []).some((x) => x.id === id);
+  for (const k of PREFILL_KEYS) {
+    const v = initial[k];
+    if (v === undefined || v === null) continue;
+    if (k === 'type' && !exists(cake.cakeTypes, v)) continue;
+    if (k === 'shape' && !exists(cake.cakeShapes, v)) continue;
+    if (k === 'sizeId' && !exists(cake.cakeSizes, v)) continue;
+    if (k === 'baseId' && !exists(cake.cakeBases, v)) continue;
+    if (k === 'crumbleId' && !exists(cake.cakeCrumbles, v)) continue;
+    if (k === 'fillingId' && !exists(cake.cakeFillings, v)) continue;
+    if (k === 'coveringId' && !exists(cake.cakeCoverings, v)) continue;
+    if (k === 'decoration' && !exists(cake.cakeDecorations, v)) continue;
+    if (k === 'flavors') {
+      // I gusti cambiano nel tempo: tiene solo quelli ancora a menù, riprendendo
+      // colore e allergeni aggiornati di oggi (non quelli salvati allora).
+      // Confronto senza maiuscole/minuscole: i nomi si modificano dalla dashboard
+      // (es. "Fior di latte" → "Fior di Latte") e l'ordine è di un anno fa.
+      base.flavors = (Array.isArray(v) ? v : [])
+        .map((f) => {
+          const n = String(f?.name || '').trim().toLowerCase();
+          return (cake.cakeFlavors || []).find((x) => x.name.trim().toLowerCase() === n);
+        })
+        .filter(Boolean);
+      continue;
+    }
+    base[k] = v;
+  }
+  return base;
 }
 
 export default function CakeConfigurator({ open, onClose, staff = false, initial }) {
@@ -156,6 +206,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     cakeSizes,
     cakeFlavors,
     cakeBases,
+    cakeCrumbles = [],
     cakeFillings,
     cakeCoverings,
     cakeDecorations,
@@ -212,7 +263,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       const base = cakeBases.find((b) => b.id === c.baseId);
       if (conflictsAllergies(base, c.allergies)) {
         patch.baseId = cakeBases.find((b) => !conflictsAllergies(b, c.allergies))?.id || '';
+        patch.crumbleId = '';
       }
+      const crumble = cakeCrumbles.find((x) => x.id === c.crumbleId);
+      if (conflictsAllergies(crumble, c.allergies)) patch.crumbleId = '';
       const filling = cakeFillings.find((f) => f.id === c.fillingId);
       if (conflictsAllergies(filling, c.allergies)) patch.fillingId = 'nessuna';
       const covering = cakeCoverings.find((cc) => cc.id === c.coveringId);
@@ -227,6 +281,16 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   }, [config.allergies]);
 
   const set = (patch) => setConfig((c) => ({ ...c, ...patch }));
+
+  // Passo "crumble": solo se la base scelta è il crumble croccante e se in
+  // dashboard esiste almeno un tipo di crumble attivo.
+  const showCrumble = config.baseId === CRUMBLE_BASE_ID && cakeCrumbles.length > 0;
+  const steps = useMemo(() => STEPS.filter((s) => s !== 'crumble' || showCrumble), [showCrumble]);
+
+  // Se i passi si accorciano (base cambiata) l'indice resta sempre valido.
+  useEffect(() => {
+    setStep((s) => Math.min(s, steps.length - 1));
+  }, [steps.length]);
 
   // Preavviso minimo: 5 ore di apertura da adesso (sito). In gelateria (staff): da subito.
   const earliest = useMemo(
@@ -243,6 +307,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const type = cakeTypes.find((t) => t.id === config.type);
     const size = cakeSizes.find((s) => s.id === config.sizeId);
     const base = cakeBases.find((b) => b.id === config.baseId);
+    const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
     const shape = cakeShapes.find((sh) => sh.id === config.shape);
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
@@ -250,6 +315,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       (type?.basePrice ?? 0) +
       (size?.priceDelta ?? 0) +
       (base?.priceDelta ?? 0) +
+      (crumble?.priceDelta ?? 0) +
       (shape?.priceDelta ?? 0) +
       (filling?.priceDelta ?? 0) +
       (covering?.priceDelta ?? 0);
@@ -261,20 +327,22 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     return p;
   }, [config]);
 
-  // Allergeni: unione di gusti + base + farcitura + copertura (indicativi)
+  // Allergeni: unione di gusti + base (+ crumble) + farcitura + copertura (indicativi)
   const allergeni = useMemo(() => {
     const base = cakeBases.find((b) => b.id === config.baseId);
+    const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
     return [
       ...new Set([
         ...config.flavors.flatMap((f) => f.allergeni || []),
         ...(base?.allergeni || []),
+        ...(crumble?.allergeni || []),
         ...(filling?.allergeni || []),
         ...(covering?.allergeni || []),
       ]),
     ];
-  }, [config.flavors, config.baseId, config.fillingId, config.coveringId]);
+  }, [config.flavors, config.baseId, config.crumbleId, config.fillingId, config.coveringId]);
 
   // Conteggio combinazioni teoriche (effetto wow)
   const combos = useMemo(() => {
@@ -292,7 +360,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
   const canNext = useMemo(() => {
     const size = cakeSizes.find((s) => s.id === config.sizeId);
-    switch (STEPS[step]) {
+    switch (steps[step]) {
       case 'type': return !!config.type;
       case 'size': return !!config.sizeId;
       case 'allergies': return true; // opzionale
@@ -303,12 +371,13 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       case 'filling': return !!config.fillingId;
       case 'covering': return !!config.coveringId;
       case 'base': return !!config.baseId;
+      case 'crumble': return !!config.crumbleId;
       case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim());
       default: return true;
     }
-  }, [step, config, staff, earliestISO, cakeSizes]);
+  }, [step, steps, config, staff, earliestISO, cakeSizes]);
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const toggleFlavor = (f) => {
@@ -360,6 +429,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const shape = cakeShapes.find((sh) => sh.id === config.shape);
     const size = cakeSizes.find((s) => s.id === config.sizeId);
     const base = cakeBases.find((b) => b.id === config.baseId);
+    const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
     const deco = cakeDecorations.find((d) => d.id === config.decoration);
@@ -375,6 +445,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       `*Forma:* ${shape?.name}`,
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
       `*Base:* ${base?.name}${base?.desc ? ` (${base.desc})` : ''}`,
+      crumble ? `*Tipo di crumble:* ${crumble.name}` : '',
       `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
       filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
       covering ? `*Copertura:* ${covering.name}` : '',
@@ -416,10 +487,16 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
     }
 
-    // Riga ordine (senza immagine). Per gli ordini pagati la salva il webhook
-    // (imposta lì totale/immagine); lo staff invece salva subito qui.
+    // La foto va su Storage: nella riga ordine ci finisce solo il link, così
+    // passa anche dai metadata di Stripe (campi da 500 caratteri) e arriva in
+    // dashboard pure sugli ordini pagati dal sito.
+    const immagineUrl = await uploadCakePhoto(immagine);
+
+    // Riga ordine. Per gli ordini pagati la salva il webhook (imposta lì il
+    // totale); lo staff invece salva subito qui.
     const { photo, ...dettagli } = config;
     const insertBase = {
+      immagine: immagineUrl,
       stato: 'da_fare',
       cliente_nome: config.name,
       cliente_telefono: config.phone,
@@ -432,7 +509,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       note: config.notes || null,
     };
 
-    // Parametri email di conferma (staff: subito; cliente: al ritorno dal pagamento)
+    // Parametri della mail di conferma. Li prepara il sito (qui ci sono i nomi
+    // di gusti, forme, basi…) ma la mail la spedisce il DATABASE appena l'ordine
+    // è salvato (trigger notify_order_email): così parte sempre, anche se il
+    // cliente chiude la pagina appena pagato.
     const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
     const ordineEmail = [
       allergLine ? `ALLERGENI: ${allergLine}` : '',
@@ -440,6 +520,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       `Forma: ${shape?.name}`,
       `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
       `Base: ${base?.name}`,
+      crumble ? `Tipo di crumble: ${crumble.name}` : '',
       `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
       filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
       covering ? `Copertura: ${covering.name}` : '',
@@ -463,6 +544,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         : 'Ti aspettiamo in gelateria per il ritiro 🍰',
       importo: total.toFixed(2),
     } : null;
+    insertBase.email_params = emailParams;
 
     if (!supabase) { setSent(true); return; }
     setSubmitError('');
@@ -470,7 +552,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
     // STAFF: ordine creato in gelateria, nessun pagamento online → salva subito.
     if (staff) {
-      const { error } = await supabase.from('ordini').insert({ ...insertBase, totale: total, immagine });
+      // Se il caricamento su Storage non è riuscito, per lo staff si ripiega
+      // sull'immagine grezza (che qui ci sta: non passa dai metadata Stripe).
+      const { error } = await supabase.from('ordini').insert({
+        ...insertBase, totale: total, immagine: immagineUrl || immagine,
+      });
       if (error) {
         console.warn('[ordine] non salvato:', error.message);
         setSubmitError("Non è stato possibile creare l'ordine. Riprova.");
@@ -478,16 +564,14 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         return;
       }
       logAction('Torta creata', config.name || 'cliente');
-      if (emailParams) sendOrderEmail(emailParams);
       setSubmitting(false);
       setSent(true);
       return;
     }
 
-    // CLIENTE: paga con Stripe. L'ordine lo salva il webhook a pagamento avvenuto
-    // (+ trigger Telegram); l'email di conferma parte al ritorno sul sito.
+    // CLIENTE: paga con Stripe. L'ordine lo salva il webhook a pagamento
+    // avvenuto; da lì partono sia la notifica Telegram sia la mail di conferma.
     try {
-      if (emailParams) sessionStorage.setItem('pg_order_email', JSON.stringify(emailParams));
       sessionStorage.setItem('pg_order_delivery', config.delivery ? '1' : '0');
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { config, insert: insertBase },
@@ -531,7 +615,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
             </div>
             {!sent && (
               <div className="cfg-stepper" aria-hidden="true">
-                {STEPS.map((_, i) => (
+                {steps.map((_, i) => (
                   <div
                     key={i}
                     className={`seg ${i < step ? 'done' : ''} ${i === step ? 'active' : ''}`}
@@ -582,6 +666,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
             </div>
           </aside>
 
+          <StepsCtx.Provider value={steps}>
           <div className="cfg-body" ref={bodyRef}>
             {sent ? (
               <SuccessView name={config.name} onClose={onClose} staff={staff} delivery={config.delivery} />
@@ -595,22 +680,24 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  {STEPS[step] === 'type' && <StepType config={config} set={set} />}
-                  {STEPS[step] === 'size' && <StepSize config={config} set={set} />}
-                  {STEPS[step] === 'allergies' && <StepAllergies config={config} set={set} />}
-                  {STEPS[step] === 'shape' && <StepShape config={config} set={set} />}
-                  {STEPS[step] === 'base' && <StepBase config={config} set={set} />}
-                  {STEPS[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} staff={staff} />}
-                  {STEPS[step] === 'filling' && <StepFilling config={config} set={set} />}
-                  {STEPS[step] === 'covering' && <StepCovering config={config} set={set} />}
-                  {STEPS[step] === 'decoration' && <StepDecoration config={config} set={set} />}
-                  {STEPS[step] === 'message' && <StepMessage config={config} set={set} staff={staff} />}
-                  {STEPS[step] === 'details' && <StepDetails config={config} set={set} staff={staff} orari={orari} earliestISO={earliestISO} earliestMin={earliestMin} />}
-                  {STEPS[step] === 'review' && <StepReview config={config} total={total} staff={staff} />}
+                  {steps[step] === 'type' && <StepType config={config} set={set} />}
+                  {steps[step] === 'size' && <StepSize config={config} set={set} />}
+                  {steps[step] === 'allergies' && <StepAllergies config={config} set={set} />}
+                  {steps[step] === 'shape' && <StepShape config={config} set={set} />}
+                  {steps[step] === 'base' && <StepBase config={config} set={set} />}
+                  {steps[step] === 'crumble' && <StepCrumble config={config} set={set} />}
+                  {steps[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} staff={staff} />}
+                  {steps[step] === 'filling' && <StepFilling config={config} set={set} />}
+                  {steps[step] === 'covering' && <StepCovering config={config} set={set} />}
+                  {steps[step] === 'decoration' && <StepDecoration config={config} set={set} />}
+                  {steps[step] === 'message' && <StepMessage config={config} set={set} staff={staff} />}
+                  {steps[step] === 'details' && <StepDetails config={config} set={set} staff={staff} orari={orari} earliestISO={earliestISO} earliestMin={earliestMin} />}
+                  {steps[step] === 'review' && <StepReview config={config} total={total} staff={staff} />}
                 </motion.div>
               </AnimatePresence>
             )}
           </div>
+          </StepsCtx.Provider>
 
           {!sent && submitError && (
             <div className="cfg-submit-error">⚠️ {submitError}</div>
@@ -636,7 +723,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                 <button className="cfg-btn cfg-btn-back" onClick={back} disabled={step === 0}>
                   <ArrowLeft size={16} /> Indietro
                 </button>
-                {step < STEPS.length - 1 ? (
+                {step < steps.length - 1 ? (
                   <button className="cfg-btn cfg-btn-next" onClick={next} disabled={!canNext}>
                     Avanti <ArrowRight size={16} />
                   </button>
@@ -688,10 +775,13 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 /* ───────── Step components ───────── */
 
 function StepHeader({ stepKey, num, title, lead }) {
-  const n = stepKey ? STEPS.indexOf(stepKey) + 1 : num;
+  // I passi effettivi (senza quelli non applicabili, es. crumble) vengono dal
+  // configuratore: così la numerazione "Passo N di M" è sempre coerente.
+  const steps = useContext(StepsCtx);
+  const n = stepKey ? steps.indexOf(stepKey) + 1 : num;
   return (
     <>
-      <span className="cfg-step-num">Passo {n} di {STEPS.length}</span>
+      <span className="cfg-step-num">Passo {n} di {steps.length}</span>
       <h2>{title}</h2>
       {lead && <p className="lead">{lead}</p>}
     </>
@@ -941,7 +1031,8 @@ function StepBase({ config, set }) {
             <button
               key={b.id}
               className={`opt-card ${config.baseId === b.id ? 'selected' : ''}`}
-              onClick={() => !blocked && set({ baseId: b.id })}
+              // Cambiando base che non sia il crumble, il tipo di crumble si azzera.
+              onClick={() => !blocked && set({ baseId: b.id, ...(b.id === CRUMBLE_BASE_ID ? {} : { crumbleId: '' }) })}
               disabled={blocked}
               style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
             >
@@ -951,6 +1042,44 @@ function StepBase({ config, set }) {
               </div>
               <div className="opt-desc">{blocked ? `Contiene: ${b.allergeni.join(', ')}` : b.desc}</div>
               <div className="opt-meta">{b.priceDelta > 0 ? `+ €${b.priceDelta}` : 'inclusa'}</div>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// Tipi di crumble: passo che compare solo se la base scelta è il crumble
+// croccante. La lista si gestisce dalla dashboard (scheda "Crumble").
+function StepCrumble({ config, set }) {
+  const { cakeCrumbles = [] } = useCakeData();
+  return (
+    <>
+      <StepHeader
+        stepKey="crumble"
+        title="Quale crumble?"
+        lead="Hai scelto la base croccante: dicci di che tipo la vuoi."
+      />
+      <div className="opt-grid cols-2">
+        {cakeCrumbles.map((c) => {
+          const blocked = conflictsAllergies(c, config.allergies);
+          return (
+            <button
+              key={c.id}
+              className={`opt-card ${config.crumbleId === c.id ? 'selected' : ''}`}
+              onClick={() => !blocked && set({ crumbleId: c.id })}
+              disabled={blocked}
+              style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+            >
+              <div className="opt-name">
+                {c.color && (
+                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: c.color, display: 'inline-block' }} />
+                )}
+                {c.name}
+              </div>
+              <div className="opt-desc">{blocked ? `Contiene: ${(c.allergeni || []).join(', ')}` : c.desc}</div>
+              <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'incluso'}</div>
             </button>
           );
         })}
@@ -1141,6 +1270,14 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
         <p className="hint" style={emailInvalid ? { color: '#b03a3a' } : undefined}>
           {emailInvalid ? "Inserisci un'email valida." : 'Ti invieremo qui la conferma dell’ordine.'}
         </p>
+        {/* Avviso promemoria: obbligatorio informare, visto che la mail dell'anno
+            dopo è promozionale. La disiscrizione è in ogni promemoria. */}
+        {config.occasion === 'Compleanno' && !staff && (
+          <p className="hint cfg-reminder-note">
+            🎂 Tra un anno ti scriveremo qui per ricordarti il compleanno, con la torta che hai
+            scelto oggi. Ti basterà un clic per non riceverlo più.
+          </p>
+        )}
       </div>
 
       <div className="cfg-field">
@@ -1228,12 +1365,13 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
 }
 
 function StepReview({ config, total, staff }) {
-  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeFillings, cakeCoverings, cakeDecorations, cakeAllergens } = useCakeData();
+  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeCrumbles = [], cakeFillings, cakeCoverings, cakeDecorations, cakeAllergens } = useCakeData();
   const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
   const type = cakeTypes.find((t) => t.id === config.type);
   const shape = cakeShapes.find((sh) => sh.id === config.shape);
   const size = cakeSizes.find((s) => s.id === config.sizeId);
   const base = cakeBases.find((b) => b.id === config.baseId);
+  const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
   const filling = cakeFillings.find((f) => f.id === config.fillingId);
   const covering = cakeCoverings.find((c) => c.id === config.coveringId);
   const deco = cakeDecorations.find((d) => d.id === config.decoration);
@@ -1247,6 +1385,7 @@ function StepReview({ config, total, staff }) {
           <dt>Forma</dt><dd>{shape?.name}</dd>
           <dt>Dimensione</dt><dd>{size?.label} · Ø {size?.diameter}cm</dd>
           <dt>Base</dt><dd>{base?.name}</dd>
+          {crumble && (<><dt>Crumble</dt><dd>{crumble.name}</dd></>)}
           <dt>Strati</dt><dd>{config.flavors.map((f) => f.name).join(' · ') || '—'}</dd>
           {filling && filling.id !== 'nessuna' && (<><dt>Inserto</dt><dd>{filling.name}</dd></>)}
           <dt>Copertura</dt><dd>{covering?.name}</dd>

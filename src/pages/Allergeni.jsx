@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { ArrowLeft, Download, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getDocumento, pdfUrl } from '../lib/documenti';
 
 // I 7 allergeni usati in gelateria (dei 14 del Reg. UE 1169/2011) con icona.
 const ALLERGEN_META = {
@@ -85,15 +86,32 @@ function ProductCard({ p }) {
   );
 }
 
+// "luglio 2026" -> "Luglio 2026"
+function meseAnno(iso) {
+  if (!iso) return null;
+  try {
+    const s = new Date(iso).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  } catch {
+    return null;
+  }
+}
+
 export default function Allergeni() {
   const [rows, setRows] = useState(null);
+  // Documento ufficiale: lo staff lo aggiorna dalla dashboard (scheda "PDF e QR
+  // allergeni"). Se non ne è mai stato caricato uno, resta quello del sito.
+  const [doc, setDoc] = useState(null);
 
   useEffect(() => {
     document.title = 'Allergeni · Gelateria Punto Gi!';
+    getDocumento().then(({ data }) => setDoc(data));
     if (!supabase) { setRows([]); return; }
     supabase.from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine')
       .then(({ data }) => setRows(data || []));
   }, []);
+
+  const aggiornato = (doc?.file_url && meseAnno(doc.aggiornato_il)) || 'Maggio 2026';
 
   const byCat = useMemo(() => {
     const m = {};
@@ -117,7 +135,7 @@ export default function Allergeni() {
         <h1 style={{ fontSize: 'clamp(2rem,5vw,3.2rem)', margin: '0.8rem 0 0.6rem' }}>Ingredienti e Allergeni</h1>
         <p className="lead">
           Redatto ai sensi del <strong>Regolamento (UE) n. 1169/2011</strong> per una consultazione chiara e completa
-          sulle sostanze che possono provocare allergie o intolleranze. Ultimo aggiornamento: <strong>Maggio 2026</strong>.
+          sulle sostanze che possono provocare allergie o intolleranze. Ultimo aggiornamento: <strong>{aggiornato}</strong>.
         </p>
 
         {/* Avviso contaminazione crociata */}
@@ -168,7 +186,7 @@ export default function Allergeni() {
 
         {/* Download PDF ufficiale */}
         <div style={{ marginTop: '3rem', textAlign: 'center' }}>
-          <a href="/documenti/quaderno-allergeni-punto-gi.pdf" target="_blank" rel="noopener noreferrer"
+          <a href={pdfUrl(doc)} target="_blank" rel="noopener noreferrer"
             className="btn btn-primary" style={{ display: 'inline-flex' }}>
             <Download size={18} /> Scarica il documento ufficiale (PDF)
           </a>

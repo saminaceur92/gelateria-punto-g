@@ -738,6 +738,16 @@
 .cfg-field textarea { resize: vertical; min-height: 80px; }
 
 .cfg-field .hint { font-size: 0.78rem; color: var(--grey); margin-top: 0.3rem; }
+/* Avviso del promemoria compleanno: deve vedersi, non essere una postilla */
+.cfg-field .cfg-reminder-note {
+  background: var(--cream-warm, #f8f2e7);
+  border: 1px solid rgba(124, 183, 215, 0.35);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  margin-top: 0.5rem;
+  color: var(--ink);
+  line-height: 1.5;
+}
 
 .cfg-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 480px) { .cfg-field-row { grid-template-columns: 1fr; } }
