@@ -7,8 +7,9 @@ import { logAction } from '../lib/log';
  * props:
  *  - table: nome tabella Supabase
  *  - title, subtitle
- *  - fields: [{ key, label, type: 'text'|'number'|'color'|'select'|'checkbox'|'checkboxes', options?, placeholder? }]
+ *  - fields: [{ key, label, type: 'text'|'textarea'|'number'|'color'|'select'|'checkbox'|'checkboxes', options?, placeholder? }]
  *    'checkboxes' = spunte multiple salvate come stringa separata da virgola (options: [{value, label?, emoji?}])
+ *    'textarea' = testo lungo (descrizioni): occupa tutta la riga, si può allargare in altezza
  *  - newRow: () => oggetto coi valori di default per una nuova riga
  */
 
@@ -41,7 +42,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const rowLabel = (r) => r.nome || r.giorno || r.etichetta || 'voce';
+  const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.giorno || r.etichetta || 'voce';
 
   // La riga si legge male se i campi sono tutti in fila: li dividiamo in tre
   // fasce — dati, gruppi di spunte (allergeni presenti / tracce), sì/no.
@@ -170,6 +171,15 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                       <input type="color" value={row[f.key] || '#cccccc'} onChange={(e) => edit(row.id, f.key, e.target.value)} />
                       <code>{row[f.key] || '—'}</code>
                     </span>
+                  ) : f.type === 'textarea' ? (
+                    // Testi lunghi (es. la descrizione del gusto nella carta):
+                    // in una casella normale non si leggerebbero mai per intero.
+                    <textarea
+                      rows={2}
+                      value={row[f.key] ?? ''}
+                      placeholder={f.placeholder || ''}
+                      onChange={(e) => edit(row.id, f.key, e.target.value)}
+                    />
                   ) : (
                     <input
                       type={f.type === 'number' ? 'number' : 'text'}

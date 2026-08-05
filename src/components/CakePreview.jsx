@@ -1,10 +1,149 @@
 import { lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useCakeData } from '../data/CakeDataProvider';
-import { CRUMBLE_BASE_ID } from '../data/cakeOptions';
+import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
+import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
+
+// Coperture fatte di panna montata: panna LISCIA, spatolata. I ciuffi non
+// fanno più parte della copertura, sono una decorazione a sé ('panna-deco' e
+// 'panna-colorata'). ('meringa' è una copertura storica, ormai disattivata.)
+const COPERTURE_PANNA = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra', 'meringa']);
+
+// Decorazioni fatte di panna: sono loro (e solo loro) a portare i ciuffi.
+const DECORAZIONI_PANNA = new Set(['panna-deco', 'panna-colorata']);
+
+// Decorazioni che NON si disegnano sulla torta: dipendono da cosa c'è in
+// gelateria quel giorno e da come decide di decorare il gelataio. Disegnarle
+// sarebbe una promessa (l'immagine finisce nell'ordine e il laboratorio si
+// troverebbe vincolato), quindi si scrivono e basta, sopra la torta.
+const DECORAZIONI_SU_DISPONIBILITA = new Set([
+  'fantasia',
+  'colorate',
+  'cioccolato-deco',
+  'cioccolato-fondente-deco',
+]);
+
+// Come si legge la copertura nella scheda. Per le coperture di panna il testo è
+// scritto qui — dice dove va la panna e non promette ciuffi — mentre per tutte
+// le altre si usa il nome del listino (che i titolari cambiano dalla dashboard).
+const TESTO_COPERTURA = {
+  panna: 'panna montata intorno, sopra e sui fianchi',
+  'panna-sopra': 'panna montata solo sopra',
+  'panna-sotto-sopra': 'panna montata sotto e sopra',
+};
+
+function descriviCopertura(covering) {
+  if (!covering) return '';
+  // Naked cake: non è una copertura, gli strati restano a vista.
+  if (covering.id === 'naked') return 'a strati nudi, senza copertura';
+  const testo = TESTO_COPERTURA[covering.id] || String(covering.name || '').toLowerCase();
+  return testo ? `coperto da ${testo}` : '';
+}
+
+// Riga della panna decorativa: i ciuffi (e la panna colorata) arrivano SOLO
+// dalla decorazione scelta, mai dalla copertura.
+function descriviPannaDeco(decorationId, colore, coveringId) {
+  if (!DECORAZIONI_PANNA.has(decorationId)) return '';
+  if (decorationId === 'panna-deco') return 'con ciuffi di panna montata';
+  const tinta = colore ? ` ${colore}` : '';
+  return COPERTURE_PANNA.has(coveringId)
+    ? `con la panna colorata${tinta} e ciuffi in tinta`
+    : `con panna colorata${tinta} intorno e ciuffi in tinta`;
+}
+
+/* ===== decorazioni: una o più, ognuna col suo colore ===== */
+
+/**
+ * Decorazioni scelte, in forma pulita: lista di id (nell'ordine di scelta) e
+ * mappa dei colori. Accetta anche il VECCHIO formato a decorazione singola
+ * (`decoration` + `decorationColor`): arrivano ancora così gli ordini già
+ * salvati e il link "Rifai questa torta" dei promemoria compleanno.
+ */
+function decorazioniScelte(config) {
+  const colori = { ...(config.decorationColors || {}) };
+  let lista = Array.isArray(config.decorations) ? config.decorations : [];
+  if (!lista.length && config.decoration) {
+    lista = [config.decoration];
+    if (config.decorationColor) colori[config.decoration] = config.decorationColor;
+  }
+  const ids = [];
+  for (const id of lista) {
+    // 'nessuna' vuol dire "niente decorazioni": non è una decorazione da elencare
+    if (!id || id === 'nessuna' || ids.includes(id)) continue;
+    ids.push(id);
+  }
+  return { ids, colori };
+}
+
+// Accordo del colore col nome della decorazione ("fiocchi ROSSI", "panna
+// ROSSA"): i titolari scrivono i colori un po' al maschile e un po' al
+// femminile, qui si riportano alla forma giusta. Chi non è in tabella (blu,
+// rosa, oro, argento, arcobaleno…) è invariabile e si scrive com'è.
+const ROSSO = { ms: 'rosso', fs: 'rossa', mp: 'rossi', fp: 'rosse' };
+const AZZURRO = { ms: 'azzurro', fs: 'azzurra', mp: 'azzurri', fp: 'azzurre' };
+const NERO = { ms: 'nero', fs: 'nera', mp: 'neri', fp: 'nere' };
+const GIALLO = { ms: 'giallo', fs: 'gialla', mp: 'gialli', fp: 'gialle' };
+const BIANCO = { ms: 'bianco', fs: 'bianca', mp: 'bianchi', fp: 'bianche' };
+const VERDE = { ms: 'verde', fs: 'verde', mp: 'verdi', fp: 'verdi' };
+const COLORI_ACCORDO = {
+  rosso: ROSSO, rossa: ROSSO,
+  azzurro: AZZURRO, azzurra: AZZURRO,
+  nero: NERO, nera: NERO,
+  giallo: GIALLO, gialla: GIALLO,
+  bianco: BIANCO, bianca: BIANCO,
+  verde: VERDE,
+};
+
+// Genere e numero del NOME di ogni decorazione, per accordarci il colore.
+// La chiave è l'id (stabile), non il nome: quello i titolari lo cambiano dalla
+// dashboard. Chi non è in elenco vale maschile plurale, perché quasi tutte le
+// decorazioni sono nomi plurali (macarons, spumini, fiori, fiocchi…).
+const GENERE_DECORAZIONE = {
+  perline: 'fp',
+  colorate: 'fp',
+  'panna-deco': 'fs',
+  'panna-colorata': 'fs',
+  'granella-nocciola': 'fs',
+  'granella-pistacchio': 'fs',
+  'frutta-fresca': 'fs',
+  fantasia: 'fs',
+};
+
+/** Il colore scelto, accordato col nome della decorazione. */
+function accordaColore(colore, genere = 'mp') {
+  const key = String(colore || '').trim().toLowerCase();
+  if (!key) return '';
+  const forme = COLORI_ACCORDO[key];
+  return forme ? forme[genere] || key : key;
+}
+
+/** Elenco all'italiana: "a", "a e b", "a, b e c". */
+function elencoItaliano(voci) {
+  if (voci.length < 2) return voci[0] || '';
+  return `${voci.slice(0, -1).join(', ')} e ${voci[voci.length - 1]}`;
+}
+
+/**
+ * Riga di riepilogo delle decorazioni: le elenca tutte, ognuna col suo colore.
+ * Es. "decorata con fiocchi colorati rossi e macarons verdi".
+ * La panna non entra qui: ha una riga tutta sua (`descriviPannaDeco`), che
+ * racconta anche dove va la panna spatolata.
+ */
+function descriviDecorazioni(decorazioni, colori) {
+  const voci = decorazioni
+    .filter((d) => !DECORAZIONI_PANNA.has(d.id) && !DECORAZIONI_SU_DISPONIBILITA.has(d.id))
+    .map((d) => {
+      const nome = String(d.name || '').trim().toLowerCase();
+      if (!nome) return '';
+      const colore = accordaColore(colori[d.id], GENERE_DECORAZIONE[d.id]);
+      return colore ? `${nome} ${colore}` : nome;
+    })
+    .filter(Boolean);
+  return voci.length ? `decorata con ${elencoItaliano(voci)}` : '';
+}
 
 /**
  * Anteprima visiva: SVG laterale con forma + strati colorati.
@@ -21,10 +160,9 @@ export default function CakePreview({ config }) {
     crumbleId,
     fillingId = 'nessuna',
     coveringId = 'panna',
-    decoration,
     message = '',
     candle = false,
-    messageFont = 'caveat',
+    messageFont = DEFAULT_MESSAGE_FONT,
     photo = null,
     photoTransform = { zoom: 1, posX: 50, posY: 50 },
   } = config;
@@ -52,18 +190,35 @@ export default function CakePreview({ config }) {
     : baseRow;
   const filling = cakeFillings.find((x) => x.id === fillingId);
   const covering = cakeCoverings.find((x) => x.id === coveringId);
-  const d = cakeDecorations.find((x) => x.id === decoration);
+  // Le torte "Alte" devono vedersi davvero più alte nell'anteprima, non solo
+  // nel nome: gli strati crescono in altezza (vedi `tall` in Cake3D).
+  const tall = isTallType(type);
 
-  const fontFamily =
-    messageFont === 'fraunces'
-      ? "'Fraunces', serif"
-      : messageFont === 'inter'
-      ? "'Inter', sans-serif"
-      : "'Caveat', cursive";
-  const fontStyle = messageFont === 'fraunces' ? 'italic' : 'normal';
-  const fontWeight = messageFont === 'inter' ? 800 : messageFont === 'caveat' ? 700 : 600;
-  const fontTransform = messageFont === 'inter' ? 'uppercase' : 'none';
-  const fontLetter = messageFont === 'inter' ? '0.06em' : 'normal';
+  // Decorazioni scelte: possono essere più d'una, ognuna col suo colore.
+  // Gli id sconosciuti (listino cambiato, ordine vecchio) restano nella lista
+  // per la torta 3D, ma nella scheda si elencano solo quelli che sappiamo dire.
+  const { ids: decorationIds, colori: decorationColorMap } = decorazioniScelte(config);
+  const decorazioni = decorationIds
+    .map((id) => cakeDecorations.find((x) => x.id === id))
+    .filter(Boolean);
+
+  const rigaCopertura = descriviCopertura(covering);
+  const rigaDecorazioni = descriviDecorazioni(decorazioni, decorationColorMap);
+  // Le decorazioni che non si disegnano: si elencano sopra la torta, con la
+  // precisazione che dipendono dalla gelateria. Non compaiono nella riga
+  // "decorata con…", altrimenti sarebbero scritte due volte.
+  const suDisponibilita = decorazioni
+    .filter((d) => DECORAZIONI_SU_DISPONIBILITA.has(d.id))
+    .map((d) => String(d.name || '').trim())
+    .filter(Boolean);
+  // La panna ha una riga sua: dice dove va la panna spatolata, non solo il colore.
+  const righePanna = decorazioni
+    .map((d) => descriviPannaDeco(d.id, accordaColore(decorationColorMap[d.id], 'fs'), covering?.id))
+    .filter(Boolean);
+
+  // Stile della scritta: gli id arrivano dalla tabella `scritte`, ma accettiamo
+  // anche i vecchi (caveat/fraunces/inter) degli ordini e delle bozze salvate.
+  const msgFont = messageFontStyle(messageFont);
 
   return (
     <motion.div
@@ -78,12 +233,28 @@ export default function CakePreview({ config }) {
         <span>Pasticceria</span>
       </div>
 
+      {/* Decorazioni che non si disegnano: scritte qui, sopra la torta, perché
+          dipendono da cosa c'è in gelateria e dall'estro del gelataio. */}
+      {suDisponibilita.length > 0 && (
+        <div className="cake-card-nota">
+          <strong>{elencoItaliano(suDisponibilita)}</strong>
+          <span>secondo disponibilità in gelateria, a scelta del gelataio</span>
+        </div>
+      )}
+
       <div className="cake-card-body">
-        {/* Renderer 3D reale (caricato in lazy) */}
+        {/* Renderer 3D reale (caricato in lazy).
+            Decorazioni e colori viaggiano in coppia: `decorations` è la lista
+            degli id scelti, nell'ordine (i ciuffi di panna arrivano solo da
+            'panna-deco' e 'panna-colorata'), `decorationColors` dice con che
+            colore per quelle che lo prevedono. Il nome del colore si passa così
+            com'è scelto ("Azzurra"): la torta 3D lo traduce da sé, e regge anche
+            un HEX o il valore mancante. */}
         <Suspense fallback={<div className="cake3d-stage cake3d-loading" aria-hidden="true" />}>
           <Cake3D
             shape={shape}
             plateShape={plateShape}
+            tall={tall}
             flavors={flavors}
             base={b}
             filling={filling}
@@ -91,7 +262,8 @@ export default function CakePreview({ config }) {
             candle={candle}
             photo={photo}
             photoTransform={photoTransform}
-            decorationId={d?.id}
+            decorations={decorationIds}
+            decorationColors={decorationColorMap}
             message={message}
             messageFont={messageFont}
           />
@@ -125,11 +297,24 @@ export default function CakePreview({ config }) {
           </p>
         )}
 
-        {covering && (
+        {rigaCopertura && (
           <p className="cake-card-base">
-            <em>coperto da {covering.name.toLowerCase()}</em>
+            <em>{rigaCopertura}</em>
           </p>
         )}
+
+        {rigaDecorazioni && (
+          <p className="cake-card-base">
+            <em>{rigaDecorazioni}</em>
+          </p>
+        )}
+
+
+        {righePanna.map((riga) => (
+          <p className="cake-card-base" key={riga}>
+            <em>{riga}</em>
+          </p>
+        ))}
 
         {b && (
           <p className="cake-card-base">
@@ -142,11 +327,11 @@ export default function CakePreview({ config }) {
             <span className="cake-card-label">Scritta</span>
             <p
               style={{
-                fontFamily,
-                fontStyle,
-                fontWeight,
-                textTransform: fontTransform,
-                letterSpacing: fontLetter,
+                fontFamily: msgFont.family,
+                fontStyle: msgFont.italic ? 'italic' : 'normal',
+                fontWeight: msgFont.weight,
+                textTransform: msgFont.uppercase ? 'uppercase' : 'none',
+                letterSpacing: msgFont.letterSpacing,
               }}
             >
               "{message}"
@@ -155,12 +340,16 @@ export default function CakePreview({ config }) {
         )}
 
         <div className="cake-card-icons">
-          {d && d.id !== 'nessuna' && (
-            <span className="cake-card-icon">
-              <span aria-hidden="true">{d.emoji}</span>
-              {d.name}
-            </span>
-          )}
+          {decorazioni.map((d) => {
+            const colore = String(decorationColorMap[d.id] || '').trim().toLowerCase();
+            return (
+              <span className="cake-card-icon" key={d.id}>
+                <span aria-hidden="true">{d.emoji}</span>
+                {d.name}
+                {colore ? ` · ${colore}` : ''}
+              </span>
+            );
+          })}
           {candle && (
             <span className="cake-card-icon">
               <span aria-hidden="true">🕯️</span>
@@ -429,7 +618,10 @@ function CakeSvg({ shape, flavors, base, filling, covering, candle, photo, decor
             {/* Gocce/colature laterali per glasse liquide */}
             {(covering?.id === 'glassa-specchio' ||
               covering?.id === 'ganache-cop' ||
-              covering?.id === 'cioccolato-cop') && (
+              covering?.id === 'cioccolato-cop' ||
+              covering?.id === 'cioccolato-bianco-cop' ||
+              covering?.id === 'nocciola-cop' ||
+              covering?.id === 'pistacchio-cop') && (
               <g>
                 {[0.12, 0.32, 0.52, 0.72, 0.88].map((p, i) => {
                   const angle = Math.PI * p; // mezzo cerchio frontale

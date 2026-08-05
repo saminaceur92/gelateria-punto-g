@@ -150,6 +150,7 @@
 .cfg-close {
   width: 40px;
   height: 40px;
+  flex-shrink: 0; /* header flex: col titolo lungo il tondo non deve ovalizzarsi */
   border-radius: 50%;
   background: rgba(42,26,62,0.06);
   display: grid;
@@ -205,11 +206,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* NIENTE justify-content: center. In un contenitore flex la centratura, quando
+     il contenuto è più alto dello spazio, lo fa uscire ANCHE DAL BORDO SUPERIORE:
+     e quella parte non si può raggiungere, perché lo scorrimento non va sopra
+     l'inizio. Sulle torte alte con le decorazioni la cima spariva così.
+     Le auto-margin qui sotto centrano quando c'è posto e non tagliano quando
+     non ce n'è. */
+  justify-content: flex-start;
   padding: 2rem 1.5rem;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
+
+/* Centratura "sicura": con spazio in avanzo il blocco resta al centro, quando
+   manca lo spazio i margini si azzerano e si può scorrere per vedere tutto. */
+.cfg-preview > :first-child { margin-top: auto; }
+.cfg-preview > :last-child { margin-bottom: auto; }
 
 @media (max-width: 900px) {
   .cfg-preview { padding: 1.2rem; min-height: 320px; max-height: 38vh; }
@@ -265,7 +278,11 @@
 }
 
 .cake-card-ribbon .dot {
-  width: 4px; height: 4px; border-radius: 50%;
+  --dot-size: 4px;
+  width: var(--dot-size); height: var(--dot-size);
+  min-width: var(--dot-size); min-height: var(--dot-size);
+  flex: 0 0 auto; /* la riga è flex: senza questo il puntino si ovalizza */
+  border-radius: 50%;
   background: var(--orange, #eb911e);
 }
 
@@ -354,7 +371,11 @@
 }
 
 .flavor-chip-dot {
-  width: 8px; height: 8px; border-radius: 50%;
+  --dot-size: 8px;
+  width: var(--dot-size); height: var(--dot-size);
+  min-width: var(--dot-size); min-height: var(--dot-size);
+  flex: 0 0 auto; /* i nomi lunghi mandano a capo la chip: il puntino non si stringe */
+  border-radius: 50%;
   box-shadow: inset 0 0 2px rgba(0,0,0,0.25);
 }
 
@@ -362,6 +383,32 @@
   font-size: 0.82rem;
   color: var(--grey);
   margin: 0.6rem 0 0.8rem;
+}
+
+/* Decorazioni non disegnate sulla torta (fantasia del gelataio, decorazioni
+   colorate, decorazioni di cioccolato): si scrivono qui, sopra la torta. */
+.cake-card-nota {
+  margin: 0.7rem 1rem 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px dashed rgba(192, 137, 76, 0.5);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+.cake-card-nota strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--orange);
+  line-height: 1.3;
+}
+
+.cake-card-nota span {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  color: var(--grey);
+  line-height: 1.3;
 }
 
 .cake-card-message {
@@ -445,6 +492,9 @@
   justify-content: center;
   width: 15px;
   height: 15px;
+  min-width: 15px;
+  min-height: 15px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--violet-deep);
   color: #fff;
@@ -631,6 +681,41 @@
   gap: 0.5rem;
 }
 
+/* ===========================================================
+   PALLINI COLORATI — devono restare cerchi perfetti
+   Un pallino con misura fissa dentro un contenitore flex viene
+   compresso quando il testo accanto va a capo su più righe
+   ("Variegato Nocciola e Gianduia", "Granella di Pistacchi"…):
+   da cerchio diventa un'ellisse tagliata.
+   Regola d'oro: misura bloccata (anche in min-), nessun
+   restringimento in flex, e allineamento alla PRIMA riga di testo.
+   =========================================================== */
+.opt-dot {
+  --dot-size: 12px;
+  flex: 0 0 auto;               /* niente restringimento dentro il flex */
+  display: inline-block;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  min-width: var(--dot-size);   /* il min- è ciò che impedisce lo schiacciamento */
+  min-height: var(--dot-size);
+  box-sizing: border-box;
+  border-radius: 50%;
+  /* col nome su più righe il pallino resta accanto alla prima riga,
+     centrato otticamente su di essa (interlinea 1.55 del body) */
+  align-self: flex-start;
+  margin-top: max(0px, calc((1.55em - var(--dot-size)) / 2));
+}
+
+/* Finché il markup dei passi usa lo stile inline (span senza classe, vedi
+   report), la stessa protezione va agganciata agli span dentro .opt-name:
+   i pallini portano border-radius nello stile inline, le emoji no. */
+.opt-card .opt-name > span { flex-shrink: 0; }
+.opt-card .opt-name > span[style*="border-radius"] {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: max(0px, calc((1.55em - 12px) / 2));
+}
+
 .opt-card .opt-desc { font-size: 0.8rem; color: var(--grey); }
 
 .opt-card .opt-meta {
@@ -662,11 +747,17 @@
   padding: 0.7rem 0.9rem;
 }
 
+/* La misura passa da --dot-size così width/height/min- restano sempre
+   uguali fra loro: cambiandola (vedi mobile) il cerchio resta un cerchio. */
 .opt-flavor .flavor-dot {
-  width: 26px;
-  height: 26px;
+  --dot-size: 26px;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  min-width: var(--dot-size);
+  min-height: var(--dot-size);
   border-radius: 50%;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  align-self: center;
   border: 2px solid #fff;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
@@ -681,6 +772,8 @@
 .opt-flavor .flavor-pos {
   width: 22px;
   height: 22px;
+  min-width: 22px;
+  min-height: 22px;
   border-radius: 50%;
   background: var(--violet-deep);
   color: var(--cream);
@@ -929,6 +1022,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 600;
+  /* i nomi arrivano dalla tabella `scritte` e possono essere lunghi
+     ("Corsivo scolastico"): vanno a capo centrati, senza sbordare */
+  text-align: center;
+  line-height: 1.25;
+  hyphens: auto;
 }
 
 /* Rotation slider */
@@ -990,6 +1088,7 @@
 .cfg-success .check {
   width: 80px;
   height: 80px;
+  flex-shrink: 0; /* colonna flex: non si schiaccia in verticale */
   border-radius: 50%;
   background: linear-gradient(135deg, var(--violet) 0%, var(--violet-deep) 100%);
   display: grid;
@@ -1041,6 +1140,7 @@
 .photo-preview img {
   width: 80px;
   height: 80px;
+  flex-shrink: 0; /* accanto al testo del file resta un cerchio */
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -1061,6 +1161,7 @@
 .photo-crop {
   overflow: hidden;
   position: relative;
+  flex-shrink: 0; /* l'anteprima tonda non si schiaccia nella colonna flex */
   cursor: grab;
   touch-action: none;
   background-color: #efe7da;
@@ -1278,6 +1379,350 @@
 }
 .delivery-zones li { margin-bottom: 0.2rem; }
 .delivery-zones .hint { margin: 0; }
+
+/* ===========================================================
+   Extra dell'ordine (salame al kg, cabaret di pasticcini)
+   Non sono un passo del wizard: si propongono a ordine finito, in una
+   finestra sopra al riepilogo (come ai totem dei fast food).
+   Qui sotto: la finestra, poi il selettore di quantità che usa.
+   =========================================================== */
+.extra-pop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100; /* sopra al configuratore e alla scheda allergeni */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(42, 15, 74, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: extraPopFade 0.2s ease;
+}
+
+.extra-pop {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: min(88dvh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: #fffdf6;
+  border-radius: 20px;
+  padding: 1.6rem 1.4rem 1.2rem;
+  box-shadow: 0 24px 60px -14px rgba(42, 15, 74, 0.55);
+  text-align: center;
+  overflow: hidden;
+  animation: extraPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.extra-pop:focus { outline: none; }
+/* Nastro caldo in cima: si vede subito che è una proposta, non un passo. */
+.extra-pop::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--orange), var(--violet-deep));
+}
+
+@keyframes extraPopFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes extraPopIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.extra-pop-x {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(42,26,62,0.06);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.extra-pop-x:hover { background: rgba(42,26,62,0.14); }
+
+.extra-pop-kicker {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--orange);
+}
+.extra-pop h3 {
+  margin: 0.35rem 0 0.3rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.extra-pop-lead {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--grey);
+}
+
+/* Elenco: se gli extra sono tanti scorre dentro la finestra, non la allunga. */
+.extra-pop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -0.2rem;
+  padding: 0 0.2rem 0.2rem;
+  text-align: left;
+}
+
+.extra-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.85rem;
+  background: #fff;
+  border: 1.5px solid rgba(42,26,62,0.1);
+  border-radius: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.extra-pop-item.selected {
+  border-color: var(--violet-deep);
+  box-shadow: 0 6px 18px -10px rgba(44, 118, 153, 0.7);
+}
+
+.extra-pop-info { flex: 1 1 auto; min-width: 0; }
+.extra-pop-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.extra-pop-desc {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--grey);
+  margin-top: 0.1rem;
+}
+/* Il prezzo si deve vedere bene: è il cuore della proposta. */
+.extra-pop-price {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--violet-deep);
+}
+
+.extra-pop-side {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.extra-pop-side .qty-row { margin-top: 0; }
+
+/* Totale: cambia a ogni +/-, così si vede subito quanto si sta spendendo. */
+.extra-pop-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed rgba(42,26,62,0.15);
+  text-align: left;
+}
+.extra-pop-total-label { font-size: 0.82rem; color: var(--grey); }
+.extra-pop-total-order { font-size: 0.85rem; color: var(--ink); }
+.extra-pop-total-order strong {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--violet-deep);
+  margin-left: 0.2rem;
+}
+
+.extra-pop-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+.extra-pop-skip,
+.extra-pop-add {
+  flex: 1 1 0;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.extra-pop-skip {
+  background: transparent;
+  border: 1.5px solid rgba(42,26,62,0.18);
+  color: var(--ink);
+}
+.extra-pop-skip:hover { background: var(--ink); color: var(--cream); }
+.extra-pop-add {
+  border: none;
+  background: var(--violet-deep);
+  color: var(--cream);
+}
+.extra-pop-add:hover:not(:disabled) { background: var(--violet-darker); transform: translateY(-2px); }
+.extra-pop-add:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.qty-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.qty-btn {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid rgba(44, 118, 153, 0.25);
+  color: var(--violet-deep);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.qty-btn:hover:not(:disabled) {
+  background: var(--violet-deep);
+  color: var(--cream);
+  border-color: var(--violet-deep);
+}
+.qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.qty-value {
+  min-width: 3rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.extra-total {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--violet-deep);
+}
+
+/* ===========================================================
+   Decorazioni a scelta MULTIPLA (fino a 3)
+   Le card funzionano a interruttore: la spunta della .selected
+   dice quali sono dentro, le altre si spengono al massimo.
+   =========================================================== */
+.opt-card.deco-card { padding-right: 2.4rem; } /* spazio per la spunta ✓ */
+
+/* Massimo raggiunto: le card non scelte si spengono, ma restano leggibili
+   (il messaggio "Puoi scegliere fino a 3 decorazioni" sta nella descrizione). */
+.opt-card.deco-card.maxed {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: #fff;
+}
+.opt-card.deco-card.maxed:hover {
+  transform: none;
+  border-color: rgba(42,26,62,0.08);
+}
+.opt-card.deco-card.maxed .opt-desc { color: var(--orange); font-weight: 600; }
+
+/* ===========================================================
+   Colore della decorazione (panna colorata, fiori, perline…)
+   Con più decorazioni colorate servono più palette insieme: ognuna
+   nel suo riquadro, con il nome della decorazione sopra, così si
+   capisce sempre quale colore appartiene a cosa.
+   =========================================================== */
+.cfg-color-pick { margin-top: 1.4rem; }
+
+.deco-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.7rem;
+}
+
+.deco-color-block {
+  padding: 0.75rem 0.85rem;
+  background: #fff;
+  border: 1.5px solid rgba(42,26,62,0.08);
+  border-left: 3px solid var(--orange); /* finché manca il colore: attenzione */
+  border-radius: var(--radius-sm);
+  transition: border-color 0.25s ease;
+}
+/* Colore scelto: il bordino passa dall'arancio "manca qualcosa" al viola. */
+.deco-color-block.done { border-left-color: var(--violet-deep); }
+
+.deco-color-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.color-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.color-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.95rem 0.4rem 0.45rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1.5px solid rgba(42,26,62,0.1);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.color-chip:hover { border-color: var(--violet); }
+.color-chip.selected {
+  border-color: var(--violet-deep);
+  background: linear-gradient(135deg, rgba(124, 183, 215,0.12), rgba(44, 118, 153,0.06));
+  color: var(--violet-deep);
+  font-weight: 700;
+}
+
+.color-dot {
+  --dot-size: 20px;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  min-width: var(--dot-size);
+  min-height: var(--dot-size);
+  border-radius: 50%;
+  flex: 0 0 auto;
+  align-self: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
 
 /* ===========================================================
    Fix scroll: contieni lo scroll dentro il modale (niente scroll dietro)

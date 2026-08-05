@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, createContext, useContext } from 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, Cake, Shuffle, Instagram, Facebook, MessageCircle, CreditCard } from 'lucide-react';
 import { useCakeData } from '../data/CakeDataProvider';
-import { CRUMBLE_BASE_ID } from '../data/cakeOptions';
+import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { uploadCakePhoto } from '../lib/cakePhoto';
@@ -10,11 +10,14 @@ import CakePreview from './CakePreview';
 
 // Ordine passi: tipo → n° persone → allergie → forma → base → [crumble] → gusti →
 // inserto (farcitura) → copertura → decorazioni → scritta → dati → riepilogo.
-// 'crumble' è un passo CONDIZIONALE: compare solo se la base scelta è il crumble
-// croccante. I passi effettivi si calcolano a runtime (vedi `steps` più sotto):
-// usa sempre quelli, non STEPS, per numerazione e navigazione.
+// 'crumble' è l'unico passo CONDIZIONALE: compare solo se la base scelta è il
+// crumble croccante. I passi effettivi si calcolano a runtime (vedi `steps` più
+// sotto): usa sempre quelli, non STEPS, per numerazione e navigazione.
+// Gli EXTRA (salame dolce, cabaret di pasticcini) NON sono un passo: si
+// propongono a ordine finito, in una finestra a parte (vedi ProposteExtra),
+// come la schermata delle offerte ai totem dei fast food.
 const STEPS = [
-  'type',       // tipo torta (semifreddo / gelato / Gi Selection / Alta)
+  'type',       // tipo torta (semifreddo / gelato / crock / alte)
   'size',       // n° persone
   'allergies',  // allergie/intolleranze da evitare (ingrigisce le scelte dopo)
   'shape',      // forma
@@ -23,7 +26,7 @@ const STEPS = [
   'flavors',    // strati / gusti
   'filling',    // inserto (farcitura tra strati)
   'covering',   // copertura esterna
-  'decoration', // decorazioni topping
+  'decoration', // decorazioni topping (+ colore, se previsto)
   'message',    // scritta + foto + candelina
   'details',    // dati cliente
   'review',     // riepilogo
@@ -32,11 +35,126 @@ const STEPS = [
 // Passi effettivi del wizard (STEPS meno quelli non applicabili): reso
 // disponibile agli step figli per la numerazione "Passo N di M".
 const StepsCtx = createContext(STEPS);
-// La torta "Alta" (id tipo 'piani') consente 4 gusti; le altre (basse) 3.
-const TALL_TYPE = 'piani';
-const maxFlavorsFor = (typeId) => (typeId === TALL_TYPE ? 4 : 3);
+// Le torte "Alte" (semifreddo e gelato) consentono 4 gusti; le altre (basse) 3.
+// L'elenco degli id sta in ../data/cakeOptions.js perché lo usa anche
+// l'anteprima, che le disegna più alte.
+const maxFlavorsFor = (typeId) => (isTallType(typeId) ? 4 : 3);
 const MAX_FLAVORS = 4; // cap assoluto (usato dal contatore combinazioni)
+// Decorazioni: si possono scegliere insieme, ma non all'infinito — oltre tre la
+// torta diventa illeggibile (e impossibile da decorare bene a mano).
+const MAX_DECORAZIONI = 3;
+// Id dell'opzione "niente decorazioni": non finisce mai nella lista delle
+// scelte (lista vuota = nessuna decorazione), serve solo come card da toccare.
+const NO_DECO = 'nessuna';
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
+// Tetto di sicurezza per gli extra: nessuno ordina 50 kg di salame dal sito.
+const MAX_EXTRA_QTY = 20;
+
+// Stili della scritta: arrivano dalla tabella `scritte` (opzionale). Se manca —
+// o è vuota — si usa questa copia di sicurezza, così il passo funziona sempre.
+const FALLBACK_SCRITTE = [
+  { id: 'stampatello', name: 'Stampatello maiuscolo', family: "'Inter', sans-serif", sample: 'AUGURI!', uppercase: true, italic: false },
+  { id: 'corsivo', name: 'Corsivo', family: "'Caveat', cursive", sample: 'Auguri!', uppercase: false, italic: false },
+  { id: 'corsivo-scolastico', name: 'Corsivo scolastico', family: "'Fraunces', serif", sample: 'Auguri!', uppercase: false, italic: true },
+];
+const DEFAULT_FONT = 'corsivo';
+// Vecchi id salvati negli ordini (e nei promemoria compleanno) → id della
+// tabella `scritte`. Serve per "Rifai questa torta" sugli ordini storici.
+const LEGACY_FONTS = { inter: 'stampatello', caveat: 'corsivo', fraunces: 'corsivo-scolastico' };
+const normalizeFont = (id) => LEGACY_FONTS[id] || id || DEFAULT_FONT;
+const scritteOf = (cake) => (cake.cakeScritte?.length ? cake.cakeScritte : FALLBACK_SCRITTE);
+
+// Pallini colore per le decorazioni con scelta del colore: i nomi arrivano dai
+// dati (rosa, oro, arcobaleno…), qui c'è solo la resa grafica del pallino.
+// Ogni colore compare con entrambe le desinenze: la panna è "rossa/azzurra",
+// perline e fiocchi sono "rosso/azzurro". Oro e argento sono metallici
+// (sfumatura con riflesso), l'arcobaleno è a spicchi come nella torta 3D.
+const COLOR_SWATCH = {
+  rosa: '#f3a3c2',
+  rossa: '#d13b3b', rosso: '#d13b3b',
+  azzurra: '#7cb7d7', azzurro: '#7cb7d7',
+  blu: '#2f4fa8',
+  verde: '#5ba85b',
+  nera: '#2a1a3e', nero: '#2a1a3e',
+  gialla: '#f5d04a', giallo: '#f5d04a',
+  oro: 'linear-gradient(135deg, #fff4c4 0%, #f0d27a 32%, #c9a227 62%, #8d6b14 100%)',
+  argento: 'linear-gradient(135deg, #ffffff 0%, #e4e8ec 32%, #a9b1b8 64%, #767d84 100%)',
+  bianca: '#ffffff', bianco: '#ffffff',
+  arcobaleno: 'conic-gradient(#e84a6e, #f5d04a, #5ba85b, #7cb7d7, #b651e4, #e84a6e)',
+};
+// Colori chiari: sul fondo chiaro della scheda servono un bordino per vedersi.
+const COLOR_PALE = new Set(['bianca', 'bianco', 'argento']);
+const colorKey = (nome) => String(nome || '').trim().toLowerCase();
+const swatchOf = (nome) =>
+  COLOR_SWATCH[colorKey(nome)] || 'linear-gradient(135deg, #efe7da, #d8ccb8)';
+// Stile completo del pallino: sfondo + bordino per i colori chiari (il bordo
+// bianco del CSS li farebbe sparire sulla scheda).
+const swatchStyle = (nome) => {
+  const style = { background: swatchOf(nome) };
+  if (COLOR_PALE.has(colorKey(nome))) {
+    style.boxShadow = 'inset 0 0 0 1px rgba(42,26,62,0.28), 0 2px 5px rgba(0,0,0,0.15)';
+  }
+  return style;
+};
+
+// Colori davvero scegliibili per una decorazione: solo se prevede la scelta e
+// solo quelli elencati a listino (le liste sono diverse da decorazione a
+// decorazione, es. le perline sono solo oro/argento/rosa/bianco).
+const colorsOf = (deco) => (deco?.colorChoice ? (deco.colors || []) : []);
+// Ritrova un colore nella lista disponibile ignorando maiuscole e spazi, e ne
+// restituisce la versione "ufficiale" (quella scritta a listino). Stringa vuota
+// se quel colore non è (più) disponibile: così non resta mai appiccicato.
+const matchColor = (colors, value) => {
+  const k = colorKey(value);
+  if (!k) return '';
+  return (colors || []).find((c) => colorKey(c) === k) || '';
+};
+
+// Dalle decorazioni scelte (solo gli id, in ordine di scelta) alle righe di
+// listino. Gli id non più a menù spariscono: un ordine dell'anno scorso o una
+// decorazione tolta dalla dashboard non devono rompere niente.
+// La lista si ripulisce PRIMA di leggere il listino, con gli stessi passi del
+// server (decorationsOf in supabase/functions/_shared/price.ts): niente vuoti,
+// niente 'nessuna', niente doppioni (raddoppierebbero il supplemento) e mai più
+// di MAX_DECORAZIONI. È da qui che passa il totale mostrato al cliente: se qui
+// si contasse una decorazione in più di là, il prezzo pagato non sarebbe quello
+// visto sul sito. Il tetto si applica agli id, non alle righe trovate, perché
+// così fa il server.
+const chosenDecorations = (decorations, cakeDecorations) => {
+  const ids = [];
+  for (const raw of decorations || []) {
+    const id = typeof raw === 'string' ? raw.trim() : '';
+    if (!id || id === NO_DECO || ids.includes(id)) continue;
+    ids.push(id);
+    if (ids.length >= MAX_DECORAZIONI) break;
+  }
+  return ids.map((id) => (cakeDecorations || []).find((d) => d.id === id)).filter(Boolean);
+};
+
+// Elenco leggibile delle decorazioni scelte, ognuna col suo colore — per il
+// riepilogo, la notifica Telegram e la mail di conferma.
+// Es. "Fiocchi colorati (colore Rosso) · Macarons (colore Verde)".
+const decorationsText = (decos, colori) =>
+  (decos || []).length
+    ? decos
+        .map((d) => `${d.name}${(colori || {})[d.id] ? ` (colore ${colori[d.id]})` : ''}`)
+        .join(' · ')
+    : 'Nessuna';
+
+// Quantità degli extra in formato italiano (1,5 e non 1.5).
+const fmtQty = (n) => Number(n || 0).toLocaleString('it-IT', { maximumFractionDigits: 2 });
+
+// Extra scelti in forma leggibile: dalla mappa { id: quantità } della config
+// all'elenco con nome, prezzo unitario e totale parziale.
+const chosenExtras = (extras, cakeExtras) =>
+  Object.entries(extras || {})
+    .map(([id, q]) => {
+      const e = (cakeExtras || []).find((x) => x.id === id);
+      const qty = Number(q) || 0;
+      return e && qty > 0 ? { ...e, qty, total: qty * (e.price ?? 0) } : null;
+    })
+    .filter(Boolean);
+const extraLabel = (e) => `${e.name} ×${fmtQty(e.qty)}${e.unit ? ` (${e.unit})` : ''} — €${e.total.toFixed(2)}`;
 
 // N° persone ricavato dalla dimensione (id o etichetta).
 const personeOf = (size) => {
@@ -130,10 +248,15 @@ function addWorkingHours(from, hoursNeeded, orari) {
 // Campi che si possono precompilare da fuori: dai link "alternative" (allergie)
 // e dal link "Rifai questa torta" del promemoria compleanno. Fuori da questa
 // lista non si precompila nulla: dati di contatto e date si reinseriscono sempre.
+// L'ordine conta: prima si riprende il formato VECCHIO a decorazione singola
+// ('decoration' + 'decorationColor', quello degli ordini già salvati), poi
+// l'eventuale formato nuovo a più decorazioni, che ha sempre l'ultima parola.
+// I colori si validano sulle decorazioni già riprese.
 const PREFILL_KEYS = [
   'type', 'shape', 'sizeId', 'allergies', 'flavors', 'baseId', 'crumbleId',
-  'fillingId', 'coveringId', 'decoration', 'message', 'messageFont', 'candle',
-  'occasion', 'name',
+  'fillingId', 'coveringId', 'decoration', 'decorationColor',
+  'decorations', 'decorationColors', 'extras',
+  'message', 'messageFont', 'candle', 'occasion', 'name',
 ];
 
 // Config iniziale calcolata dai dati disponibili (validi anche se il proprietario
@@ -149,9 +272,14 @@ function makeInitialConfig(cake, initial = {}) {
     crumbleId: '', // tipo di crumble: usato solo con la base crumble croccante
     fillingId: 'nessuna',
     coveringId: '',
-    decoration: cake.cakeDecorations[0]?.id || 'nessuna',
+    // Decorazioni: scelta MULTIPLA (fino a MAX_DECORAZIONI), in ordine di scelta.
+    // Lista vuota = nessuna decorazione.
+    decorations: [],
+    // Colore scelto per ogni decorazione che lo prevede: { idDecorazione: 'Rosso' }.
+    decorationColors: {},
+    extras: {},          // extra dell'ordine: mappa { idExtra: quantità }
     message: '',
-    messageFont: 'caveat',
+    messageFont: DEFAULT_FONT,
     candle: false,
     occasion: '',
     photo: null,
@@ -179,7 +307,68 @@ function makeInitialConfig(cake, initial = {}) {
     if (k === 'crumbleId' && !exists(cake.cakeCrumbles, v)) continue;
     if (k === 'fillingId' && !exists(cake.cakeFillings, v)) continue;
     if (k === 'coveringId' && !exists(cake.cakeCoverings, v)) continue;
-    if (k === 'decoration' && !exists(cake.cakeDecorations, v)) continue;
+    if (k === 'decoration') {
+      // FORMATO VECCHIO (ordini già salvati e link "Rifai questa torta"): una
+      // sola decorazione, in una stringa. Diventa una lista di una decorazione.
+      // 'nessuna' — come una decorazione tolta dal menù — resta lista vuota.
+      if (typeof v !== 'string' || !v || v === NO_DECO) continue;
+      if (!exists(cake.cakeDecorations, v)) continue;
+      base.decorations = [v];
+      continue;
+    }
+    if (k === 'decorationColor') {
+      // Colore del formato vecchio: appartiene alla decorazione appena ripresa,
+      // e si tiene solo se quella decorazione prevede ancora quel colore (le
+      // liste si sono ristrette, un colore dell'ordine dell'anno scorso può non
+      // esserci più). Si riprende con la grafia di oggi (es. "rosa" → "Rosa").
+      const id = base.decorations[0];
+      if (!id) continue;
+      const d = (cake.cakeDecorations || []).find((x) => x.id === id);
+      const colore = matchColor(colorsOf(d), v);
+      if (!colore) continue;
+      base.decorationColors = { [id]: colore };
+      continue;
+    }
+    if (k === 'decorations') {
+      // FORMATO NUOVO: lista di id. Si tengono solo quelli ancora a listino,
+      // senza doppioni, senza 'nessuna' e fino al massimo consentito.
+      if (!Array.isArray(v)) continue;
+      base.decorations = [
+        ...new Set(
+          v.filter((id) => typeof id === 'string' && id && id !== NO_DECO && exists(cake.cakeDecorations, id))
+        ),
+      ].slice(0, MAX_DECORAZIONI);
+      // I colori ripresi dal formato vecchio non valgono per questa lista.
+      base.decorationColors = {};
+      continue;
+    }
+    if (k === 'decorationColors') {
+      // Colori del formato nuovo: uno per decorazione, tenuti solo se quella
+      // decorazione è fra le scelte e prevede ancora quel colore.
+      const colori = {};
+      for (const id of base.decorations) {
+        const d = (cake.cakeDecorations || []).find((x) => x.id === id);
+        const colore = matchColor(colorsOf(d), (v || {})[id]);
+        if (colore) colori[id] = colore;
+      }
+      base.decorationColors = colori;
+      continue;
+    }
+    if (k === 'extras') {
+      // Extra: si tengono solo quelli ancora a listino, con quantità positiva.
+      base.extras = Object.fromEntries(
+        Object.entries(v || {})
+          .filter(([id, q]) => exists(cake.cakeExtras, id) && Number(q) > 0)
+          .map(([id, q]) => [id, Number(q)])
+      );
+      continue;
+    }
+    if (k === 'messageFont') {
+      // Ordini vecchi: gli id caveat/fraunces/inter diventano quelli di `scritte`.
+      const font = normalizeFont(v);
+      base.messageFont = scritteOf(cake).some((f) => f.id === font) ? font : DEFAULT_FONT;
+      continue;
+    }
     if (k === 'flavors') {
       // I gusti cambiano nel tempo: tiene solo quelli ancora a menù, riprendendo
       // colore e allergeni aggiornati di oggi (non quelli salvati allora).
@@ -210,6 +399,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     cakeFillings,
     cakeCoverings,
     cakeDecorations,
+    // Tabelle nuove (opzionali): finché non esistono, la finestra delle proposte
+    // extra non compare e la scritta usa la copia di sicurezza.
+    cakeExtras = [],
+    cakeScritte = [],
     cakeAllergens,
     cakeRecipes,
   } = cake;
@@ -219,8 +412,17 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const bodyRef = useRef(null);
+  // Ultima ricetta proposta da "Sorprendimi": serve a non riproporla due volte
+  // di fila, che è la cosa che fa sembrare il pulsante sempre uguale.
+  const ultimaRicetta = useRef(-1);
   const [showAllerg, setShowAllerg] = useState(false);
   const [orari, setOrari] = useState([]);
+  // Finestra delle proposte extra (salame, cabaret): si apre al primo tocco sul
+  // pulsante finale, PRIMA che l'ordine parta. `propostaFatta` ricorda che è già
+  // stata mostrata, così non si ripropone più per questo ordine — nemmeno se un
+  // invio fallisce e il cliente riprova.
+  const [showProposte, setShowProposte] = useState(false);
+  const propostaFatta = useRef(false);
 
   // Orari di apertura (per calcolare le fasce di ritiro)
   useEffect(() => {
@@ -238,6 +440,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     setSent(false);
     setSubmitting(false);
     setSubmitError('');
+    // Ordine nuovo: la proposta degli extra è tutta da fare.
+    setShowProposte(false);
+    propostaFatta.current = false;
     // Blocca lo scroll della pagina dietro (robusto anche su iOS): fissa il body
     // e ripristina la posizione alla chiusura, così non "scrolla dietro".
     const y = window.scrollY;
@@ -251,10 +456,12 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   }, [open]);
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    // Esc chiude il configuratore, ma non quando sopra c'è la finestra delle
+    // proposte extra: lì l'Esc chiude solo quella (vedi ProposteExtra).
+    const onKey = (e) => e.key === 'Escape' && !showProposte && onClose();
     if (open) window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, onClose, showProposte]);
 
   // Se cambiano le allergie, rimuovi automaticamente le scelte diventate incompatibili.
   useEffect(() => {
@@ -271,8 +478,24 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       if (conflictsAllergies(filling, c.allergies)) patch.fillingId = 'nessuna';
       const covering = cakeCoverings.find((cc) => cc.id === c.coveringId);
       if (conflictsAllergies(covering, c.allergies)) patch.coveringId = '';
-      const deco = cakeDecorations.find((d) => d.id === c.decoration);
-      if (conflictsAllergies(deco, c.allergies)) patch.decoration = 'nessuna';
+      // Decorazioni in conflitto: si tolgono dalla lista (con il loro colore),
+      // le altre restano scelte.
+      const decorations = (c.decorations || []).filter(
+        (id) => !conflictsAllergies(cakeDecorations.find((d) => d.id === id), c.allergies)
+      );
+      if (decorations.length !== (c.decorations || []).length) {
+        patch.decorations = decorations;
+        patch.decorationColors = Object.fromEntries(
+          Object.entries(c.decorationColors || {}).filter(([id]) => decorations.includes(id))
+        );
+      }
+      // Extra in conflitto: si tolgono dalla lista degli extra scelti.
+      const extras = Object.fromEntries(
+        Object.entries(c.extras || {}).filter(
+          ([id]) => !conflictsAllergies(cakeExtras.find((e) => e.id === id), c.allergies)
+        )
+      );
+      if (Object.keys(extras).length !== Object.keys(c.extras || {}).length) patch.extras = extras;
       const flavors = c.flavors.filter((f) => !conflictsAllergies(f, c.allergies));
       if (flavors.length !== c.flavors.length) patch.flavors = flavors;
       return Object.keys(patch).length ? { ...c, ...patch } : c;
@@ -280,12 +503,53 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.allergies]);
 
-  const set = (patch) => setConfig((c) => ({ ...c, ...patch }));
+  // Il colore appartiene alla decorazione, non alla torta: appena una
+  // decorazione esce dalle scelte (o la sua lista colori si restringe / arriva
+  // da Supabase dopo il primo render) il suo colore sparisce dalla mappa. Senza
+  // questo, togliendo per esempio "Fiocchi · Rosso" e rimettendoli resterebbe
+  // appiccicato il rosso di prima, e un colore non più a listino passerebbe
+  // dritto fino all'ordine.
+  useEffect(() => {
+    setConfig((c) => {
+      const colori = c.decorationColors || {};
+      const ids = Object.keys(colori);
+      if (!ids.length) return c;
+      const puliti = {};
+      let cambiato = false;
+      for (const id of ids) {
+        const deco = (c.decorations || []).includes(id)
+          ? cakeDecorations.find((d) => d.id === id)
+          : null;
+        const colore = matchColor(colorsOf(deco), colori[id]);
+        if (colore) puliti[id] = colore;
+        if (colore !== colori[id]) cambiato = true;
+      }
+      return cambiato ? { ...c, decorationColors: puliti } : c;
+    });
+  }, [config.decorations, config.decorationColors, cakeDecorations]);
+
+  // Accetta sia un oggetto sia una funzione (config attuale) => patch: la forma a
+  // funzione serve quando il patch dipende da com'è la config ADESSO (es. le
+  // decorazioni e i loro colori). Con due tocchi ravvicinati — il 3D è pesante e
+  // può ritardare il render — la forma a oggetto perderebbe il primo dei due.
+  const set = (patch) =>
+    setConfig((c) => ({ ...c, ...(typeof patch === 'function' ? patch(c) : patch) }));
 
   // Passo "crumble": solo se la base scelta è il crumble croccante e se in
   // dashboard esiste almeno un tipo di crumble attivo.
   const showCrumble = config.baseId === CRUMBLE_BASE_ID && cakeCrumbles.length > 0;
-  const steps = useMemo(() => STEPS.filter((s) => s !== 'crumble' || showCrumble), [showCrumble]);
+  const steps = useMemo(
+    () => STEPS.filter((s) => s !== 'crumble' || showCrumble),
+    [showCrumble]
+  );
+
+  // Extra che ha senso proporre: quelli a listino compatibili con le allergie
+  // indicate. Se non ne resta nessuno, la finestra delle proposte non compare
+  // (proporre roba che il cliente non può mangiare è peggio che non proporre).
+  const extraProponibili = useMemo(
+    () => cakeExtras.filter((e) => !conflictsAllergies(e, config.allergies)),
+    [cakeExtras, config.allergies]
+  );
 
   // Se i passi si accorciano (base cambiata) l'indice resta sempre valido.
   useEffect(() => {
@@ -311,6 +575,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const shape = cakeShapes.find((sh) => sh.id === config.shape);
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
+    // Decorazioni: si paga il supplemento di OGNUNA di quelle scelte.
+    const decos = chosenDecorations(config.decorations, cakeDecorations);
     let p =
       (type?.basePrice ?? 0) +
       (size?.priceDelta ?? 0) +
@@ -318,21 +584,28 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       (crumble?.priceDelta ?? 0) +
       (shape?.priceDelta ?? 0) +
       (filling?.priceDelta ?? 0) +
-      (covering?.priceDelta ?? 0);
+      (covering?.priceDelta ?? 0) +
+      decos.reduce((s, d) => s + (d.priceDelta ?? 0), 0);
     // Gusti extra: dopo il primo, +2€ ciascuno
     if (config.flavors.length > 1) p += (config.flavors.length - 1) * 2;
     if (config.candle) p += 1;
     if (config.photo) p += 5;
     if (config.delivery) p += DELIVERY_FEE; // consegna a domicilio
-    return p;
-  }, [config]);
+    // Extra dell'ordine (salame al kg, cabaret di pasticcini): prezzo × quantità
+    p += chosenExtras(config.extras, cakeExtras).reduce((s, e) => s + e.total, 0);
+    return Math.round(p * 100) / 100; // niente code decimali dai passi da 0,5 kg
+    // Dipende anche dai listini: arrivano da Supabase DOPO il primo render, e senza
+    // di loro il totale resterebbe fermo ai prezzi della copia di sicurezza.
+  }, [config, cakeTypes, cakeSizes, cakeBases, cakeCrumbles, cakeShapes, cakeFillings, cakeCoverings, cakeDecorations, cakeExtras]);
 
-  // Allergeni: unione di gusti + base (+ crumble) + farcitura + copertura (indicativi)
+  // Allergeni: unione di gusti + base (+ crumble) + farcitura + copertura +
+  // TUTTE le decorazioni scelte + extra scelti (indicativi)
   const allergeni = useMemo(() => {
     const base = cakeBases.find((b) => b.id === config.baseId);
     const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
+    const decos = chosenDecorations(config.decorations, cakeDecorations);
     return [
       ...new Set([
         ...config.flavors.flatMap((f) => f.allergeni || []),
@@ -340,9 +613,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         ...(crumble?.allergeni || []),
         ...(filling?.allergeni || []),
         ...(covering?.allergeni || []),
+        ...decos.flatMap((d) => d.allergeni || []),
+        ...chosenExtras(config.extras, cakeExtras).flatMap((e) => e.allergeni || []),
       ]),
     ];
-  }, [config.flavors, config.baseId, config.crumbleId, config.fillingId, config.coveringId]);
+  }, [config.flavors, config.baseId, config.crumbleId, config.fillingId, config.coveringId, config.decorations, config.extras, cakeDecorations]);
 
   // Conteggio combinazioni teoriche (effetto wow)
   const combos = useMemo(() => {
@@ -372,6 +647,15 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       case 'covering': return !!config.coveringId;
       case 'base': return !!config.baseId;
       case 'crumble': return !!config.crumbleId;
+      case 'decoration': {
+        // Nessuna decorazione va benissimo. Se però una di quelle scelte prevede
+        // la scelta del colore, quel colore va indicato (e dev'essere uno di
+        // quelli davvero disponibili per QUELLA decorazione).
+        return chosenDecorations(config.decorations, cakeDecorations).every((d) => {
+          const colors = colorsOf(d);
+          return !colors.length || !!matchColor(colors, (config.decorationColors || {})[d.id]);
+        });
+      }
       case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim());
       default: return true;
     }
@@ -392,7 +676,13 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
   const surpriseMe = () => {
     const max = maxFlavorsFor(config.type);
-    const recipe = cakeRecipes[Math.floor(Math.random() * cakeRecipes.length)];
+    // Pesca una ricetta diversa da quella appena proposta (se ce n'è più d'una).
+    let idx = Math.floor(Math.random() * cakeRecipes.length);
+    if (cakeRecipes.length > 1 && idx === ultimaRicetta.current) {
+      idx = (idx + 1 + Math.floor(Math.random() * (cakeRecipes.length - 1))) % cakeRecipes.length;
+    }
+    ultimaRicetta.current = idx;
+    const recipe = cakeRecipes[idx];
     // rispetta le allergie scelte e il numero massimo di gusti del tipo.
     // Match per nome case-insensitive: i gusti sono editabili dalla dashboard,
     // quindi un nome della ricetta potrebbe non combaciare più.
@@ -402,7 +692,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       .filter(ok);
     // Se la ricetta dà troppo pochi gusti (nomi cambiati o esclusi dalle allergie),
     // completa con gusti disponibili a caso: "Sorprendimi" non resta mai vuoto.
-    const want = Math.min(2, max);
+    // Quanti gusti vuole la ricetta, senza superare il massimo del tipo di torta.
+    const want = Math.min(Math.max(2, recipe.flavors.length), max);
     if (flavors.length < want) {
       const pool = cakeFlavors
         .filter(ok)
@@ -416,15 +707,44 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     flavors = flavors.slice(0, max);
     const filling = cakeFillings.find((f) => f.id === recipe.filling);
     const covering = cakeCoverings.find((c) => c.id === recipe.covering);
+    // La decorazione: le ricette ne dichiarano UNA sola, quindi la lista che ne
+    // esce ne ha una. Se è incompatibile con le allergie (o non è più a menù)
+    // si resta senza decorazioni.
+    const deco = cakeDecorations.find((d) => d.id === recipe.decoration);
+    const decorations = deco && !conflictsAllergies(deco, config.allergies) ? [deco.id] : [];
+    // Se la decorazione vuole un colore, ne scegliamo uno fra quelli davvero
+    // disponibili: altrimenti "Sorprendimi" lascerebbe il passo a metà, con la
+    // domanda "di che colore la vuoi?" senza risposta.
+    const colori = decorations.length ? colorsOf(deco) : [];
+    const decorationColors = colori.length
+      ? { [deco.id]: colori[Math.floor(Math.random() * colori.length)] }
+      : {};
+    // Anche la FORMA fa parte della sorpresa: le ricette la dichiarano e finora
+    // veniva ignorata (la ricetta "Romantica" non ha mai prodotto un cuore).
+    // La rettangolare resta però riservata alle torte grandi.
+    const size = cakeSizes.find((s) => s.id === config.sizeId);
+    const shapeOk =
+      recipe.shape &&
+      cakeShapes.some((s) => s.id === recipe.shape) &&
+      (recipe.shape !== 'rettangolare' || personeOf(size) >= RECT_MIN_PERSONE);
     set({
       flavors,
+      ...(shapeOk ? { shape: recipe.shape } : {}),
       fillingId: conflictsAllergies(filling, config.allergies) ? 'nessuna' : recipe.filling,
       coveringId: conflictsAllergies(covering, config.allergies) ? config.coveringId : recipe.covering,
-      decoration: recipe.decoration,
+      decorations,
+      decorationColors,
     });
   };
 
-  const submitOrder = async () => {
+  // `extraFinali` (opzionale): mappa { idExtra: quantità } con cui far partire
+  // l'ordine, usata dalla finestra delle proposte quando il cliente sceglie "No
+  // grazie" dopo aver toccato un +/-. Serve perché lo stato React si aggiorna
+  // solo al render successivo, mentre l'ordine parte adesso.
+  // `cfg` differisce da `config` SOLO per gli extra: per tutto il resto i due
+  // sono la stessa cosa.
+  const submitOrder = async (extraFinali) => {
+    const cfg = extraFinali ? { ...config, extras: extraFinali } : config;
     const type = cakeTypes.find((t) => t.id === config.type);
     const shape = cakeShapes.find((sh) => sh.id === config.shape);
     const size = cakeSizes.find((s) => s.id === config.sizeId);
@@ -432,7 +752,27 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
     const filling = cakeFillings.find((f) => f.id === config.fillingId);
     const covering = cakeCoverings.find((c) => c.id === config.coveringId);
-    const deco = cakeDecorations.find((d) => d.id === config.decoration);
+    // Decorazioni scelte (possono essere più d'una) con il colore di ciascuna.
+    const decos = chosenDecorations(config.decorations, cakeDecorations);
+    const decoColori = config.decorationColors || {};
+    const decoRiga = decorationsText(decos, decoColori);
+    const decoLabel = decos.length > 1 ? 'Decorazioni' : 'Decorazione';
+    // Prima scelta: è quella che finisce nei campi vecchi del payload, letti
+    // ancora dal gestionale e dalle notifiche.
+    const primaDeco = decos[0] || null;
+    const primoColore = primaDeco ? decoColori[primaDeco.id] || '' : '';
+    const scritta = scritteOf(cake).find((f) => f.id === normalizeFont(config.messageFont));
+    // Extra definitivi dell'ordine (dalla finestra delle proposte, se ha detto
+    // la sua) e totale coerente: il resto della torta non cambia, quindi basta
+    // sostituire nel totale la quota degli extra. Senza proposte è `total`.
+    const extras = chosenExtras(cfg.extras, cakeExtras);
+    const totale = extraFinali
+      ? Math.round(
+          (total
+            - chosenExtras(config.extras, cakeExtras).reduce((s, e) => s + e.total, 0)
+            + extras.reduce((s, e) => s + e.total, 0)) * 100
+        ) / 100
+      : total;
     // Allergeni scelti dal cliente, in MAIUSCOLO (per riepilogo/Telegram/mail)
     const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
     const allergLine = allergNames.length ? allergNames.join(', ').toUpperCase() : '';
@@ -449,8 +789,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
       filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
       covering ? `*Copertura:* ${covering.name}` : '',
-      `*Decorazione:* ${deco?.name}`,
-      config.message ? `*Scritta:* "${config.message}"` : '',
+      `*${decoLabel}:* ${decoRiga}`,
+      extras.length ? `*Extra:* ${extras.map(extraLabel).join(' · ')}` : '',
+      config.message ? `*Scritta:* "${config.message}"${scritta ? ` (${scritta.name})` : ''}` : '',
       config.photo ? `*Foto su cialda:* sì (verrà inviata a parte)` : '',
       config.candle ? `*Candelina:* sì` : '',
       config.occasion ? `*Occasione:* ${config.occasion}` : '',
@@ -465,7 +806,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.email ? `*Email:* ${config.email}` : '',
       config.notes ? `*Note:* ${config.notes}` : '',
       ``,
-      staff ? '' : `💰 *Importo pagato:* €${total.toFixed(2)}`,
+      staff ? '' : `💰 *Importo pagato:* €${totale.toFixed(2)}`,
       ``,
       staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
@@ -494,7 +835,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
     // Riga ordine. Per gli ordini pagati la salva il webhook (imposta lì il
     // totale); lo staff invece salva subito qui.
-    const { photo, ...dettagli } = config;
+    const { photo, ...dettagli } = cfg;
     const insertBase = {
       immagine: immagineUrl,
       stato: 'da_fare',
@@ -505,7 +846,28 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       ritiro_ora: config.pickupTime || null,
       tipo: type?.name || null,
       riepilogo: msg,
-      dettagli: { ...dettagli, conFoto: !!photo },
+      // dettagli: la config così com'è (extras, decorations, decorationColors,
+      // messageFont inclusi) + le voci nuove già in chiaro, per la dashboard e
+      // il laboratorio.
+      dettagli: {
+        ...dettagli,
+        conFoto: !!photo,
+        scrittaStile: scritta?.name || null,
+        // COMPATIBILITÀ: il gestionale, le notifiche Telegram e il link "Rifai
+        // questa torta" leggono ancora la decorazione singola. Ci mettiamo la
+        // PRIMA scelta; l'elenco completo sta in decorations/decorationColors.
+        decoration: primaDeco?.id || NO_DECO,
+        decorationColor: primoColore,
+        coloreDecorazione: primoColore || null,
+        // Decorazioni in chiaro, in ordine di scelta: nome e colore già pronti
+        // da leggere in laboratorio.
+        decorazioniScelte: decos.map((d) => ({
+          id: d.id, nome: d.name, colore: decoColori[d.id] || '',
+        })),
+        extraScelti: extras.map((e) => ({
+          id: e.id, nome: e.name, quantita: e.qty, unita: e.unit || '', prezzo: e.price ?? 0, totale: e.total,
+        })),
+      },
       note: config.notes || null,
     };
 
@@ -524,8 +886,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
       filling && filling.id !== 'nessuna' ? `Farcitura: ${filling.name}` : '',
       covering ? `Copertura: ${covering.name}` : '',
-      `Decorazione: ${deco?.name}`,
-      config.message ? `Scritta: "${config.message}"` : '',
+      `${decoLabel}: ${decoRiga}`,
+      extras.length ? `Extra: ${extras.map(extraLabel).join(', ')}` : '',
+      config.message ? `Scritta: "${config.message}"${scritta ? ` (${scritta.name})` : ''}` : '',
       config.photo ? `Foto su cialda: sì` : '',
       config.candle ? `Candelina: sì` : '',
       config.occasion ? `Occasione: ${config.occasion}` : '',
@@ -542,7 +905,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       saluto: config.delivery
         ? 'Ti consegneremo la torta all’indirizzo e all’orario indicato 🛵'
         : 'Ti aspettiamo in gelateria per il ritiro 🍰',
-      importo: total.toFixed(2),
+      importo: totale.toFixed(2),
     } : null;
     insertBase.email_params = emailParams;
 
@@ -555,7 +918,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Se il caricamento su Storage non è riuscito, per lo staff si ripiega
       // sull'immagine grezza (che qui ci sta: non passa dai metadata Stripe).
       const { error } = await supabase.from('ordini').insert({
-        ...insertBase, totale: total, immagine: immagineUrl || immagine,
+        ...insertBase, totale, immagine: immagineUrl || immagine,
       });
       if (error) {
         console.warn('[ordine] non salvato:', error.message);
@@ -573,8 +936,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // avvenuto; da lì partono sia la notifica Telegram sia la mail di conferma.
     try {
       sessionStorage.setItem('pg_order_delivery', config.delivery ? '1' : '0');
+      // Il server ricalcola il prezzo da `config` (computeOrder): deve ricevere
+      // gli extra definitivi, altrimenti Stripe farebbe pagare un altro totale.
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { config, insert: insertBase },
+        body: { config: cfg, insert: insertBase },
       });
       if (error) throw error;
       if (data?.url) { window.location.href = data.url; return; }
@@ -584,6 +949,44 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       setSubmitting(false);
     }
   };
+
+  // Pulsante finale del riepilogo. La PRIMA volta, se c'è ancora qualcosa da
+  // proporre e il cliente non ha già aggiunto un extra, l'ordine non parte: si
+  // apre la finestra delle proposte (come ai totem dei fast food, la schermata
+  // che spunta a ordine finito). Premuto una seconda volta, l'ordine parte e
+  // basta: la proposta si fa una volta sola.
+  const inviaOrdine = () => {
+    const daProporre =
+      !propostaFatta.current &&
+      extraProponibili.length > 0 &&
+      chosenExtras(config.extras, cakeExtras).length === 0;
+    if (daProporre) {
+      propostaFatta.current = true; // proposta fatta: non si insiste più
+      setShowProposte(true);
+      return;
+    }
+    submitOrder();
+  };
+
+  // Uscite della finestra. "No grazie": si ordina senza aggiungere niente —
+  // anche se il cliente aveva toccato un +/- e poi ci ha ripensato, quindi il
+  // carrello degli extra si svuota (e la mappa vuota viaggia subito con
+  // l'ordine, senza aspettare il render successivo).
+  const ordinaSenzaExtra = () => {
+    setShowProposte(false);
+    set({ extras: {} });
+    submitOrder({});
+  };
+  // "Aggiungi e ordina": si ordina con quello che ha messo nel carrello (le
+  // quantità sono già nella config, aggiornate a ogni +/-).
+  const ordinaConExtra = () => {
+    setShowProposte(false);
+    submitOrder();
+  };
+  // Esc, clic fuori e ✕: la proposta è declinata e non tornerà più, ma l'ordine
+  // NON parte da solo — si torna al riepilogo (dove gli eventuali extra aggiunti
+  // restano in elenco) e il pulsante finale, ripremuto, invia e basta.
+  const chiudiProposte = () => setShowProposte(false);
 
   if (!open) return null;
 
@@ -634,7 +1037,14 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               1 di <strong>{combos.toLocaleString('it-IT')}</strong> combinazioni
             </div>
             <div className="cfg-preview-stage">
-              <CakePreview config={config} />
+              {/* Le decorazioni viaggiano in coppia: `decorations` dice QUALI
+                  sono (in ordine di scelta), `decorationColors` con che colore
+                  ognuna di quelle che lo prevede. */}
+              <CakePreview
+                config={config}
+                decorations={config.decorations}
+                decorationColors={config.decorationColors}
+              />
             </div>
             <div className="cfg-preview-info">
               <div className="combo-counter">
@@ -728,7 +1138,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                     Avanti <ArrowRight size={16} />
                   </button>
                 ) : (
-                  <button className="cfg-btn cfg-btn-send" onClick={submitOrder} disabled={!canNext || submitting}>
+                  <button className="cfg-btn cfg-btn-send" onClick={inviaOrdine} disabled={!canNext || submitting}>
                     {submitting
                       ? (staff ? 'Invio…' : 'Attendi…')
                       : staff
@@ -738,6 +1148,21 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                 )}
               </div>
             </footer>
+          )}
+
+          {/* Proposta finale degli extra: sovrapposta al riepilogo, come la
+              schermata delle offerte ai totem dei fast food. */}
+          {showProposte && (
+            <ProposteExtra
+              config={config}
+              set={set}
+              staff={staff}
+              listino={extraProponibili}
+              total={total}
+              onOrdinaSenza={ordinaSenzaExtra}
+              onOrdinaCon={ordinaConExtra}
+              onChiudi={chiudiProposte}
+            />
           )}
 
           {showAllerg && (
@@ -801,7 +1226,7 @@ function StepType({ config, set }) {
             onClick={() => set({ type: t.id })}
           >
             <div className="opt-name">
-              <span style={{ width: 14, height: 14, borderRadius: '50%', background: t.color, display: 'inline-block' }} />
+              <span className="opt-dot" style={{ '--dot-size': '14px', background: t.color }} />
               {t.name}
             </div>
             <div className="opt-desc">{t.desc}</div>
@@ -969,7 +1394,7 @@ function StepFilling({ config, set }) {
             >
               <div className="opt-name">
                 {f.color && (
-                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: f.color, display: 'inline-block' }} />
+                  <span className="opt-dot" style={{ background: f.color }} />
                 )}
                 {f.name}
               </div>
@@ -1005,7 +1430,7 @@ function StepCovering({ config, set }) {
             >
               <div className="opt-name">
                 {c.color && (
-                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: c.color, display: 'inline-block', border: '1px solid rgba(0,0,0,0.1)' }} />
+                  <span className="opt-dot" style={{ background: c.color, border: '1px solid rgba(0,0,0,0.1)' }} />
                 )}
                 {c.name}
               </div>
@@ -1037,7 +1462,7 @@ function StepBase({ config, set }) {
               style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
             >
               <div className="opt-name">
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: b.color, display: 'inline-block' }} />
+                <span className="opt-dot" style={{ background: b.color }} />
                 {b.name}
               </div>
               <div className="opt-desc">{blocked ? `Contiene: ${b.allergeni.join(', ')}` : b.desc}</div>
@@ -1074,7 +1499,7 @@ function StepCrumble({ config, set }) {
             >
               <div className="opt-name">
                 {c.color && (
-                  <span style={{ width: 12, height: 12, borderRadius: '50%', background: c.color, display: 'inline-block' }} />
+                  <span className="opt-dot" style={{ background: c.color }} />
                 )}
                 {c.name}
               </div>
@@ -1088,41 +1513,293 @@ function StepCrumble({ config, set }) {
   );
 }
 
+// Decorazioni: scelta MULTIPLA, fino a MAX_DECORAZIONI. Le card funzionano a
+// interruttore (si tocca per aggiungere, si ritocca per togliere); "Nessuna"
+// svuota tutto ed è selezionata quando non c'è nessuna decorazione.
 function StepDecoration({ config, set }) {
   const { cakeDecorations } = useCakeData();
+  const scelte = config.decorations || [];
+  const colori = config.decorationColors || {};
+  const pieno = scelte.length >= MAX_DECORAZIONI;
+
+  // I patch si calcolano sulla config del momento (forma a funzione): due tocchi
+  // ravvicinati su due card non si mangiano a vicenda.
+  const toggle = (d) => {
+    if (d.id === NO_DECO) {
+      // "Nessuna" = niente decorazioni: svuota la lista (e i colori).
+      if (scelte.length) set({ decorations: [], decorationColors: {} });
+      return;
+    }
+    set((c) => {
+      const lista = c.decorations || [];
+      const tinte = c.decorationColors || {};
+      if (lista.includes(d.id)) {
+        // Tolta: se ne va anche il suo colore, così non torna appiccicato dopo.
+        const { [d.id]: _via, ...resto } = tinte;
+        return { decorations: lista.filter((x) => x !== d.id), decorationColors: resto };
+      }
+      if (lista.length >= MAX_DECORAZIONI) return {}; // tetto: prima se ne toglie una
+      // Scegliendo una decorazione qualsiasi, "Nessuna" si spegne da sé (non è
+      // mai nella lista): basta aggiungere in coda, nell'ordine di scelta.
+      return { decorations: [...lista, d.id] };
+    });
+  };
+
+  // Decorazioni scelte che vogliono anche il colore: una palette per ognuna.
+  const daColorare = chosenDecorations(scelte, cakeDecorations).filter((d) => colorsOf(d).length > 0);
+  const mancaColore = daColorare.some((d) => !colori[d.id]);
+  // Le palette stanno in fondo a una lista lunga: quando ne compare una senza
+  // colore la portiamo a vista, altrimenti sembra che "Avanti" non funzioni.
+  const colorRef = useRef(null);
+  useEffect(() => {
+    if (mancaColore) colorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scelte.join('|')]);
+
   return (
     <>
-      <StepHeader stepKey="decoration" title="Decorazioni" lead="Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff." />
+      <StepHeader
+        stepKey="decoration"
+        title="Decorazioni"
+        lead={`Puoi sceglierne fino a ${MAX_DECORAZIONI}, si sommano sulla torta. Le immagini sono indicative — ogni torta è decorata a mano dal nostro staff.`}
+      />
+      <div className="flavor-hint">
+        {scelte.length === 0
+          ? <>Nessuna decorazione per ora. Tocca quelle che vuoi, fino a {MAX_DECORAZIONI}.</>
+          : <>Hai scelto <strong>{scelte.length}</strong> di {MAX_DECORAZIONI} decorazioni. Ritocca una card per toglierla.</>}
+        {pieno && ' Hai raggiunto il massimo: togline una per cambiarla.'}
+      </div>
       <div className="opt-grid cols-3">
         {cakeDecorations.map((d) => {
           const blocked = conflictsAllergies(d, config.allergies);
+          const nessuna = d.id === NO_DECO;
+          // "Nessuna" è accesa quando non c'è nessuna decorazione scelta.
+          const selected = nessuna ? scelte.length === 0 : scelte.includes(d.id);
+          // Col massimo raggiunto le altre card si spengono (ma quelle già
+          // scelte restano toccabili, per poterle togliere).
+          const maxed = !selected && !nessuna && pieno;
+          const disabled = blocked || maxed;
           return (
             <button
               key={d.id}
-              className={`opt-card ${config.decoration === d.id ? 'selected' : ''}`}
-              onClick={() => !blocked && set({ decoration: d.id })}
-              disabled={blocked}
+              className={`opt-card deco-card ${selected ? 'selected' : ''} ${maxed ? 'maxed' : ''}`}
+              onClick={() => !disabled && toggle(d)}
+              disabled={disabled}
+              title={maxed ? `Puoi scegliere fino a ${MAX_DECORAZIONI} decorazioni` : ''}
+              aria-pressed={selected}
               style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
             >
               <div className="opt-name">
                 <span style={{ fontSize: '1.2rem' }}>{d.emoji}</span> {d.name}
               </div>
-              <div className="opt-desc">{blocked ? `Contiene: ${(d.allergeni || []).join(', ')}` : d.desc}</div>
+              <div className="opt-desc">
+                {blocked
+                  ? `Contiene: ${(d.allergeni || []).join(', ')}`
+                  : maxed
+                    ? `Puoi scegliere fino a ${MAX_DECORAZIONI} decorazioni`
+                    : d.desc}
+              </div>
+              <div className="opt-meta">{d.priceDelta > 0 ? `+ €${d.priceDelta}` : 'inclusa'}</div>
             </button>
           );
         })}
       </div>
+
+      {daColorare.length > 0 && (
+        <div className="cfg-field cfg-color-pick" ref={colorRef}>
+          <label>{daColorare.length > 1 ? 'Di che colore le vuoi? *' : 'Di che colore la vuoi? *'}</label>
+          {/* Una palette per ogni decorazione colorata, con il suo nome sopra:
+              con due o tre insieme si deve capire a colpo d'occhio quale è quale. */}
+          <div className="deco-colors">
+            {daColorare.map((d) => (
+              <div key={d.id} className={`deco-color-block ${colori[d.id] ? 'done' : ''}`}>
+                <span className="deco-color-title">
+                  <span aria-hidden="true">{d.emoji}</span> {d.name}
+                </span>
+                <div className="color-row">
+                  {colorsOf(d).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`color-chip ${colori[d.id] === c ? 'selected' : ''}`}
+                      onClick={() =>
+                        set((cfg) => ({ decorationColors: { ...(cfg.decorationColors || {}), [d.id]: c } }))}
+                    >
+                      <span className="color-dot" style={swatchStyle(c)} />
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="hint">
+            Le sfumature di questi colori non sono garantite, ma possono essere richieste
+            nelle note della torta.
+          </p>
+        </div>
+      )}
     </>
   );
 }
 
+/* ───────── Proposta finale: extra dell'ordine ─────────
+   Salame dolce al kg e cabaret di pasticcini. NON è un passo del wizard: è la
+   finestra che compare a ordine ormai fatto, quando il cliente preme il
+   pulsante finale del riepilogo — come la schermata coi panini che ti sparano
+   ai totem dei fast food dopo che hai ordinato.
+   La quantità si muove a passi di `step`: 0,5 per il salame (si vende al kg),
+   1 per i cabaret (pezzi interi). Le quantità finiscono subito in config.extras,
+   così il totale mostrato è già quello vero. */
+function ProposteExtra({ config, set, staff, listino, total, onOrdinaSenza, onOrdinaCon, onChiudi }) {
+  const extras = config.extras || {};
+  const qtyOf = (id) => Number(extras[id]) || 0;
+  const stepOf = (e) => (Number(e.step) > 0 ? Number(e.step) : 1);
+
+  const setQty = (e, q) => {
+    const v = Math.round(Math.max(0, Math.min(MAX_EXTRA_QTY, q)) * 100) / 100;
+    // Forma a funzione: due tocchi ravvicinati su due extra non si mangiano
+    // a vicenda (il 3D dietro è pesante e può ritardare il render).
+    set((c) => {
+      const next = { ...(c.extras || {}) };
+      if (v > 0) next[e.id] = v;
+      else delete next[e.id];
+      return { extras: next };
+    });
+  };
+
+  const scelti = chosenExtras(extras, listino);
+  const totaleExtra = scelti.reduce((s, e) => s + e.total, 0);
+
+  // Esc chiude solo questa finestra (il configuratore sotto resta aperto: il
+  // suo listener si mette da parte finché la proposta è a video) e il riquadro
+  // prende il fuoco, così si naviga subito con Tab.
+  const boxRef = useRef(null);
+  // Il fuoco si dà UNA volta sola, all'apertura: rifarlo a ogni render lo
+  // ruberebbe ai pulsanti +/- a ogni tocco.
+  useEffect(() => {
+    boxRef.current?.focus();
+  }, []);
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onChiudi();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onChiudi]);
+
+  return (
+    <div
+      className="extra-pop-overlay"
+      onClick={(e) => e.target === e.currentTarget && onChiudi()}
+    >
+      <div
+        className="extra-pop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="extra-pop-title"
+        tabIndex={-1}
+        ref={boxRef}
+      >
+        <button type="button" className="extra-pop-x" onClick={onChiudi} aria-label="Chiudi la proposta">
+          <X size={18} />
+        </button>
+
+        <span className="extra-pop-kicker">Un’ultima golosità 🍫</span>
+        <h3 id="extra-pop-title">Vuoi aggiungere altro?</h3>
+        <p className="extra-pop-lead">
+          Li prepariamo insieme alla torta e li trovi pronti al ritiro. Nessun obbligo:
+          puoi ordinare solo la torta.
+        </p>
+
+        <div className="extra-pop-list">
+          {listino.map((e) => {
+            const qty = qtyOf(e.id);
+            const passo = stepOf(e);
+            const prezzo = Number(e.price ?? 0);
+            return (
+              <div key={e.id} className={`extra-pop-item ${qty > 0 ? 'selected' : ''}`}>
+                <div className="extra-pop-info">
+                  <span className="extra-pop-name">{e.name}</span>
+                  {e.desc && <span className="extra-pop-desc">{e.desc}</span>}
+                  <span className="extra-pop-price">
+                    €{prezzo.toFixed(2)}{e.unit ? ` ${e.unit}` : ''}
+                  </span>
+                </div>
+                <div className="extra-pop-side">
+                  <div className="qty-row">
+                    <button
+                      type="button"
+                      className="qty-btn"
+                      onClick={() => setQty(e, qty - passo)}
+                      disabled={qty <= 0}
+                      aria-label={`Togli ${e.name}`}
+                    >
+                      −
+                    </button>
+                    <span className="qty-value">{qty > 0 ? fmtQty(qty) : '—'}</span>
+                    <button
+                      type="button"
+                      className="qty-btn"
+                      onClick={() => setQty(e, qty + passo)}
+                      disabled={qty >= MAX_EXTRA_QTY}
+                      aria-label={`Aggiungi ${e.name}`}
+                    >
+                      +
+                    </button>
+                  </div>
+                  {qty > 0 && (
+                    <div className="extra-total">
+                      {fmtQty(qty)} × €{prezzo.toFixed(2)} = €{(qty * prezzo).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="extra-pop-total">
+          <span className="extra-pop-total-label">
+            {scelti.length
+              ? `Extra aggiunti: €${totaleExtra.toFixed(2)}`
+              : 'Niente di aggiunto, per ora.'}
+          </span>
+          {!staff && (
+            <span className="extra-pop-total-order">
+              Totale ordine <strong>€{total.toFixed(2)}</strong>
+            </span>
+          )}
+        </div>
+
+        <div className="extra-pop-actions">
+          <button type="button" className="extra-pop-skip" onClick={onOrdinaSenza}>
+            No grazie, {staff ? "crea l'ordine" : 'ordina'}
+          </button>
+          <button
+            type="button"
+            className="extra-pop-add"
+            onClick={onOrdinaCon}
+            disabled={!scelti.length}
+          >
+            {staff
+              ? "Aggiungi e crea l'ordine"
+              : `Aggiungi e ordina €${total.toFixed(2)}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Anteprima dello stile: i corsivi hanno l'occhio più piccolo, si compensa.
+const fontPreviewSize = (family) =>
+  /caveat/i.test(family || '') ? '1.4rem' : /fraunces/i.test(family || '') ? '1.15rem' : '1rem';
+
 function StepMessage({ config, set, staff }) {
-  const { cakeOccasions } = useCakeData();
-  const fonts = [
-    { id: 'caveat', label: 'Calligrafica', preview: 'Auguri!', family: "'Caveat', cursive", size: '1.4rem' },
-    { id: 'fraunces', label: 'Elegante', preview: 'Auguri!', family: "'Fraunces', serif", size: '1.15rem', italic: true },
-    { id: 'inter', label: 'Moderna', preview: 'AUGURI!', family: "'Inter', sans-serif", size: '1rem', weight: 700, letterSpacing: '0.08em' },
-  ];
+  const cake = useCakeData();
+  const { cakeOccasions } = cake;
+  // Stili della scritta dalla tabella `scritte` (con copia di sicurezza).
+  const fonts = scritteOf(cake);
+  const currentFont = normalizeFont(config.messageFont); // ordini vecchi: id rimappato
   return (
     <>
       <StepHeader stepKey="message" title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo su cialda alimentare e la posiamo sulla torta." />
@@ -1158,22 +1835,23 @@ function StepMessage({ config, set, staff }) {
             {fonts.map((f) => (
               <button
                 key={f.id}
-                className={`font-card ${config.messageFont === f.id ? 'selected' : ''}`}
+                className={`font-card ${currentFont === f.id ? 'selected' : ''}`}
                 onClick={() => set({ messageFont: f.id })}
               >
                 <span
                   className="font-preview"
                   style={{
                     fontFamily: f.family,
-                    fontSize: f.size,
+                    fontSize: fontPreviewSize(f.family),
                     fontStyle: f.italic ? 'italic' : 'normal',
-                    fontWeight: f.weight || 600,
-                    letterSpacing: f.letterSpacing || 'normal',
+                    fontWeight: f.uppercase ? 700 : 600,
+                    letterSpacing: f.uppercase ? '0.08em' : 'normal',
+                    textTransform: f.uppercase ? 'uppercase' : 'none',
                   }}
                 >
-                  {f.preview}
+                  {f.sample || 'Auguri!'}
                 </span>
-                <span className="font-label">{f.label}</span>
+                <span className="font-label">{f.name}</span>
               </button>
             ))}
           </div>
@@ -1365,7 +2043,8 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
 }
 
 function StepReview({ config, total, staff }) {
-  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeCrumbles = [], cakeFillings, cakeCoverings, cakeDecorations, cakeAllergens } = useCakeData();
+  const cake = useCakeData();
+  const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeCrumbles = [], cakeFillings, cakeCoverings, cakeDecorations, cakeExtras = [], cakeAllergens } = cake;
   const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
   const type = cakeTypes.find((t) => t.id === config.type);
   const shape = cakeShapes.find((sh) => sh.id === config.shape);
@@ -1374,7 +2053,10 @@ function StepReview({ config, total, staff }) {
   const crumble = config.baseId === CRUMBLE_BASE_ID ? cakeCrumbles.find((c) => c.id === config.crumbleId) : null;
   const filling = cakeFillings.find((f) => f.id === config.fillingId);
   const covering = cakeCoverings.find((c) => c.id === config.coveringId);
-  const deco = cakeDecorations.find((d) => d.id === config.decoration);
+  // Decorazioni scelte: si elencano tutte, ognuna con il suo colore.
+  const decos = chosenDecorations(config.decorations, cakeDecorations);
+  const scritta = scritteOf(cake).find((f) => f.id === normalizeFont(config.messageFont));
+  const extras = chosenExtras(config.extras, cakeExtras);
   return (
     <>
       <StepHeader stepKey="review" title="Riepilogo" lead={staff ? "Controlla i dettagli e crea l'ordine: finirà tra gli ordini da fare." : 'Controlla tutto e conferma il tuo ordine.'} />
@@ -1389,8 +2071,10 @@ function StepReview({ config, total, staff }) {
           <dt>Strati</dt><dd>{config.flavors.map((f) => f.name).join(' · ') || '—'}</dd>
           {filling && filling.id !== 'nessuna' && (<><dt>Inserto</dt><dd>{filling.name}</dd></>)}
           <dt>Copertura</dt><dd>{covering?.name}</dd>
-          <dt>Decorazione</dt><dd>{deco?.name}</dd>
-          {config.message && (<><dt>Scritta</dt><dd>"{config.message}"</dd></>)}
+          <dt>{decos.length > 1 ? 'Decorazioni' : 'Decorazione'}</dt>
+          <dd>{decorationsText(decos, config.decorationColors)}</dd>
+          {extras.length > 0 && (<><dt>Extra</dt><dd>{extras.map(extraLabel).join(' · ')}</dd></>)}
+          {config.message && (<><dt>Scritta</dt><dd>"{config.message}"{scritta ? ` · ${scritta.name}` : ''}</dd></>)}
           {config.photo && (<><dt>Foto</dt><dd>su cialda alimentare</dd></>)}
           {config.candle && (<><dt>Candelina</dt><dd>sì</dd></>)}
           {config.occasion && (<><dt>Occasione</dt><dd>{config.occasion}</dd></>)}

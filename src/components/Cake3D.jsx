@@ -7,9 +7,17 @@
  * automatica + trascinamento col mouse/dito.
  *
  * Forme supportate: tonda (cilindro), cuore (extrude), quadrata/rettangolare
- * (rounded box). Copertura solo sulla calotta (per non nascondere i gusti) con
- * colature. Farcitura come anelli sottili tra gli strati. Decorazioni, foto su
- * cialda e candelina in 3D.
+ * (rounded box). Le coperture di PANNA sono lisce e spatolate e possono
+ * avvolgere anche i fianchi ("Panna montata INTORNO"); le altre coperture
+ * restano sulla calotta, con le colature. Farcitura come anelli sottili tra gli
+ * strati. Decorazioni 3D (macarons, spumini, fiori, fiocchi…), foto su cialda e
+ * candelina. I ciuffi di panna arrivano SOLO dalla decorazione, mai dalla
+ * copertura.
+ *
+ * Le decorazioni possono essere PIÙ D'UNA: arrivano come lista di id
+ * (`decorations`) più la mappa dei colori (`decorationColors`). I posti sul
+ * contorno sono uno solo per tutte e se li dividono a turno, così si vedono
+ * tutte e nessuna finisce sopra l'altra.
  */
 
 import { Suspense, useMemo, useRef, useState, useEffect, useLayoutEffect } from 'react';
@@ -22,6 +30,7 @@ import {
 } from '@react-three/drei';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three-stdlib';
+import { messageFontStyle } from '../lib/messageFont';
 
 /* ============================ utilità colore ============================ */
 
@@ -53,6 +62,120 @@ function mix(hexA, hexB, t) {
 /** Colore "gelato": ammorbidito verso la crema → tono naturale, non da caramella. */
 function creamy(hex) {
   return mix(hex, '#fff3e0', 0.17);
+}
+
+/**
+ * Colori scegliibili per le decorazioni con `scelta_colore` (panna colorata,
+ * zuccherini, perline…). Il configuratore salva il NOME del colore in italiano
+ * (es. "Rosa", "Azzurra"): qui lo traduciamo in HEX. Accettiamo anche un HEX
+ * già pronto, così se un giorno i colori arrivassero dal database non si rompe.
+ */
+const COLOR_NAMES = {
+  rosa: '#f4a9c0',
+  rosso: '#e0334c',
+  rossa: '#e0334c',
+  azzurro: '#8ed0f0',
+  azzurra: '#8ed0f0',
+  blu: '#3f57b3',
+  verde: '#7cc47a',
+  nero: '#3a3540',
+  nera: '#3a3540',
+  giallo: '#f7d34a',
+  gialla: '#f7d34a',
+  bianco: '#fff8e6',
+  bianca: '#fff8e6',
+  oro: '#e8c069',
+  argento: '#cfd4d8',
+};
+
+/** Ciuffi arcobaleno: colori alternati, uno per ciuffo. */
+const RAINBOW_COLORS = ['#f4577b', '#f79a3c', '#f7d34a', '#7cc47a', '#5fb6e8', '#8f6fd6'];
+
+/** Da nome colore (o HEX) al colore da usare nel 3D; null se non riconosciuto. */
+function colorFromChoice(choice) {
+  const key = String(choice || '').trim().toLowerCase();
+  if (!key) return null;
+  if (key.startsWith('#')) return key;
+  return COLOR_NAMES[key] || null;
+}
+
+/** True se il colore scelto è "arcobaleno". */
+function isRainbowChoice(choice) {
+  return String(choice || '').trim().toLowerCase().startsWith('arcobaleno');
+}
+
+/**
+ * Toni della PANNA COLORATA. Sono volutamente PASTELLO: è panna montata con
+ * dentro il colorante, non una caramella. I titolari scrivono i colori al
+ * femminile ("Rossa", "Azzurra"), quindi teniamo entrambe le forme.
+ */
+const CREAM_COLORS = {
+  rosa: '#f8c4d6',
+  // "Rossa" deve restare distinguibile da "Rosa": i titolari le offrono come
+  // due scelte diverse, quindi qui il rosso è pieno (lampone) e non un rosa
+  // appena più carico — con le luci della scena schiarisce già parecchio.
+  rosso: '#d8434f',
+  rossa: '#d8434f',
+  azzurro: '#bde2f6',
+  azzurra: '#bde2f6',
+  blu: '#95a7dd',
+  verde: '#b7ddab',
+  nero: '#565062',
+  nera: '#565062',
+  giallo: '#f8e296',
+  gialla: '#f8e296',
+  bianco: '#fff8e6',
+  bianca: '#fff8e6',
+};
+
+/** Panna ARCOBALENO: settori pastello che girano intorno alla torta. */
+const CREAM_RAINBOW = ['#f79ab6', '#f6bc7d', '#f5e089', '#a4d69b', '#95cfef', '#b8a3e6'];
+
+/** Colore della PANNA dal nome scelto dal cliente; null se non riconosciuto. */
+function creamColorFromChoice(choice) {
+  const key = String(choice || '').trim().toLowerCase();
+  if (!key) return null;
+  if (key.startsWith('#')) return key;
+  return CREAM_COLORS[key] || null;
+}
+
+/**
+ * Dipinge una geometria a SETTORI arcobaleno: il colore dipende dall'angolo
+ * intorno all'asse verticale e sfuma da un settore all'altro. Va bene per
+ * qualsiasi forma (disco, cuore, box) perché guarda solo X e Z.
+ */
+function paintRainbow(geom, palette = CREAM_RAINBOW) {
+  const pos = geom.attributes.position;
+  const cols = new Float32Array(pos.count * 3);
+  const a = new THREE.Color();
+  const b = new THREE.Color();
+  const n = palette.length;
+  for (let i = 0; i < pos.count; i++) {
+    const ang = Math.atan2(pos.getZ(i), pos.getX(i)); // -PI..PI
+    const t = ((ang / (Math.PI * 2) + 1) % 1) * n; // 0..n
+    const k = Math.floor(t);
+    a.set(palette[k % n]);
+    b.set(palette[(k + 1) % n]);
+    // sfumatura corta: i settori restano leggibili, il passaggio è morbido
+    const w = Math.min(1, Math.max(0, (t - k - 0.7) / 0.3));
+    cols[i * 3] = a.r + (b.r - a.r) * w;
+    cols[i * 3 + 1] = a.g + (b.g - a.g) * w;
+    cols[i * 3 + 2] = a.b + (b.b - a.b) * w;
+  }
+  geom.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  return geom;
+}
+
+/**
+ * Tavolozza di una decorazione: se il cliente ha scelto un colore vale quello
+ * (con due sfumature per non appiattire tutto), "Arcobaleno" accende tutti i
+ * colori, altrimenti restano i colori naturali della decorazione.
+ */
+function decoPalette(defaults, choice) {
+  if (isRainbowChoice(choice)) return RAINBOW_COLORS;
+  const hex = colorFromChoice(choice);
+  if (!hex) return defaults;
+  return [hex, shade(hex, 0.16), shade(hex, -0.1)];
 }
 
 /** True se il colore è scuro (per scegliere scritta bianca vs cioccolato). */
@@ -183,6 +306,43 @@ function gelatoDisc(R, h, seed = 1) {
 function boxDims(shape, R) {
   if (shape === 'rettangolare') return [R * 1.85, R * 1.1];
   return [R * 1.55, R * 1.55]; // quadrata
+}
+
+/** Contorno a rettangolo con angoli arrotondati (usato per la cornice del piatto). */
+function roundedRectPath(path, w, d, r) {
+  const hw = w / 2;
+  const hd = d / 2;
+  const rr = Math.max(0.001, Math.min(r, hw * 0.98, hd * 0.98));
+  path.moveTo(-hw + rr, -hd);
+  path.lineTo(hw - rr, -hd);
+  path.absarc(hw - rr, -hd + rr, rr, -Math.PI / 2, 0, false);
+  path.lineTo(hw, hd - rr);
+  path.absarc(hw - rr, hd - rr, rr, 0, Math.PI / 2, false);
+  path.lineTo(-hw + rr, hd);
+  path.absarc(-hw + rr, hd - rr, rr, Math.PI / 2, Math.PI, false);
+  path.lineTo(-hw, -hd + rr);
+  path.absarc(-hw + rr, -hd + rr, rr, Math.PI, Math.PI * 1.5, false);
+  return path;
+}
+
+/**
+ * Cornice piatta a rettangolo arrotondato, già coricata sul piano XZ.
+ * È la rifinitura lucida del bordo dei piatti quadrati/rettangolari: senza,
+ * la loro superficie ampia non "legge" come oro.
+ */
+function roundedRectFrame(w, d, r, thickness, height) {
+  const shape = roundedRectPath(new THREE.Shape(), w, d, r);
+  shape.holes.push(
+    roundedRectPath(new THREE.Path(), w - thickness * 2, d - thickness * 2, Math.max(0.01, r - thickness))
+  );
+  const geom = new THREE.ExtrudeGeometry(shape, {
+    depth: height,
+    bevelEnabled: false,
+    curveSegments: 10,
+  });
+  geom.rotateX(-Math.PI / 2);
+  geom.computeVertexNormals();
+  return geom;
 }
 
 /**
@@ -420,137 +580,602 @@ function Dollop({ position, color, s = 1, rotation = 0 }) {
   );
 }
 
-function Berry({ position, color, r = 0.07 }) {
+/* ============================ decorazioni 3D "a pezzi" ============================ */
+
+/**
+ * InstancedMesh generico: riceve la lista dei pezzi già calcolata
+ * ({ position, rotation, scale, color }) e la disegna in una sola draw call.
+ * Serve a tenere leggera la scena: la torta 3D gira anche sul telefono.
+ * `order` è l'ordine di rotazione di Eulero: con 'YXZ' si corica un pezzo e poi
+ * lo si gira verso l'esterno della torta.
+ * Il colore per pezzo passa da `setColorAt`: NON serve (anzi, non va messo)
+ * `vertexColors` sul materiale, altrimenti three cerca un attributo che non c'è.
+ */
+function Pieces({ items, geometry, order = 'XYZ', children }) {
+  const ref = useRef();
+  const n = Math.max(1, items.length);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const dummy = new THREE.Object3D();
+    const col = new THREE.Color();
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const p = it.position || [0, 0, 0];
+      const r = it.rotation || [0, 0, 0];
+      const s = it.scale === undefined ? 1 : it.scale;
+      dummy.position.set(p[0], p[1], p[2]);
+      dummy.rotation.set(r[0], r[1], r[2], order);
+      if (Array.isArray(s)) dummy.scale.set(s[0], s[1], s[2]);
+      else dummy.scale.setScalar(s);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, col.set(it.color || '#ffffff'));
+    }
+    mesh.count = items.length;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [items, order]);
+  if (!items.length) return null;
   return (
-    <mesh castShadow position={position}>
-      <sphereGeometry args={[r, 18, 14]} />
-      <meshPhysicalMaterial color={color} roughness={0.25} clearcoat={0.8} clearcoatRoughness={0.2} envMapIntensity={1} />
-    </mesh>
+    <instancedMesh ref={ref} args={[geometry, undefined, n]} castShadow receiveShadow>
+      {children}
+    </instancedMesh>
   );
 }
 
-function Decorations({ id, R, y, coverColor }) {
-  const items = [];
-  const push = (el) => items.push(el);
+/**
+ * Posti dove appoggiare le decorazioni: seguono il CONTORNO della forma (così il
+ * centro resta libero per scritta e foto) e portano l'angolo verso l'esterno,
+ * per far "guardare fuori" i pezzi che hanno un davanti (macarons, fiocchi).
+ */
+function decoSpots(shape, R, n, inset = 0.8) {
+  return perimeterPts(shape, R, inset, n).map(([x, z, i]) => ({ x, z, i, ang: Math.atan2(z, x) }));
+}
 
-  switch (id) {
-    case 'frutta': {
-      const fruit = ['#d22d50', '#3f4fb3', '#7a1f3d', '#d22d50', '#4a5bbf', '#b01b3a'];
-      ringPts(7, R * 0.62).forEach(([x, z, i]) =>
-        push(<Berry key={`f${i}`} position={[x, y + 0.06, z]} color={fruit[i % fruit.length]} r={0.065 + (i % 3) * 0.012} />)
-      );
-      push(<Berry key="fc1" position={[0.08, y + 0.08, 0.02]} color="#d22d50" r={0.085} />);
-      push(<Berry key="fc2" position={[-0.07, y + 0.07, 0.08]} color="#3f4fb3" r={0.07} />);
-      push(<Berry key="fc3" position={[-0.02, y + 0.07, -0.09]} color="#7a1f3d" r={0.075} />);
-      break;
-    }
-    case 'cioccolato': {
-      ringPts(9, R * 0.6, 12).forEach(([x, z, i]) => (
-        push(
-          <mesh key={`ch${i}`} castShadow position={[x, y + 0.07, z]} rotation={[0.4, i * 1.1, 0.5 + (i % 3) * 0.3]}>
-            <boxGeometry args={[0.05, 0.16, 0.012]} />
-            <meshPhysicalMaterial color="#3a1d10" roughness={0.35} clearcoat={0.6} envMapIntensity={0.7} />
-          </mesh>
-        )
-      ));
-      ringPts(14, R * 0.85, 6).forEach(([x, z, i]) =>
-        push(<Berry key={`cd${i}`} position={[x, y + 0.02, z]} color={i % 2 ? '#5a3318' : '#2a160e'} r={0.025} />)
-      );
-      push(
-        <mesh key="cc" castShadow position={[0, y + 0.09, 0]} rotation={[0.2, 0.6, 0.3]}>
-          <torusGeometry args={[0.07, 0.028, 12, 24]} />
-          <meshPhysicalMaterial color="#3a1d10" roughness={0.3} clearcoat={0.7} envMapIntensity={0.8} />
-        </mesh>
-      );
-      break;
-    }
-    case 'macaron': {
-      const pastel = ['#f4a9c0', '#a9d8f4', '#c8f4a9', '#f4e3a9', '#d9a9f4', '#f4c0a9'];
-      ringPts(6, R * 0.6).forEach(([x, z, i]) => (
-        push(
-          <mesh key={`mc${i}`} castShadow position={[x, y + 0.05, z]} rotation={[Math.PI / 2.6, 0, i]}>
-            <cylinderGeometry args={[0.075, 0.075, 0.05, 24]} />
-            <meshPhysicalMaterial color={pastel[i % pastel.length]} roughness={0.55} clearcoat={0.2} />
-          </mesh>
-        )
-      ));
-      ringPts(10, R * 0.88, 4).forEach(([x, z, i]) =>
-        push(<Berry key={`ms${i}`} position={[x, y + 0.02, z]} color="#f4d35e" r={0.02} />)
-      );
-      break;
-    }
-    case 'fiori': {
-      const petals = ['#f4a9c0', '#f7c948', '#e85d75', '#c490e4', '#ffffff'];
-      ringPts(5, R * 0.58).forEach(([cx, cz, i]) => {
-        const col = petals[i % petals.length];
-        ringPts(5, 0.07).forEach(([px, pz, j]) =>
-          push(
-            <mesh key={`fl${i}-${j}`} castShadow position={[cx + px, y + 0.05, cz + pz]}>
-              <sphereGeometry args={[0.038, 12, 10]} />
-              <meshPhysicalMaterial color={col} roughness={0.5} sheen={0.6} sheenColor={shade(col, 0.4)} />
-            </mesh>
-          )
-        );
-        push(<Berry key={`flc${i}`} position={[cx, y + 0.06, cz]} color="#f7c948" r={0.04} />);
-      });
-      ringPts(8, R * 0.9, 3).forEach(([x, z, i]) =>
-        push(<Berry key={`lf${i}`} position={[x, y + 0.02, z]} color="#5a8f3c" r={0.035} />)
-      );
-      break;
-    }
-    case 'fantasy': {
-      const sprinkle = ['#e8467a', '#46a8e8', '#f7c948', '#7be84a', '#c490e4', '#f78f2e'];
-      for (let i = 0; i < 46; i++) {
-        const a = (i * 137.5 * Math.PI) / 180;
-        const rr = R * 0.92 * Math.sqrt((i + 1) / 47);
-        push(
-          <mesh
-            key={`sp${i}`}
-            castShadow
-            position={[Math.cos(a) * rr, y + 0.03, Math.sin(a) * rr]}
-            rotation={[Math.PI / 2, i * 0.7, i * 1.3]}
-          >
-            <cylinderGeometry args={[0.012, 0.012, 0.07, 6]} />
-            <meshStandardMaterial color={sprinkle[i % sprinkle.length]} roughness={0.4} />
-          </mesh>
-        );
-      }
-      push(<Dollop key="fa-c" position={[0, y, 0]} color={shade(coverColor, 0.05)} s={1.3} />);
-      break;
-    }
-    case 'panna': {
-      ringPts(8, R * 0.62).forEach(([x, z, i]) =>
-        push(<Dollop key={`pd${i}`} position={[x, y + 0.02, z]} color={shade(coverColor, 0.06)} s={0.95} rotation={i} />)
-      );
-      push(<Dollop key="pd-c" position={[0, y + 0.02, 0]} color={shade(coverColor, 0.06)} s={1.2} />);
-      push(<Berry key="pc" position={[0, y + 0.28, 0]} color="#cf2740" r={0.06} />);
-      break;
-    }
-    case 'minimal':
-    default: {
-      ringPts(10, R * 0.7).forEach(([x, z, i]) => (
-        push(
-          <mesh key={`dr${i}`} castShadow position={[x, y + 0.03, z]}>
-            <sphereGeometry args={[0.03, 16, 12]} />
-            <meshStandardMaterial color="#e8c069" metalness={0.95} roughness={0.22} envMapIntensity={1.2} />
-          </mesh>
-        )
-      ));
-      push(
-        <mesh key="dc" castShadow position={[0, y + 0.04, 0]}>
-          <sphereGeometry args={[0.045, 16, 12]} />
-          <meshStandardMaterial color="#e8c069" metalness={0.95} roughness={0.22} envMapIntensity={1.2} />
-        </mesh>
-      );
-      break;
-    }
+/** Caso finto ma stabile: stessa torta → stessa disposizione a ogni render. */
+function rnd(i, k = 1) {
+  const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/* ---- geometrie riusate da più decorazioni (costruite una volta sola) ---- */
+
+/**
+ * Ciuffo di meringa: sale rastremando e si chiude a punta, con le piccole
+ * ondine della sac-à-poche. Raggio 0.5, altezza 1.
+ */
+const MERINGUE_GEO = (() => {
+  const prof = [
+    [0.0, 0.0], [0.44, 0.02], [0.5, 0.1], [0.455, 0.19], [0.475, 0.26],
+    [0.415, 0.36], [0.435, 0.43], [0.36, 0.55], [0.375, 0.62], [0.28, 0.74],
+    [0.285, 0.79], [0.15, 0.91], [0.0, 1.0],
+  ];
+  const g = new THREE.LatheGeometry(prof.map(([r, h]) => new THREE.Vector2(r, h)), 20);
+  g.computeVertexNormals();
+  return g;
+})();
+
+/** Cilindretto morbido con gli angoli arrotondati (marshmallow). Raggio 0.5, altezza 1. */
+const MARSHMALLOW_GEO = (() => {
+  const r = 0.5;
+  const half = 0.5;
+  const cr = 0.17;
+  const pts = [new THREE.Vector2(0, -half)];
+  for (let i = 0; i <= 5; i++) {
+    const a = -Math.PI / 2 + (i / 5) * (Math.PI / 2);
+    pts.push(new THREE.Vector2(r - cr + Math.cos(a) * cr, -half + cr + Math.sin(a) * cr));
   }
-  return <group>{items}</group>;
+  for (let i = 0; i <= 5; i++) {
+    const a = (i / 5) * (Math.PI / 2);
+    pts.push(new THREE.Vector2(r - cr + Math.cos(a) * cr, half - cr + Math.sin(a) * cr));
+  }
+  pts.push(new THREE.Vector2(0, half));
+  const g = new THREE.LatheGeometry(pts, 20);
+  g.computeVertexNormals();
+  return g;
+})();
+
+/* ---- MACARONS: due dischetti con la crema in mezzo ---- */
+
+const MACARON_COLORS = ['#f4a9c0', '#f7b98a', '#f6e79a', '#b8e0a6', '#a9d2f0', '#e7c9f0'];
+
+function Macarons({ spots, y, color }) {
+  const { gusci, creme } = useMemo(() => {
+    const pal = decoPalette(MACARON_COLORS, color);
+    const gusci = [];
+    const creme = [];
+    for (const { x, z, i, ang } of spots) {
+      const c = pal[i % pal.length];
+      const rad = 0.115 + rnd(i, 3) * 0.014;
+      const yy = y + rad * 0.97;
+      // in piedi, con la faccia tonda rivolta fuori dalla torta
+      const rot = [Math.PI / 2, Math.PI / 2 - ang, 0];
+      const ux = Math.cos(ang);
+      const uz = Math.sin(ang);
+      const off = 0.044;
+      gusci.push({ position: [x + ux * off, yy, z + uz * off], rotation: rot, scale: [rad, 0.05, rad], color: c });
+      gusci.push({ position: [x - ux * off, yy, z - uz * off], rotation: rot, scale: [rad, 0.05, rad], color: c });
+      creme.push({
+        position: [x, yy, z],
+        rotation: rot,
+        scale: [rad * 0.93, 0.042, rad * 0.93],
+        color: mix(c, '#fff3e0', 0.5),
+      });
+    }
+    return { gusci, creme };
+  }, [spots, y, color]);
+
+  return (
+    <>
+      <Pieces items={gusci} order="YXZ">
+        <cylinderGeometry args={[1, 1, 1, 22]} />
+        <meshPhysicalMaterial roughness={0.62} clearcoat={0.25} clearcoatRoughness={0.5} envMapIntensity={0.5} />
+      </Pieces>
+      <Pieces items={creme} order="YXZ">
+        <cylinderGeometry args={[1, 1, 1, 22]} />
+        <meshPhysicalMaterial roughness={0.85} envMapIntensity={0.25} />
+      </Pieces>
+    </>
+  );
+}
+
+/* ---- SPUMINI: piccoli ciuffi di meringa a punta (rosa o blu) ---- */
+
+const SPUMINI_COLORS = ['#f7bfd3', '#a6cbf0'];
+
+function Spumini({ spots, y, color }) {
+  const items = useMemo(() => {
+    const pal = decoPalette(SPUMINI_COLORS, color);
+    return spots.map(({ x, z, i }) => {
+      const s = 0.2 + rnd(i, 5) * 0.045;
+      return {
+        position: [x, y - 0.012, z],
+        rotation: [0, rnd(i, 6) * 6.28, 0],
+        scale: [s, s * 1.15, s],
+        color: pal[i % pal.length],
+      };
+    });
+  }, [spots, y, color]);
+  return (
+    <Pieces items={items} geometry={MERINGUE_GEO}>
+      <meshPhysicalMaterial roughness={0.65} sheen={0.8} sheenRoughness={0.75} envMapIntensity={0.4} />
+    </Pieces>
+  );
+}
+
+/* ---- MARSHMALLOW: cilindretti morbidi con gli angoli arrotondati ---- */
+
+const MARSHMALLOW_COLORS = ['#fff3ec', '#f7bfd0', '#f6e6a8', '#bfe6c8'];
+
+function Marshmallow({ spots, y, color }) {
+  const items = useMemo(() => {
+    const pal = decoPalette(MARSHMALLOW_COLORS, color);
+    return spots.map(({ x, z, i }) => {
+      const r = 0.098 + rnd(i, 7) * 0.018;
+      const h = 0.17 + rnd(i, 8) * 0.035;
+      const c = pal[i % pal.length];
+      // qualcuno in piedi, qualcuno coricato: sembrano appoggiati a mano
+      const coricato = rnd(i, 9) > 0.6;
+      return coricato
+        ? { position: [x, y + r, z], rotation: [Math.PI / 2, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c }
+        : { position: [x, y + h / 2, z], rotation: [0, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c };
+    });
+  }, [spots, y, color]);
+  return (
+    <Pieces items={items} geometry={MARSHMALLOW_GEO} order="YXZ">
+      <meshPhysicalMaterial roughness={0.95} sheen={1} sheenRoughness={0.9} envMapIntensity={0.18} />
+    </Pieces>
+  );
+}
+
+/* ---- FIORI: petali a raggiera; eleganti (zucchero duro) e di ostia (piatti) ---- */
+
+const FIORI_COLORS = ['#f4a9c0', '#e0334c', '#8ed0f0', '#7cc47a', '#f7d34a', '#fff8e6'];
+
+function FioriEleganti({ spots, y, color }) {
+  const { petali, cuori } = useMemo(() => {
+    const pal = decoPalette(FIORI_COLORS, color);
+    const petali = [];
+    const cuori = [];
+    for (const { x, z, i } of spots) {
+      const c = pal[i % pal.length];
+      const rot0 = rnd(i, 11) * 1.2;
+      const rp = 0.062;
+      for (let p = 0; p < 6; p++) {
+        const b = rot0 + (p / 6) * Math.PI * 2;
+        petali.push({
+          position: [x + Math.cos(b) * rp, y + 0.028, z + Math.sin(b) * rp],
+          rotation: [0, -b, 0],
+          scale: [0.075, 0.03, 0.046],
+          color: c,
+        });
+      }
+      cuori.push({ position: [x, y + 0.042, z], scale: [0.042, 0.032, 0.042], color: '#f2c33f' });
+    }
+    return { petali, cuori };
+  }, [spots, y, color]);
+  return (
+    <>
+      <Pieces items={petali}>
+        <sphereGeometry args={[1, 12, 8]} />
+        <meshPhysicalMaterial roughness={0.28} clearcoat={0.85} clearcoatRoughness={0.12} envMapIntensity={0.9} />
+      </Pieces>
+      <Pieces items={cuori}>
+        <sphereGeometry args={[1, 12, 8]} />
+        <meshStandardMaterial roughness={0.35} metalness={0.25} envMapIntensity={0.9} />
+      </Pieces>
+    </>
+  );
+}
+
+function FioriOstia({ spots, y, color }) {
+  const { petali, cuori } = useMemo(() => {
+    const pal = decoPalette(FIORI_COLORS, color);
+    const petali = [];
+    const cuori = [];
+    for (const { x, z, i } of spots) {
+      const c = pal[i % pal.length];
+      const rot0 = rnd(i, 12) * 1.2;
+      const rp = 0.075;
+      for (let p = 0; p < 5; p++) {
+        const b = rot0 + (p / 5) * Math.PI * 2;
+        petali.push({
+          position: [x + Math.cos(b) * rp, y + 0.014 + rnd(i + p, 13) * 0.01, z + Math.sin(b) * rp],
+          rotation: [rnd(i + p, 14) * 0.3 - 0.15, -b, 0],
+          scale: [0.09, 0.005, 0.052],
+          color: c,
+        });
+      }
+      cuori.push({ position: [x, y + 0.018, z], scale: [0.03, 0.006, 0.03], color: '#fbe9a8' });
+    }
+    return { petali, cuori };
+  }, [spots, y, color]);
+  return (
+    <>
+      <Pieces items={petali} order="YXZ">
+        <sphereGeometry args={[1, 14, 8]} />
+        <meshPhysicalMaterial
+          transparent
+          opacity={0.85}
+          roughness={0.8}
+          side={THREE.DoubleSide}
+          envMapIntensity={0.3}
+        />
+      </Pieces>
+      <Pieces items={cuori}>
+        <sphereGeometry args={[1, 10, 8]} />
+        <meshStandardMaterial roughness={0.8} />
+      </Pieces>
+    </>
+  );
+}
+
+/* ---- FRUTTA FRESCA: ribes, more e lamponi ---- */
+
+const RIBES = ['#d42a44', '#e0334c', '#b81f38'];
+const MORE_LAMPONI = ['#3a2350', '#2c1a3d', '#e0526f', '#c93a5c'];
+
+function FruttaFresca({ spots, y }) {
+  const { lisce, ruvide, foglie } = useMemo(() => {
+    const lisce = [];
+    const ruvide = [];
+    const foglie = [];
+    for (const { x, z, i } of spots) {
+      // grappolino: 2-3 bacche per posto, sparse quel tanto che basta
+      const n = 2 + (i % 2);
+      for (let k = 0; k < n; k++) {
+        const a = rnd(i, 20 + k) * Math.PI * 2;
+        const d = 0.04 + rnd(i, 30 + k) * 0.055;
+        const px = x + Math.cos(a) * d;
+        const pz = z + Math.sin(a) * d;
+        if (rnd(i, 40 + k) > 0.45) {
+          const r = 0.055 + rnd(i, 50 + k) * 0.022;
+          ruvide.push({
+            position: [px, y + r * 0.85, pz],
+            rotation: [rnd(i, 60 + k) * 3, rnd(i, 61 + k) * 3, 0],
+            scale: r,
+            color: MORE_LAMPONI[(i + k) % MORE_LAMPONI.length],
+          });
+        } else {
+          const r = 0.042 + rnd(i, 51 + k) * 0.016;
+          lisce.push({ position: [px, y + r * 0.9, pz], scale: r, color: RIBES[(i + k) % RIBES.length] });
+        }
+      }
+      if (i % 3 === 0) {
+        foglie.push({
+          position: [x + 0.075, y + 0.018, z - 0.055],
+          rotation: [0.12, rnd(i, 70) * 3, 0],
+          scale: [0.078, 0.008, 0.042],
+          color: '#5a8f3c',
+        });
+      }
+    }
+    return { lisce, ruvide, foglie };
+  }, [spots, y]);
+  return (
+    <>
+      <Pieces items={lisce}>
+        <sphereGeometry args={[1, 14, 10]} />
+        <meshPhysicalMaterial roughness={0.16} clearcoat={0.95} clearcoatRoughness={0.1} envMapIntensity={1.1} />
+      </Pieces>
+      <Pieces items={ruvide}>
+        <icosahedronGeometry args={[1, 1]} />
+        <meshPhysicalMaterial roughness={0.3} clearcoat={0.7} clearcoatRoughness={0.25} envMapIntensity={0.9} />
+      </Pieces>
+      <Pieces items={foglie} order="YXZ">
+        <sphereGeometry args={[1, 10, 8]} />
+        <meshPhysicalMaterial roughness={0.5} clearcoat={0.4} envMapIntensity={0.5} />
+      </Pieces>
+    </>
+  );
+}
+
+/* ---- CIOCCOLATO: riccioli e scaglie (bianco, latte, fondente) ---- */
+
+
+/* ---- FIOCCHI: fiocchetti a nastro, in piedi sul bordo ---- */
+
+const FIOCCHI_COLORS = ['#3a3540', '#f4a9c0', '#e0334c', '#e8c069'];
+
+/**
+ * Fiocchi di raso ANNODATI SUL FIANCO della torta, col nastro che scende lungo
+ * il bordo. Non sono appoggiati sopra: si legano intorno, come nelle torte
+ * decorate col nastro. `y` è l'altezza del nodo (poco sotto il bordo superiore),
+ * `drop` quanto è alta la torta, che decide la lunghezza dei nastri.
+ */
+function Fiocchi({ spots, y, drop = 0.5, color }) {
+  const { asole, nodi, code } = useMemo(() => {
+    const pal = decoPalette(FIOCCHI_COLORS, color);
+    const asole = [];
+    const nodi = [];
+    const code = [];
+    for (const { x, z, i, ang } of spots) {
+      const c = pal[i % pal.length];
+      const ry = Math.PI / 2 - ang; // il fiocco guarda verso l'esterno
+      const ux = -Math.sin(ang);    // tangente al bordo
+      const uz = Math.cos(ang);
+      const nx = Math.cos(ang);     // normale uscente
+      const nz = Math.sin(ang);
+      // il nodo sporge dal fianco, così il nastro non sprofonda nella torta
+      const px = x + nx * 0.028;
+      const pz = z + nz * 0.028;
+      // due asole affiancate lungo il fianco, inclinate verso l'alto. Il nastro
+      // è di raso: largo e piatto, non un cordoncino — altrimenti a questa
+      // distanza il fiocco non si legge.
+      for (const sgn of [-1, 1]) {
+        asole.push({
+          position: [px + ux * sgn * 0.125, y + 0.026, pz + uz * sgn * 0.125],
+          rotation: [0, ry, sgn * 0.5],
+          scale: [0.15, 0.088, 0.034],
+          color: c,
+        });
+        // nastro che SCENDE lungo il fianco: un po' divaricato e di lunghezza
+        // diversa da un fiocco all'altro, così sembra annodato a mano
+        const len = drop * (0.55 + ((i * 7) % 5) * 0.06);
+        code.push({
+          position: [px + ux * sgn * 0.062, y - len / 2 - 0.04, pz + uz * sgn * 0.062],
+          rotation: [0, ry, sgn * 0.13],
+          scale: [0.055, len, 0.014],
+          color: c,
+        });
+      }
+      nodi.push({ position: [px, y, pz], scale: [0.052, 0.048, 0.038], color: shade(c, -0.18) });
+    }
+    return { asole, nodi, code };
+  }, [spots, y, drop, color]);
+  // raso: molto lucido e liscio
+  const nastro = { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1.05 };
+  return (
+    <>
+      <Pieces items={asole}>
+        <torusGeometry args={[1, 0.34, 8, 20]} />
+        <meshPhysicalMaterial {...nastro} />
+      </Pieces>
+      <Pieces items={nodi}>
+        <sphereGeometry args={[1, 12, 10]} />
+        <meshPhysicalMaterial {...nastro} />
+      </Pieces>
+      <Pieces items={code} order="YXZ">
+        <boxGeometry args={[1, 1, 1]} />
+        <meshPhysicalMaterial {...nastro} />
+      </Pieces>
+    </>
+  );
+}
+
+/**
+ * Decorazioni con resa 3D "a pezzi" (quelle a chicchi stanno in TOPPINGS).
+ * Vengono disposte lungo il contorno della torta, così il centro resta libero
+ * per la scritta e per la foto su cialda.
+ */
+const PIECE_DECORATIONS = new Set([
+  'macarons',
+  'spumini',
+  'marshmallow',
+  'fiori-eleganti',
+  'fiori-ostia',
+  'frutta-fresca',
+  'fiocchi',
+]);
+
+/*
+ * Nota: "Fantasia del gelataio", "Decorazioni colorate e divertenti" e le due
+ * "Decorazioni cioccolato" NON hanno resa 3D: dipendono da cosa c'è in gelateria
+ * quel giorno e da come decide di decorare il gelataio. Disegnarle sarebbe una
+ * promessa — l'immagine finisce nell'ordine e il laboratorio si troverebbe
+ * vincolato. Vengono scritte a parole sopra la torta (vedi CakePreview.jsx,
+ * DECORAZIONI_SU_DISPONIBILITA), e qui semplicemente non compaiono.
+ */
+
+/**
+ * Quanti posti lungo il bordo vuole ogni decorazione quando è da sola. È anche
+ * la misura di quanto è INGOMBRANTE il suo pezzo: chi ne vuole pochi (i fiori
+ * eleganti, i macarons) ha pezzi grossi e comanda la spaziatura quando le
+ * decorazioni sono più d'una.
+ */
+const DECO_COUNT = {
+  macarons: 9,
+  spumini: 14,
+  marshmallow: 12,
+  'fiori-eleganti': 7,
+  'fiori-ostia': 8,
+  'frutta-fresca': 10,
+  fiocchi: 8,
+  fantasia: 15,
+  colorate: 15,
+  // I ciuffi di panna: contano solo quando la panna divide il contorno con
+  // altre decorazioni — da sola ha un anello tutto suo (vedi CakeModel).
+  'panna-deco': 12,
+  'panna-colorata': 12,
+};
+
+/** Decorazioni che si annodano sul FIANCO invece di stare sulla superficie. */
+const EDGE_DECORATIONS = new Set(['fiocchi']);
+
+/**
+ * Decorazioni "mix": pezzi sulla superficie E nastri sul fianco. Oggi nessuna —
+ * "fantasia del gelataio" e "decorazioni colorate" facevano parte di questo
+ * gruppo, ma ora non si disegnano affatto (si scrivono e basta, vedi sopra).
+ * L'insieme resta perché la ripartizione dei posti lo prevede.
+ */
+const MIX_DECORATIONS = new Set();
+
+/** Quanti nastri annoda sul fianco ogni decorazione che li prevede. */
+const NASTRI_PER_DECO = 4;
+
+/**
+ * UNA decorazione sulla superficie, sui posti del contorno che le sono toccati.
+ * Chi non ha una resa 3D non disegna niente: meglio pulito che finto.
+ */
+function DecorazioneSopra({ id, spots, y, color, dollopColor }) {
+  if (!spots || !spots.length) return null;
+  switch (id) {
+    case 'macarons':
+      return <Macarons spots={spots} y={y} color={color} />;
+    case 'spumini':
+      return <Spumini spots={spots} y={y} color={color} />;
+    case 'marshmallow':
+      return <Marshmallow spots={spots} y={y} color={color} />;
+    case 'fiori-eleganti':
+      return <FioriEleganti spots={spots} y={y} color={color} />;
+    case 'fiori-ostia':
+      return <FioriOstia spots={spots} y={y} color={color} />;
+    case 'frutta-fresca':
+      return <FruttaFresca spots={spots} y={y} />;
+    // Ciuffi di panna messi in fila con le altre decorazioni: succede solo
+    // quando la panna non ha l'anello tutto suo.
+    case 'panna-deco':
+    case 'panna-colorata':
+      return spots.map(({ x, z, i }) => (
+        <Dollop
+          key={`ro${i}`}
+          position={[x, y - 0.02, z]}
+          color={dollopColor ? dollopColor(i) : '#fff8e6'}
+          s={0.85}
+          rotation={i}
+        />
+      ));
+    // "fantasia del gelataio" e "decorazioni colorate" non passano di qui:
+    // non si disegnano: dipendono dalla gelateria e si scrivono sopra la torta.
+    default:
+      return null;
+  }
+}
+
+/**
+ * TUTTE le decorazioni scelte, insieme.
+ *
+ * I posti sul contorno sono uno solo per tutte: la decorazione k prende quelli
+ * con indice i % n === k (interlacciate), così si vedono tutte e nessuna finisce
+ * sopra l'altra. I nastri (fiocchi, e quelli del mix) fanno storia a sé: si
+ * annodano sul FIANCO, su un anello loro, e non tolgono spazio alla superficie.
+ */
+function Decorazioni3D({ ids, shape, R, y, colors, dollopColor, edgeR, edgeY, drop }) {
+  const shapeF = shape === 'rettangolare' ? 1.15 : shape === 'quadrata' ? 1.05 : 1;
+
+  // chi occupa la superficie e chi il fianco (il mix sta di qua e di là)
+  const sopra = useMemo(() => ids.filter((id) => !EDGE_DECORATIONS.has(id)), [ids]);
+  const fianco = useMemo(
+    () => ids.filter((id) => EDGE_DECORATIONS.has(id) || MIX_DECORATIONS.has(id)),
+    [ids]
+  );
+
+  // Quanti posti servono sul contorno. Comanda la decorazione col pezzo più
+  // ingombrante (quella che ne vuole meno): con una decorazione sola i posti
+  // sono esattamente quelli di sempre, con più decorazioni se ne aggiungono
+  // pochi — sommarli farebbe della torta un ammasso. Il totale è multiplo del
+  // numero di decorazioni, così l'alternanza gira regolare.
+  const nSopra = useMemo(() => {
+    const k = sopra.length;
+    if (!k) return 0;
+    const minimo = Math.min(...sopra.map((id) => DECO_COUNT[id] || 10));
+    const grezzo = Math.round(minimo * (1 + (k - 1) * 0.35) * shapeF);
+    return Math.max(k * 3, Math.ceil(grezzo / k) * k);
+  }, [sopra, shapeF]);
+
+  const spotsSopra = useMemo(() => decoSpots(shape, R, nSopra, 0.79), [shape, R, nSopra]);
+  const gruppiSopra = useMemo(
+    () => sopra.map((_, k) => spotsSopra.filter((s) => s.i % sopra.length === k)),
+    [sopra, spotsSopra]
+  );
+
+  // Fianco: pochi nastri, ben distanziati, sul contorno esterno della torta.
+  const bowR = edgeR ?? R;
+  const nFianco = fianco.length * NASTRI_PER_DECO;
+  const spotsFianco = useMemo(() => decoSpots(shape, bowR, nFianco, 1.0), [shape, bowR, nFianco]);
+  const gruppiFianco = useMemo(
+    () => fianco.map((_, k) => spotsFianco.filter((s) => s.i % fianco.length === k)),
+    [fianco, spotsFianco]
+  );
+
+  return (
+    <>
+      {sopra.map((id, k) => (
+        <DecorazioneSopra
+          key={`sopra-${id}`}
+          id={id}
+          spots={gruppiSopra[k]}
+          y={y}
+          color={(colors && colors[id]) || ''}
+          dollopColor={dollopColor}
+        />
+      ))}
+      {fianco.map((id, k) => (
+        <Fiocchi
+          key={`fianco-${id}`}
+          spots={gruppiFianco[k] || []}
+          y={edgeY ?? y}
+          drop={drop}
+          color={(colors && colors[id]) || ''}
+        />
+      ))}
+    </>
+  );
 }
 
 /* ============================ granella croccante (firma Gelopie) ============================ */
 
-function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58', '#7a4a26'], shiny = false, holeW = 0, holeH = 0 }) {
+function Granella({
+  R,
+  y,
+  shape,
+  coverage = 1,
+  count = 1200,
+  colors = ['#c79a58', '#7a4a26'],
+  shiny = false,
+  // `round` → chicchi tondi (smarties, perline) invece delle scaglie di granella;
+  // `flat` schiaccia il chicco (0.5 = lenticchia tipo smarties);
+  // `metal` serve alle perline placcate oro/argento.
+  round = false,
+  flat = 1,
+  metal = 0,
+  sizeMin = 0.02,
+  sizeMax = 0.046,
+  holeW = 0,
+  holeH = 0,
+}) {
   const ref = useRef();
   useLayoutEffect(() => {
     const mesh = ref.current;
@@ -612,8 +1237,9 @@ function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58'
       const yy = y + 0.008 + Math.random() * 0.035 + pile;
       dummy.position.set(x, yy, z);
       dummy.rotation.set(Math.random() * 3.1, Math.random() * 3.1, Math.random() * 3.1);
-      const s = 0.02 + Math.random() * 0.026;
-      dummy.scale.set(s, s * (0.55 + Math.random() * 0.5), s);
+      const s = sizeMin + Math.random() * Math.max(0, sizeMax - sizeMin);
+      const sy = round ? s * flat : s * (0.55 + Math.random() * 0.5) * flat;
+      dummy.scale.set(s, sy, s);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
       tmp.copy(cols[(Math.random() * cols.length) | 0]).offsetHSL(0, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.14);
@@ -621,21 +1247,86 @@ function Granella({ R, y, shape, coverage = 1, count = 1200, colors = ['#c79a58'
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [shape, R, y, coverage, count, colors, shiny, holeW, holeH]);
+  }, [shape, R, y, coverage, count, colors, shiny, round, flat, sizeMin, sizeMax, holeW, holeH]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow receiveShadow>
-      <icosahedronGeometry args={[1, 0]} />
-      <meshStandardMaterial roughness={shiny ? 0.25 : 0.85} metalness={0} envMapIntensity={shiny ? 1.3 : 0.4} />
+      <icosahedronGeometry args={[1, round ? 1 : 0]} />
+      <meshStandardMaterial roughness={shiny ? 0.25 : 0.85} metalness={metal} envMapIntensity={shiny ? 1.3 : 0.4} />
     </instancedMesh>
   );
 }
 
-// Le 3 granelle/topping disponibili (palette stile crumble)
+/**
+ * Topping con resa 3D dedicata, per id della decorazione.
+ * Solo le decorazioni "a chicchi" stanno qui: le altre (fiori, macarons, panna,
+ * frutta fresca…) non hanno una resa 3D e semplicemente non compaiono — il 3D
+ * resta pulito invece di mostrare qualcosa di finto.
+ */
 const TOPPINGS = {
-  'granella-nocciola-pistacchio': { colors: ['#c0894c', '#b07a3e', '#9bb15f', '#aac06f', '#6f4a28'] },
+  // --- decorazioni attuali ---
+  'granella-nocciola': { colors: ['#c0894c', '#b07a3e', '#9c6b3f', '#8a5a36', '#6f4a28'] },
+  'granella-pistacchio': { colors: ['#9bb15f', '#aac06f', '#7ea15a', '#87b06a', '#6d8f4e'] },
   zuccherini: { colors: ['#e8467a', '#46a8e8', '#f7c948', '#7be84a', '#c490e4', '#f78f2e', '#ffffff'], shiny: true },
+  // confettini di zucchero: lenticchie tonde, lucide e grandi
+  smarties: {
+    colors: ['#e0334c', '#f78f2e', '#f7d34a', '#3fae5a', '#46a8e8', '#8f6fd6', '#f4a9c0', '#8a5a36'],
+    shiny: true,
+    round: true,
+    flat: 0.5,
+    count: 130,
+    sizeMin: 0.05,
+    sizeMax: 0.07,
+  },
+  // perline placcate: oro, argento, rosa e bianco → tonde e metalliche
+  perline: {
+    colors: ['#e8c069', '#d9ad54', '#cfd4d8', '#b9c0c6', '#f0a8bf', '#fdfbf5'],
+    shiny: true,
+    round: true,
+    metal: 0.7,
+    count: 260,
+    sizeMin: 0.028,
+    sizeMax: 0.04,
+  },
+  // --- id vecchi: restano per gli ordini storici ---
+  'granella-nocciola-pistacchio': { colors: ['#c0894c', '#b07a3e', '#9bb15f', '#aac06f', '#6f4a28'] },
   'granella-frutta-secca': { colors: ['#d8c19a', '#b78a52', '#8a5a36', '#caa46a', '#9c6b3f', '#dccaa2'] },
 };
+
+/**
+ * Coperture lucide: calotta a specchio + colature sui lati.
+ * (`glassa-specchio`, `ganache-cop` e `meringa` non sono più in listino ma
+ * restano qui per gli ordini già fatti.)
+ */
+const GLOSSY_COVERINGS = new Set([
+  'cioccolato-cop',
+  'cioccolato-bianco-cop',
+  'nocciola-cop',
+  'pistacchio-cop',
+  'glassa-specchio',
+  'ganache-cop',
+]);
+
+/**
+ * Coperture di PANNA MONTATA: panna liscia, spatolata, SENZA ciuffi.
+ * Come veste la torta:
+ *   'panna'             → sopra E FIANCHI (i colori dei gusti spariscono sotto)
+ *   'panna-sotto-sopra' → sopra + una fascia in alto e una in basso
+ *   'panna-sopra'       → solo la superficie superiore
+ * ('meringa' non è più in listino: resta com'era, solo sopra.)
+ */
+const CREAM_COVERINGS = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra', 'meringa']);
+
+/** Copertura che avvolge tutto il fianco della torta. */
+const CREAM_WRAP_FULL = new Set(['panna']);
+
+/** Copertura a due fasce: un filo di panna in alto e uno in basso. */
+const CREAM_WRAP_BANDS = new Set(['panna-sotto-sopra']);
+
+/**
+ * Decorazioni di panna montata: sono le UNICHE che mettono i ciuffi (Dollop),
+ * e portano con sé la panna spatolata intorno se la copertura non è di panna.
+ */
+const CREAM_DECORATIONS = new Set(['panna-deco', 'panna-colorata']);
 
 /* ============================ colature copertura ============================ */
 
@@ -653,19 +1344,21 @@ function Drips({ shape, R, topEdgeY, color, maxLen }) {
         const ang = Math.atan2(z, x);
         return (
           <group key={`drip${i}`} position={[x, topEdgeY + 0.02, z]} rotation={[0, -ang + Math.PI / 2, 0]}>
-            {/* rigonfiamento sul bordo */}
-            <mesh castShadow position={[0, 0, 0]}>
-              <sphereGeometry args={[0.06, 14, 12]} />
+            {/* rigonfiamento sul bordo: schiacciato, così legge come glassa che
+                scavalca il bordo e non come una pallina appiccicata */}
+            <mesh castShadow position={[0, 0, 0]} scale={[1, 0.62, 0.85]}>
+              <sphereGeometry args={[0.055, 14, 12]} />
               <meshPhysicalMaterial {...glossyMat(color)} />
             </mesh>
-            {/* colata affusolata */}
-            <mesh castShadow position={[0, -len / 2, 0]}>
-              <cylinderGeometry args={[0.045, 0.022, len, 12]} />
+            {/* colata affusolata: larga e schiacciata contro il fianco, così
+                aderisce alla torta invece di sembrare un bastoncino staccato */}
+            <mesh castShadow position={[0, -len / 2, 0]} scale={[1, 1, 0.7]}>
+              <cylinderGeometry args={[0.062, 0.032, len, 12]} />
               <meshPhysicalMaterial {...glossyMat(color)} />
             </mesh>
             {/* goccia finale */}
-            <mesh castShadow position={[0, -len, 0]}>
-              <sphereGeometry args={[0.028, 12, 10]} />
+            <mesh castShadow position={[0, -len, 0]} scale={[1, 1, 0.7]}>
+              <sphereGeometry args={[0.034, 12, 10]} />
               <meshPhysicalMaterial {...glossyMat(color)} />
             </mesh>
           </group>
@@ -726,11 +1419,11 @@ function MessageText({ text, font, y, boxW, boxH, z = 0, onDark = false }) {
   const [tex, setTex] = useState(null);
   useEffect(() => {
     let cancelled = false;
-    const family = font === 'fraunces' ? "'Fraunces', serif" : font === 'inter' ? "'Inter', sans-serif" : "'Caveat', cursive";
-    const weight = font === 'inter' ? '800' : font === 'fraunces' ? '600' : '700';
-    const style = font === 'fraunces' ? 'italic' : 'normal';
-    const upper = font === 'inter';
-    const cssAt = (px) => `${style} ${weight} ${px}px ${family}`;
+    // stile della scritta: accetta gli id della tabella `scritte`
+    // (stampatello / corsivo / corsivo-scolastico) e i vecchi inter/caveat/fraunces
+    const f = messageFontStyle(font);
+    const upper = f.uppercase;
+    const cssAt = (px) => `${f.italic ? 'italic' : 'normal'} ${f.weight} ${px}px ${f.family}`;
 
     const build = () => {
       // canvas con lo stesso rapporto del riquadro 3D → testo non deformato
@@ -852,21 +1545,94 @@ function Candle({ y }) {
 
 /* ============================ corpo torta ============================ */
 
-function CakeModel({ shape, plateShape, flavors, base, filling, covering, candle, photo, photoTransform, decorationId, message, messageFont }) {
+function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, candle, photo, photoTransform, decorations, decorationColors, message, messageFont }) {
   // Torta gelato vera: BASSA e LARGA. Dischi di gelato netti e impilati.
   const R = 1.18;
   const layers = Math.max(1, flavors.length);
-  const bandH = layers >= 5 ? 0.15 : layers === 4 ? 0.18 : layers === 3 ? 0.22 : layers === 2 ? 0.28 : 0.4;
+  // Le torte "Alte" (Alta semifreddo / Alta Gelato) devono VEDERSI più alte:
+  // gli strati crescono, il diametro no — è così che si presenta una torta alta.
+  const TALL_FACTOR = 1.6;
+  const bandH =
+    (layers >= 5 ? 0.15 : layers === 4 ? 0.18 : layers === 3 ? 0.22 : layers === 2 ? 0.28 : 0.4) *
+    (tall ? TALL_FACTOR : 1);
 
   const coverColor = covering?.color || '#fff4e0';
   const coverIsNaked = covering?.id === 'naked';
   const useCover = !coverIsNaked && covering;
   const baseColor = base?.color || '#e8d2a8';
   const fillingColor = filling?.color;
-  const glossyCover =
-    covering?.id === 'glassa-specchio' ||
-    covering?.id === 'ganache-cop' ||
-    covering?.id === 'cioccolato-cop';
+  const glossyCover = GLOSSY_COVERINGS.has(covering?.id);
+
+  // ---- DECORAZIONI SCELTE (possono essere più d'una) ----
+  // Arrivano come lista di id, in ordine di scelta, più la mappa dei colori
+  // (id -> nome del colore). Si ripulisce sempre: 'nessuna' non è una
+  // decorazione, e doppioni o dati mancanti non devono far saltare niente.
+  const decoColors = decorationColors || {};
+  const decoKey = (Array.isArray(decorations) ? decorations : []).filter(Boolean).join('|');
+  const decoIds = useMemo(() => {
+    const out = [];
+    for (const id of decoKey ? decoKey.split('|') : []) {
+      if (!id || id === 'nessuna' || out.includes(id)) continue;
+      out.push(id);
+    }
+    return out;
+  }, [decoKey]);
+  // stringa dei colori scelti: serve solo come dipendenza stabile per i useMemo
+  const colorKey = decoIds.map((id) => decoColors[id] || '').join('|');
+  const creamIds = decoIds.filter((id) => CREAM_DECORATIONS.has(id));
+  const pieceIds = decoIds.filter((id) => PIECE_DECORATIONS.has(id));
+
+  // ---- PANNA: quanto veste la torta e di che colore è ----
+  const coverIsCream = !!useCover && CREAM_COVERINGS.has(covering?.id);
+  // La decorazione di panna porta con sé la panna spatolata intorno alla torta
+  // (è proprio quello che dicono le loro descrizioni), ma solo se la copertura
+  // scelta non è già di panna: in quel caso comanda la copertura.
+  const creamDecoWrap = creamIds.length > 0 && !coverIsCream;
+  const wrapFull = (coverIsCream && CREAM_WRAP_FULL.has(covering.id)) || creamDecoWrap;
+  const wrapBands = coverIsCream && CREAM_WRAP_BANDS.has(covering.id);
+  // panna aggiunta dalla decorazione su una torta senza copertura: ci vuole
+  // anche la superficie superiore, altrimenti resterebbe il gusto scoperto
+  const extraCreamCap = creamDecoWrap && !useCover;
+
+  // Panna montata colorata: il colore scelto tinge TUTTA la panna — copertura
+  // sopra, fianchi e ciuffi. Toni pastello, da panna vera. Se la prop non arriva
+  // o il colore non è riconosciuto, resta la panna bianca.
+  const creamChoice = decoIds.includes('panna-colorata') ? decoColors['panna-colorata'] || '' : '';
+  const creamRainbow = isRainbowChoice(creamChoice);
+  const creamHex = creamColorFromChoice(creamChoice);
+  const creamColor = creamHex || (coverIsCream ? coverColor : '#fff8e6');
+  const dollopColor = (i) =>
+    creamRainbow ? CREAM_RAINBOW[i % CREAM_RAINBOW.length] : shade(creamColor, 0.05);
+  // la calotta è di panna solo se la copertura è di panna; altrimenti resta
+  // la copertura scelta (cioccolato, pistacchio…) con la panna solo intorno
+  const capColor = coverIsCream ? creamColor : coverColor;
+  const capRainbow = creamRainbow && coverIsCream;
+  // `vertexColors` cambia la compilazione dello shader: senza una key nuova il
+  // materiale resterebbe quello di prima e l'arcobaleno non si vedrebbe.
+  const creamMatKey = creamRainbow ? 'panna-arcobaleno' : 'panna-tinta-unita';
+
+  // Topping "a chicchi": se la decorazione prevede la scelta del colore e il
+  // cliente l'ha fatta, i chicchi prendono quel colore (arcobaleno → alternati).
+  // Le granelle scelte possono essere più d'una: si mescolano sulla stessa
+  // superficie, ma ognuna mette meno chicchi così il totale sopra la torta resta
+  // quello di sempre e non diventa una crosta.
+  // useMemo obbligatorio: la lista colori deve restare stabile, altrimenti la
+  // granella si ridistribuisce a ogni render.
+  const toppings = useMemo(() => {
+    const scelte = decoIds.filter((id) => TOPPINGS[id]);
+    return scelte.map((id) => {
+      const t = TOPPINGS[id];
+      const scelta = decoColors[id] || '';
+      const hex = colorFromChoice(scelta);
+      const colors = isRainbowChoice(scelta)
+        ? RAINBOW_COLORS
+        : hex
+        ? [hex, shade(hex, 0.18), shade(hex, -0.12)]
+        : t.colors;
+      const chicchi = t.count === undefined ? 1200 : t.count;
+      return { ...t, id, colors, count: Math.max(60, Math.round(chicchi / scelte.length)) };
+    });
+  }, [decoIds, colorKey]);
 
   const platterH = 0.12;
   const baseH = 0.1;
@@ -879,21 +1645,50 @@ function CakeModel({ shape, plateShape, flavors, base, filling, covering, candle
   const stackBottom = baseH;
   const bandCenterY = (i) => stackBottom + bandH * (i + 0.5);
   const bodyTop = stackBottom + layers * bandH;
-  const capY = bodyTop - 0.015; // la calotta si appoggia sul disco superiore
+  // I dischi di gelato si sovrappongono (OV) per avere il solco tra uno strato e
+  // l'altro: quello più in alto sporge quindi di bandH*(OV-1)/2 sopra `bodyTop`.
+  // La calotta va posata SOPRA quel bordo, altrimenti il gelato le spunta
+  // attraverso — si vedeva sulle torte alte, dove gli strati sono più spessi.
+  const stackTop = bodyTop + bandH * ((OV - 1) / 2);
+  const capY = stackTop - capH * 0.35;
+  const capBottom = capY - capH * 0.55;
+  const hasTopCap = !!useCover || extraCreamCap;
   // dove poggiano granella/decorazioni/foto/scritta: sopra il bombamento del disco superiore
-  const surfaceY = (useCover ? bodyTop + capH * 0.5 : bodyTop) + bandH * 0.1;
+  const surfaceY = (hasTopCap ? capY + capH * 0.8 : stackTop) + bandH * 0.06;
+  // guscio di panna intorno alla torta: un filo più largo dei gusti, così li copre
+  const bodyH = layers * bandH;
+  const wrapR = R * 1.05;
+  const bandT = Math.min(0.17, bodyH * 0.34);
+  // Raggio della calotta di copertura. Deve essere un po' PIÙ LARGO del corpo:
+  // sia la calotta sia i dischi di gelato hanno il bordo volutamente irregolare
+  // (±1%), e con raggi uguali capitava che la calotta rientrasse sotto il bordo
+  // lasciando scoperte delle mezzelune di gelato — sembrava rotta. Così invece
+  // la copertura sborda sempre di poco, come una glassa vera.
+  const capR = wrapFull ? wrapR * 0.998 : R * 1.03;
 
   // Geometrie: dischi lisci e netti (Gelopie), leggermente sovrapposti per i solchi.
   const geos = useMemo(() => {
     const bands = [];
     for (let i = 0; i < layers; i++) bands.push(makeLayerGeo(shape, R, bandH * OV, i * 1.7 + 1));
+    // panna arcobaleno → la stessa panna dipinta a settori di colore
+    const rainbow = (g) => (g && creamRainbow ? paintRainbow(g) : g);
+    const capGeo = makeLayerGeo(shape, capR, capH * 1.6, 5.5);
     return {
       base: makeLayerGeo(shape, R * 0.985, baseH * 1.3, 0.3),
       bands,
-      cap: useCover ? makeLayerGeo(shape, R * 0.995, capH * 1.6, 5.5) : null,
+      cap: useCover ? (coverIsCream ? rainbow(capGeo) : capGeo) : null,
       fill: fillingColor ? makeLayerGeo(shape, R * 1.015, 0.06, 8.2) : null,
+      // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
+      shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
+      // fascia di panna sul bordo alto e su quello basso ("SOTTO E SOPRA")
+      band: wrapBands ? rainbow(makeLayerGeo(shape, wrapR, bandT, 4.4)) : null,
+      // calotta di panna aggiunta dalla decorazione su una torta senza copertura
+      creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, wrapR * 0.998, capH * 1.6, 5.5)) : null,
     };
-  }, [shape, R, bandH, baseH, capH, layers, useCover, fillingColor]);
+  }, [
+    shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
+    wrapFull, wrapBands, extraCreamCap, wrapR, capR, bodyH, bandT, creamRainbow,
+  ]);
 
   // ---- Piatto (vassoio) ORO, con forma dedicata ----
   const pShape = plateShape || (shape === 'quadrata' ? 'quadrata' : shape === 'rettangolare' ? 'rettangolare' : 'tonda');
@@ -905,25 +1700,96 @@ function CakeModel({ shape, plateShape, flavors, base, filling, covering, candle
   const plateRound = Math.max(foot[0], foot[1]) / 2 + plateMargin;
   const plateW = (pShape === 'rettangolare' ? Math.max(foot[0], 2 * R) : Math.max(foot[0], foot[1])) + plateMargin * 2;
   const plateD = (pShape === 'rettangolare' ? Math.max(foot[1], R * 1.15) : Math.max(foot[0], foot[1])) + plateMargin * 2;
-  const goldPlate = { color: '#d9ad54', metalness: 0.85, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.28, envMapIntensity: 1.15 };
+  // ORO VERO, in tutte le forme: la metalness resta BASSA di proposito. Con la
+  // metalness alta il piano largo del piatto quadrato faceva da specchio
+  // all'ambiente color panna e sembrava beige; così invece vince sempre il
+  // colore dell'oro, da qualsiasi angolazione.
+  const goldPlate = {
+    color: '#d9a12a',
+    metalness: 0.3,
+    roughness: 0.33,
+    clearcoat: 0.9,
+    clearcoatRoughness: 0.16,
+    sheen: 0.5,
+    sheenColor: '#ffd979',
+    envMapIntensity: 0.5,
+  };
+  // rifinitura del bordo: oro più scuro e più lucido, dà l'accento metallico
+  const goldRim = { color: '#a5751b', metalness: 0.55, roughness: 0.22, envMapIntensity: 0.85 };
+  const plateCorner = Math.min(0.12, platterH * 0.4);
+  // ⚠️ La geometria del piatto si passa SEMPRE con la prop `geometry`, anche per
+  // il piatto tondo. Prima il tondo la dichiarava come FIGLIO (<cylinderGeometry>)
+  // e le altre forme come prop: siccome i due rami sono entrambi un <mesh> nello
+  // stesso punto dell'albero, React riusa la stessa istanza invece di ricrearla,
+  // e i due modi si annullavano a vicenda lasciando il mesh senza geometria.
+  // Risultato: sceglievi 20 persone (piatto rettangolare) e poi un altro formato
+  // (piatto tondo) e il piatto spariva. Un solo modo = nessun conflitto.
   const plateGeo = useMemo(
-    () => (pShape === 'tonda' ? null : new RoundedBoxGeometry(plateW, platterH, plateD, 4, Math.min(0.12, platterH * 0.4))),
-    [pShape, plateW, plateD, platterH]
+    () =>
+      pShape === 'tonda'
+        ? new THREE.CylinderGeometry(plateRound, plateRound * 0.97, platterH, 80)
+        : new RoundedBoxGeometry(plateW, platterH, plateD, 4, plateCorner),
+    [pShape, plateRound, plateW, plateD, platterH, plateCorner]
   );
-  const showRosetteRing = (shape === 'tonda' || shape === 'cuore') && (covering?.id === 'panna' || covering?.id === 'meringa');
+  // Rifinitura lucida del bordo (l'anello del piatto tondo, la cornice di quello
+  // quadrato/rettangolare): stessa regola, una geometria sola già orientata e
+  // spostata all'altezza giusta, così il <mesh> non cambia mai forma.
+  const plateRimGeo = useMemo(() => {
+    const y = platterY + platterH / 2;
+    if (pShape === 'tonda') {
+      const g = new THREE.TorusGeometry(plateRound - 0.03, 0.02, 16, 90);
+      g.rotateX(-Math.PI / 2);
+      g.translate(0, y - 0.01, 0);
+      return g;
+    }
+    const g = roundedRectFrame(plateW - 0.07, plateD - 0.07, plateCorner + 0.06, 0.06, 0.024);
+    g.translate(0, y - 0.012, 0);
+    return g;
+  }, [pShape, plateRound, plateW, plateD, platterY, platterH, plateCorner]);
+
+  // Il piatto si ricostruisce a ogni cambio di formato o forma: le geometrie
+  // vecchie vanno liberate, altrimenti restano occupate sulla scheda video.
+  useEffect(() => () => plateGeo.dispose(), [plateGeo]);
+  useEffect(() => () => plateRimGeo.dispose(), [plateRimGeo]);
+
+  // Anello di ciuffi: SOLO le decorazioni di panna montata. Una copertura di
+  // panna è liscia e spatolata, i ciuffi non c'entrano.
+  // I ciuffi tengono l'anello tutto loro finché la panna è l'unica decorazione
+  // sulla superficie; se ci sono anche pezzi si mettono in fila con loro sul
+  // contorno (vedi Decorazioni3D), altrimenti si accavallerebbero.
+  const pezziSopra = pieceIds.filter((id) => !EDGE_DECORATIONS.has(id));
+  const showRosetteRing = creamIds.length > 0 && pezziSopra.length === 0;
+  // Decorazioni passate alla resa 3D "a pezzi": quelle scelte e — se non hanno
+  // l'anello tutto loro — anche i ciuffi di panna.
+  const ids3D = useMemo(
+    () =>
+      decoIds.filter(
+        (id) => PIECE_DECORATIONS.has(id) || (CREAM_DECORATIONS.has(id) && !showRosetteRing)
+      ),
+    [decoIds, showRosetteRing]
+  );
 
   // Scritta / foto al centro → il topping si sagoma con un buco al centro
   const hasMessage = !!(message && message.trim());
-  const hasGranella = !!(decorationId && TOPPINGS[decorationId]);
-  const hasCenter = !!photo || hasMessage;
-  const fullCoverage = shape === 'tonda' ? 0.98 : shape === 'cuore' ? 0.92 : 0.9;
-  const granellaCoverage = hasCenter ? fullCoverage : showRosetteRing ? 0.66 : fullCoverage;
-  // Riquadro scritta: dipende da forma e dal bordo occupato (granella > panna > niente)
-  const borderLevel = hasGranella ? 'granella' : showRosetteRing ? 'panna' : 'none';
+  const hasGranella = toppings.length > 0;
+  const hasPieces = pieceIds.length > 0;
+  // La granella copre il top; se sul contorno ci sono anche pezzi o ciuffi si
+  // stringe verso il centro, così i pezzi restano sul bordo e la granella non
+  // ci finisce sotto: convivono senza pestarsi.
+  const contornoOccupato = showRosetteRing || pezziSopra.length > 0;
+  const granellaCoverage =
+    (shape === 'tonda' ? 0.98 : shape === 'cuore' ? 0.92 : 0.9) * (contornoOccupato ? 0.74 : 1);
+  // Riquadro scritta: dipende da forma e dal bordo occupato — e tiene conto di
+  // TUTTE le decorazioni scelte. Ciuffi e decorazioni 3D stanno sul contorno →
+  // 'panna'; la granella copre il top → 'granella'; con una panna liscia il
+  // bordo è libero → 'none'.
+  const borderLevel = hasGranella ? 'granella' : showRosetteRing || hasPieces ? 'panna' : 'none';
   const msgBox = messageBox(shape, R, borderLevel);
   // colore del fondo sotto la scritta → scritta bianca (panna) su scuro, cioccolato su chiaro
   const topFlavor = flavors[layers - 1] || flavors[flavors.length - 1] || { color: '#fff4e0' };
-  const msgOnDark = isDark(useCover ? coverColor : topFlavor.color);
+  const msgOnDark = isDark(
+    coverIsCream || extraCreamCap ? creamColor : useCover ? coverColor : topFlavor.color
+  );
   const photoFoot = photoFootprint(shape, R, borderLevel);
   // buco ellittico nella granella che segue il contenuto centrale (foto o scritta)
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
@@ -932,23 +1798,13 @@ function CakeModel({ shape, plateShape, flavors, base, filling, covering, candle
   return (
     <group>
       {/* ---- Piatto ORO Punto Gi! (forma in base alla torta / n° persone) ---- */}
-      {pShape === 'tonda' ? (
-        <mesh position={[0, platterY, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[plateRound, plateRound * 0.97, platterH, 80]} />
-          <meshPhysicalMaterial {...goldPlate} />
-        </mesh>
-      ) : (
-        <mesh geometry={plateGeo} position={[0, platterY, 0]} castShadow receiveShadow>
-          <meshPhysicalMaterial {...goldPlate} />
-        </mesh>
-      )}
-      {/* bordo lucido più scuro (rifinitura, solo piatto rotondo) */}
-      {pShape === 'tonda' && (
-        <mesh position={[0, platterY + platterH / 2 - 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[plateRound - 0.03, 0.02, 16, 90]} />
-          <meshStandardMaterial color="#b98e34" metalness={0.95} roughness={0.25} envMapIntensity={1.3} />
-        </mesh>
-      )}
+      <mesh geometry={plateGeo} position={[0, platterY, 0]} castShadow receiveShadow>
+        <meshPhysicalMaterial {...goldPlate} />
+      </mesh>
+      {/* bordo lucido più scuro: rifinitura in TUTTE le forme di piatto */}
+      <mesh geometry={plateRimGeo}>
+        <meshStandardMaterial {...goldRim} />
+      </mesh>
 
       {/* ---- Base biscotto / pan di spagna ---- */}
       <LayerMesh geometry={geos.base} y={baseY}>
@@ -973,38 +1829,95 @@ function CakeModel({ shape, plateShape, flavors, base, filling, covering, candle
           </LayerMesh>
         ))}
 
+      {/* ---- PANNA INTORNO: guscio liscio che riveste i fianchi e copre i gusti ---- */}
+      {geos.shell && (
+        <LayerMesh geometry={geos.shell} y={stackBottom + bodyH / 2}>
+          <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
+        </LayerMesh>
+      )}
+
+      {/* ---- PANNA SOTTO E SOPRA: due fasce, i gusti restano a vista in mezzo ---- */}
+      {geos.band && (
+        <>
+          <LayerMesh geometry={geos.band} y={bodyTop - bandT / 2}>
+            <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
+          </LayerMesh>
+          <LayerMesh geometry={geos.band} y={stackBottom + bandT / 2}>
+            <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
+          </LayerMesh>
+        </>
+      )}
+
       {/* ---- Copertura: calotta sottile sul disco superiore (niente cupola) ---- */}
       {useCover && (
         <>
           <LayerMesh geometry={geos.cap} y={capY}>
-            <meshPhysicalMaterial {...(glossyCover ? glossyMat(coverColor) : softMat(coverColor))} />
+            <meshPhysicalMaterial
+              key={`${glossyCover ? 'glossy' : 'soft'}-${capRainbow ? 'rb' : 'flat'}`}
+              {...(glossyCover ? glossyMat(capColor) : softMat(capColor))}
+              vertexColors={capRainbow}
+            />
           </LayerMesh>
-          {/* colature solo per glasse lucide (ganache, cioccolato, specchio) */}
+          {/* Colature solo per glasse lucide (ganache, cioccolato, pistacchio…).
+              Partono dal bordo della CALOTTA, non da dentro la torta: se no
+              sembrano spilli piantati invece di glassa che cola. */}
           {glossyCover && (
-            <Drips shape={shape} R={R} topEdgeY={bodyTop} color={coverColor} maxLen={Math.min(0.45, bandH * layers * 0.6)} />
+            <Drips
+              shape={shape}
+              R={capR}
+              topEdgeY={capBottom + 0.02}
+              color={coverColor}
+              maxLen={Math.min(0.38, bodyH * 0.42)}
+            />
           )}
         </>
       )}
 
-      {/* ---- Ciuffi di panna lungo il bordo, SEGUONO la forma (solo coperture cremose) ---- */}
+      {/* ---- Calotta di panna portata dalla decorazione (torta senza copertura) ---- */}
+      {geos.creamCap && (
+        <LayerMesh geometry={geos.creamCap} y={capY}>
+          <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
+        </LayerMesh>
+      )}
+
+      {/* ---- Ciuffi di panna lungo il bordo: SOLO se la decorazione è di panna ---- */}
       {showRosetteRing &&
         perimeterPts(shape, R, 0.86, shape === 'tonda' ? 12 : shape === 'cuore' ? 15 : 16).map(([x, z, i]) => (
-          <Dollop key={`ro${i}`} position={[x, surfaceY - 0.02, z]} color={shade(coverColor, 0.05)} s={0.85} rotation={i} />
+          <Dollop key={`ro${i}`} position={[x, surfaceY - 0.02, z]} color={dollopColor(i)} s={0.85} rotation={i} />
         ))}
 
-      {/* ---- Topping: granella croccante sopra, SEGUE la forma; buco per scritta/foto ---- */}
-      {hasGranella && (
-        <Granella
+      {/* ---- Decorazioni 3D "a pezzi": macarons, spumini, fiori, fiocchi…
+              Se sono più d'una si dividono i posti sul contorno. ---- */}
+      {ids3D.length > 0 && (
+        <Decorazioni3D
+          ids={ids3D}
           shape={shape}
           R={R}
           y={surfaceY}
-          colors={TOPPINGS[decorationId].colors}
-          shiny={TOPPINGS[decorationId].shiny}
+          colors={decoColors}
+          dollopColor={dollopColor}
+          // per i fiocchi, che si legano sul fianco: raggio esterno della torta
+          // (la panna che avvolge la allarga un po'), altezza del nodo appena
+          // sotto il bordo superiore, e altezza del corpo per i nastri
+          edgeR={wrapFull ? wrapR : R}
+          edgeY={bodyTop - bandH * 0.38}
+          drop={bodyH}
+        />
+      )}
+
+      {/* ---- Topping: granella croccante sopra, SEGUE la forma; buco per scritta/foto ---- */}
+      {toppings.map(({ id, ...granella }) => (
+        <Granella
+          key={`gr-${id}`}
+          shape={shape}
+          R={R}
+          y={surfaceY}
           coverage={granellaCoverage}
           holeW={holeW}
           holeH={holeH}
+          {...granella}
         />
-      )}
+      ))}
 
       {/* ---- Foto su cialda al centro (più grande se non c'è granella) ---- */}
       {photo && (

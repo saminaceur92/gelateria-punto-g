@@ -82,6 +82,9 @@
 .adm-field input, .adm-field select { padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .9rem; }
 .adm-field.f-text { flex: 1; min-width: 140px; }
 .adm-field.f-number input { width: 90px; }
+/* Testi lunghi (descrizione del gusto): riga intera, allargabile in altezza */
+.adm-field.f-textarea { flex-basis: 100%; }
+.adm-field textarea { width: 100%; min-height: 46px; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: .9rem; resize: vertical; box-sizing: border-box; }
 .adm-color { display: flex; align-items: center; gap: .4rem; }
 .adm-color input[type=color] { width: 38px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
 .adm-color code { font-size: .75rem; color: #999; }
@@ -196,6 +199,23 @@
 .doc-field input { padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 9px; font-size: .92rem; width: 100%; box-sizing: border-box; }
 .doc-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .doc-actions .adm-btn { text-decoration: none; }
+
+/* Quaderno generato dai dati del gestionale */
+.qg-stato { display: flex; align-items: flex-start; gap: .7rem; border: 1px solid var(--line); border-left-width: 4px; border-radius: 12px; padding: .75rem .9rem; background: #fff; }
+.qg-stato div { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.qg-stato strong { font-size: .92rem; }
+.qg-stato span:not(.qg-punto) { font-size: .84rem; color: #777; }
+.qg-punto { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: .3rem; }
+.qg-ok { border-left-color: #3f9e6b; background: #f4fbf6; }
+.qg-ok .qg-punto { background: #3f9e6b; }
+.qg-vecchio { border-left-color: #d98324; background: #fdf6ec; }
+.qg-vecchio .qg-punto { background: #d98324; animation: badgePulse 1.8s ease-in-out infinite; }
+.qg-manuale, .qg-mai, .qg-ignoto { border-left-color: #b9b1a3; background: var(--cream); }
+.qg-manuale .qg-punto, .qg-mai .qg-punto, .qg-ignoto .qg-punto { background: #b9b1a3; }
+.qg-conteggio { font-size: .84rem; margin: .8rem 0 0; max-width: 68ch; }
+.qg-azioni { margin-top: 1rem; }
+.qg-hint { margin: .6rem 0 0; }
+.qg-migrazione { margin-top: .9rem; }
 
 /* ───────── Scheda Promemoria compleanno ───────── */
 .prom-title { margin: 1.4rem 0 .6rem; font-size: .95rem; color: var(--v-deep); }
