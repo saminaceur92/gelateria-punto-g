@@ -14,6 +14,15 @@ const BASE_ALLERG = allergMap(fbCake.cakeBases, 'id');
 const FILL_ALLERG = allergMap(fbCake.cakeFillings, 'id');
 const COV_ALLERG = allergMap(fbCake.cakeCoverings, 'id');
 const DECO_ALLERG = allergMap(fbCake.cakeDecorations, 'id');
+// Colori selezionabili delle decorazioni (colonna `colori`): come per gli allergeni,
+// se il dato non c'è ancora si ripiega sulla copia di sicurezza.
+const DECO_COLORS = Object.fromEntries(
+  (fbCake.cakeDecorations || []).map((d) => [d.id, d.colors || []])
+);
+
+// Le tabelle nuove (scritte, extra) potrebbero non essere ancora nella copia di
+// sicurezza: qui garantiamo comunque un array, così nessun componente si rompe.
+const safeList = (v) => (Array.isArray(v) ? v : []);
 
 // Categorie del menu = quelle della lista unica "Gusti e allergeni" (allergeni_prodotti).
 const MENU_CATS = [
@@ -21,6 +30,7 @@ const MENU_CATS = [
   { key: 'golosone', name: 'Golosoni' },
   { key: 'frutta-vegan', name: 'Frutta e Vegan' },
   { key: 'base', name: 'Basi' },
+  { key: 'leccornie', name: 'Altre Leccornie' },
 ];
 
 export async function fetchMenu() {
@@ -47,6 +57,8 @@ export async function fetchMenu() {
           .filter((r) => r.categoria === c.key)
           .map((r) => ({
             name: r.gusto,
+            // Descrizione scritta dai titolari, mostrata sotto il nome del gusto.
+            desc: r.descrizione || '',
             color: r.colore || '#f5d97a',
             tag: r.tag ?? null,
             diet: dietOf(r),
@@ -75,20 +87,28 @@ const num = (v) => {
 };
 
 // Opzioni del configuratore torte, live da Supabase (forme, tipi, dimensioni,
-// gusti torte, basi, farciture, coperture, decorazioni, occasioni).
+// gusti torte, basi, crumble, farciture, coperture, decorazioni, scritte, extra,
+// occasioni).
 // Le ricette "Sorprendimi" restano statiche (gestite dal codice).
 export async function fetchCakeOptions() {
   if (!supabase) return null;
   try {
     const names = [
-      'forme', 'tipi_torta', 'dimensioni', 'gusti_torte', 'basi',
+      'forme', 'tipi_torta', 'dimensioni', 'basi',
       'farciture', 'coperture', 'decorazioni', 'occasioni',
     ];
     const results = await Promise.all(
       names.map((n) => supabase.from(n).select('*').eq('attivo', true).order('ordine'))
     );
     if (results.some((r) => r.error)) return null;
-    const [forme, tipi, dim, gt, basi, farc, cop, dec, occ] = results.map((r) => r.data || []);
+    const [forme, tipi, dim, basi, farc, cop, dec, occ] = results.map((r) => r.data || []);
+    // `gusti_torte` è la vecchia tabella dei gusti torta, sostituita dalla lista
+    // unica `allergeni_prodotti` (flag "per torte"). Serve solo come ripiego finché
+    // nessun gusto è spuntato, quindi la leggiamo a parte: se un giorno viene
+    // eliminata NON deve far fallire tutto il configuratore.
+    const { data: gtRows } = await supabase
+      .from('gusti_torte').select('*').eq('attivo', true).order('ordine');
+    const gt = gtRows || [];
     // Allergeni: tabella opzionale. Se manca (o errore) si usa la copia di sicurezza,
     // così il resto del menù non si rompe finché la tabella non viene creata.
     const { data: allerg, error: eAll } = await supabase
@@ -101,6 +121,9 @@ export async function fetchCakeOptions() {
     const { data: apRows } = await supabase
       .from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine');
     const splitLower = (s) => (s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    // Come splitLower ma senza minuscolizzare: per i colori delle decorazioni, che
+    // sono etichette da mostrare così come sono ("Rosa", "Arcobaleno", ...).
+    const splitList = (s) => (s || '').split(',').map((x) => x.trim()).filter(Boolean);
     // Tipi di crumble: tabella opzionale (come `allergeni`). Se manca — o è vuota —
     // si usa la copia di sicurezza, così il configuratore funziona anche prima
     // della migrazione 2026-07-26-crumble.sql.
@@ -116,6 +139,36 @@ export async function fetchCakeOptions() {
         allergeni: splitLower(c.allergeni),
       }))
       : fbCake.cakeCrumbles;
+    // Scritte ed extra: tabelle NUOVE, entrambe opzionali (stesso pattern di
+    // `crumble`). Le leggiamo insieme e, se mancano o sono vuote, si usa la copia
+    // di sicurezza: il sito funziona anche PRIMA che la migrazione venga eseguita.
+    const [rScritte, rExtra] = await Promise.all([
+      supabase.from('scritte').select('*').eq('attivo', true).order('ordine'),
+      supabase.from('extra').select('*').eq('attivo', true).order('ordine'),
+    ]);
+    const cakeScritte = (!rScritte.error && rScritte.data && rScritte.data.length)
+      ? rScritte.data.map((s) => ({
+        id: s.id,
+        name: s.nome,
+        family: s.font_family || '',
+        sample: s.esempio || '',
+        uppercase: !!s.maiuscolo,
+        italic: !!s.corsivo,
+      }))
+      : safeList(fbCake.cakeScritte);
+    // `step` = incremento della quantità: il salame si vende al kg (mezzo kg alla
+    // volta), i cabaret a pezzo intero. Se la colonna non c'è lo deduciamo dall'unità.
+    const cakeExtras = (!rExtra.error && rExtra.data && rExtra.data.length)
+      ? rExtra.data.map((e) => ({
+        id: e.id,
+        name: e.nome,
+        desc: e.descrizione || '',
+        price: num(e.prezzo),
+        unit: e.unita || '',
+        allergeni: splitLower(e.allergeni),
+        step: num(e.passo ?? e.step) || (/kg/i.test(e.unita || '') ? 0.5 : 1),
+      }))
+      : safeList(fbCake.cakeExtras);
     const perTorte = (apRows || []).filter((r) => r.per_torte);
     const cakeFlavors = perTorte.length
       ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi) }))
@@ -133,7 +186,20 @@ export async function fetchCakeOptions() {
       cakeCrumbles,
       cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []) })),
       cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []) })),
-      cakeDecorations: dec.map((d) => ({ id: d.id, name: d.nome, desc: d.descrizione || '', emoji: d.emoji || '', allergeni: d.allergeni != null ? splitLower(d.allergeni) : (DECO_ALLERG[d.id] || []) })),
+      // Le colonne `supplemento`, `scelta_colore` e `colori` sono nuove: se non
+      // esistono ancora si ottengono 0 / false / lista dal fallback, mai un errore.
+      cakeDecorations: dec.map((d) => ({
+        id: d.id,
+        name: d.nome,
+        desc: d.descrizione || '',
+        emoji: d.emoji || '',
+        priceDelta: num(d.supplemento),
+        allergeni: d.allergeni != null ? splitLower(d.allergeni) : (DECO_ALLERG[d.id] || []),
+        colorChoice: !!d.scelta_colore,
+        colors: d.colori != null ? splitList(d.colori) : (DECO_COLORS[d.id] || []),
+      })),
+      cakeScritte,
+      cakeExtras,
       cakeOccasions: occ.map((o) => o.nome).filter(Boolean),
       cakeAllergens,
     };

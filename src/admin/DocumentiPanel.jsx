@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from './auth';
 import QrCode, { qrPngDataUrl, qrSvgString } from '../components/QrCode';
+import QuadernoGenera from './QuadernoGenera';
 import { stampaCartello } from './qrPrint';
 import {
   DOC_ALLERGENI,
@@ -143,14 +144,18 @@ export default function DocumentiPanel() {
 
   return (
     <div className="doc-wrap">
-      {/* ─────────── PDF ─────────── */}
+      {/* ─────────── Quaderno generato dai dati ─────────── */}
+      {!nonConfigurato && <QuadernoGenera doc={doc} urlPagina={qrTarget} onPubblicato={ricarica} />}
+
+      {/* ─────────── PDF caricato a mano ─────────── */}
       <section className="adm-card">
         <header className="adm-card-head">
           <div>
-            <h3>📄 PDF Ingredienti e Allergeni</h3>
+            <h3>📄 Carica un PDF tuo</h3>
             <p>
-              Carica qui il quaderno allergeni aggiornato: va online <strong>subito</strong> sulla pagina
-              pubblica e sul QR Code, senza rifare il sito. Solo file PDF, massimo {MAX_MB} MB.
+              Alternativa al pulsante qui sopra: se hai un quaderno impaginato a modo tuo, caricalo qui e va
+              online <strong>subito</strong> sulla pagina pubblica e sul QR Code. Attenzione: un PDF caricato a
+              mano non si aggiorna da solo quando cambi un allergene nel gestionale. Solo file PDF, massimo {MAX_MB} MB.
             </p>
           </div>
         </header>

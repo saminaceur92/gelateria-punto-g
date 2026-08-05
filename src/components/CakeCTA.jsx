@@ -9,7 +9,10 @@ const reveal = {
   transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
 };
 
-// Demo config animata in autoplay (vedi sotto)
+// Demo config animata in autoplay (vedi sotto).
+// Le decorazioni sono una LISTA (se ne possono scegliere più d'una) e il colore
+// si dice per ognuna che lo prevede: qui la granella sopra e i macarons rosa
+// intorno, così si vede subito che si possono combinare.
 const demoConfig = {
   type: 'crock',
   sizeId: '10',
@@ -17,7 +20,8 @@ const demoConfig = {
     { name: 'Pistacchio', color: '#7ea15a' },
     { name: 'Cioccolato fondente', color: '#2a160e' },
   ],
-  decoration: 'frutta',
+  decorations: ['granella-pistacchio', 'macarons'],
+  decorationColors: { macarons: 'Rosa' },
   message: 'Buon Compleanno!',
   candle: true,
 };

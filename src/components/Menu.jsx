@@ -11,7 +11,12 @@ export default function Menu() {
   useEffect(() => {
     let alive = true;
     fetchMenu().then((data) => {
-      if (alive && data?.length) setCategories(data);
+      if (!alive || !data?.length) return;
+      setCategories(data);
+      // Gli id delle categorie live ('crema', 'golosone'…) non coincidono con
+      // quelli del fallback: se la categoria selezionata non c'è più, torniamo
+      // alla prima, altrimenti nessuna pillola resterebbe evidenziata.
+      setActive((cur) => (data.some((c) => c.id === cur) ? cur : data[0].id));
     });
     return () => {
       alive = false;
@@ -50,9 +55,13 @@ export default function Menu() {
           ))}
         </div>
 
-        <p style={{ textAlign: 'center', marginBottom: '2rem', color: 'var(--grey)', fontSize: '0.95rem' }}>
-          {current.description}
-        </p>
+        {/* La descrizione di categoria può non esserci (i dati live non la usano):
+            in quel caso non lasciamo il paragrafo vuoto a occupare spazio. */}
+        {current.description?.trim() && (
+          <p style={{ textAlign: 'center', marginBottom: '2rem', color: 'var(--grey)', fontSize: '0.95rem' }}>
+            {current.description}
+          </p>
+        )}
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -63,24 +72,33 @@ export default function Menu() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.4 }}
           >
-            {current.flavors.map((f, i) => (
-              <motion.div
-                key={f.name}
-                className="flavor"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.025 }}
-              >
-                <span className="flavor-dot" style={{ background: f.color }} />
-                <span className="flavor-name">
-                  {f.name}
-                  {f.tag && <span className="flavor-tag">{f.tag}</span>}
-                  {f.diet?.map((d) => (
-                    <span key={d.short} className="flavor-diet" title={d.label}>{d.short}</span>
-                  ))}
-                </span>
-              </motion.div>
-            ))}
+            {current.flavors.map((f, i) => {
+              // La descrizione la scrivono i titolari dalla dashboard e per molti
+              // gusti manca: se è vuota non stampiamo nulla, così la scheda resta
+              // compatta come prima (niente righe o spazi a vuoto).
+              const desc = (f.desc || '').trim();
+              return (
+                <motion.div
+                  key={f.name}
+                  className={`flavor${desc ? ' has-desc' : ''}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: i * 0.025 }}
+                >
+                  <span className="flavor-dot" style={{ background: f.color }} />
+                  <span className="flavor-text">
+                    <span className="flavor-name">
+                      {f.name}
+                      {f.tag && <span className="flavor-tag">{f.tag}</span>}
+                      {f.diet?.map((d) => (
+                        <span key={d.short} className="flavor-diet" title={d.label}>{d.short}</span>
+                      ))}
+                    </span>
+                    {desc && <span className="flavor-desc">{desc}</span>}
+                  </span>
+                </motion.div>
+              );
+            })}
           </motion.div>
         </AnimatePresence>
 

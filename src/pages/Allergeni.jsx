@@ -19,6 +19,7 @@ const CATEGORIE = [
   { key: 'crema', title: 'Le Creme Classiche', hint: 'Gusti classici lisci, senza variegature.' },
   { key: 'golosone', title: 'I Nostri Golosoni', hint: 'Gusti con variegature: biscotti, granelle, creme…' },
   { key: 'frutta-vegan', title: 'Linea Frutta e Vegan', hint: 'A base acqua, senza latte né derivati animali.' },
+  { key: 'leccornie', title: 'Altre Leccornie', hint: 'Pasticcini, torte, salame dolce e le altre specialità del banco.' },
 ];
 
 const splitAll = (s) => (s || '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -46,9 +47,15 @@ function Flag({ label, color }) {
   );
 }
 
-function ProductCard({ p }) {
+// `vuoto` = testo da mostrare quando non ci sono allergeni dichiarati. Per i
+// gelati la casella vuota significa davvero "nessun allergene"; per le altre
+// leccornie (monoporzioni, prodotti stagionali) i titolari non li hanno
+// indicati, quindi non possiamo dichiarare l'assenza: si rimanda allo staff.
+function ProductCard({ p, vuoto = 'Nessuno tra i principali' }) {
   const certi = splitAll(p.allergeni_certi);
   const tracce = splitAll(p.allergeni_tracce);
+  // Descrizione scritta dai titolari: campo facoltativo, per molte voci è vuoto.
+  const descrizione = (p.descrizione || '').trim();
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid rgba(50,40,31,0.1)', borderRadius: 16,
@@ -58,19 +65,23 @@ function ProductCard({ p }) {
         <h3 style={{ fontSize: '1.15rem', margin: 0 }}>{p.gusto}</h3>
         <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--grey)' }}>
           {p.vegan && <Flag label="V" color="#2e9e5b" />}
-          {p.senza_glutine && <Flag label="GF" color="var(--orange)" />}
-          {p.senza_zucchero && <Flag label="SF" color="var(--violet-deep)" />}
+          {p.senza_glutine && <Flag label="SG" color="var(--orange)" />}
+          {p.senza_lattosio && <Flag label="SL" color="var(--violet-deep)" />}
+          {p.senza_zucchero && <Flag label="SZ" color="#6b4f9e" />}
           {p.base ? `Base ${p.base}` : ''}
         </span>
       </div>
+      {descrizione && (
+        <p style={{ fontSize: '0.92rem', color: 'var(--ink)', margin: '0 0 0.5rem', lineHeight: 1.5 }}>{descrizione}</p>
+      )}
       {p.ingredienti && (
-        <p style={{ fontSize: '0.9rem', color: 'var(--grey)', margin: '0 0 0.7rem', lineHeight: 1.5 }}>{p.ingredienti}</p>
+        <p style={{ fontSize: '0.85rem', color: 'var(--grey)', margin: '0 0 0.7rem', lineHeight: 1.5 }}>{p.ingredienti}</p>
       )}
       <div style={{ display: 'grid', gap: '0.5rem' }}>
         <div>
           <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--violet-deep)' }}>Allergeni presenti</span>
           <div style={{ marginTop: '0.25rem' }}>
-            {certi.length ? certi.map((a) => <Chip key={a} name={a} tone="certo" />) : <span style={{ color: 'var(--grey)', fontSize: '0.88rem' }}>Nessuno tra i principali</span>}
+            {certi.length ? certi.map((a) => <Chip key={a} name={a} tone="certo" />) : <span style={{ color: 'var(--grey)', fontSize: '0.88rem' }}>{vuoto}</span>}
           </div>
         </div>
         {tracce.length > 0 && (
@@ -119,6 +130,16 @@ export default function Allergeni() {
     return m;
   }, [rows]);
 
+  // Se dal gestionale nasce una categoria nuova, i suoi gusti NON devono
+  // sparire da questa pagina: finiscono in fondo col nome che hanno in database.
+  const categorie = useMemo(() => {
+    const noti = new Set(CATEGORIE.map((c) => c.key));
+    const extra = Object.keys(byCat)
+      .filter((k) => k && !noti.has(k))
+      .map((k) => ({ key: k, title: k.charAt(0).toUpperCase() + k.slice(1).replace(/-/g, ' '), hint: '' }));
+    return [...CATEGORIE, ...extra];
+  }, [byCat]);
+
   return (
     <div style={{ background: 'var(--cream)', minHeight: '100vh', color: 'var(--ink)' }}>
       <header style={{ borderBottom: '1px solid rgba(50,40,31,0.1)', background: 'var(--cream)' }}>
@@ -159,9 +180,12 @@ export default function Allergeni() {
             ))}
           </div>
           <p style={{ fontSize: '0.82rem', color: 'var(--grey)', marginTop: '0.8rem' }}>
-            <strong style={{ color: 'var(--violet-deep)' }}>V</strong> = senza derivati animali ·
-            <strong style={{ color: 'var(--orange)' }}> GF</strong> = senza glutine ·
-            <strong style={{ color: 'var(--violet-deep)' }}> SF</strong> = senza zuccheri aggiunti
+            {/* Stesse sigle del quaderno PDF (src/lib/quadernoPdf.js): chi legge
+                il documento e chi legge la pagina deve trovare le stesse cose. */}
+            <strong style={{ color: '#2e9e5b' }}>V</strong> = senza derivati animali ·
+            <strong style={{ color: 'var(--orange)' }}> SG</strong> = senza glutine ·
+            <strong style={{ color: 'var(--violet-deep)' }}> SL</strong> = senza lattosio ·
+            <strong style={{ color: '#6b4f9e' }}> SZ</strong> = senza zuccheri aggiunti
           </p>
         </section>
 
@@ -169,7 +193,7 @@ export default function Allergeni() {
         {rows === null ? (
           <p style={{ color: 'var(--grey)' }}>Caricamento…</p>
         ) : (
-          CATEGORIE.map((cat) => {
+          categorie.map((cat) => {
             const items = byCat[cat.key] || [];
             if (!items.length) return null;
             return (
@@ -177,7 +201,13 @@ export default function Allergeni() {
                 <h2 style={{ fontSize: '1.5rem', marginBottom: '0.2rem' }}>{cat.title}</h2>
                 <p style={{ color: 'var(--grey)', margin: '0 0 1.1rem', fontSize: '0.95rem' }}>{cat.hint}</p>
                 <div style={{ display: 'grid', gap: '0.9rem', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-                  {items.map((p) => <ProductCard key={p.id} p={p} />)}
+                  {items.map((p) => (
+                    <ProductCard
+                      key={p.id}
+                      p={p}
+                      vuoto={cat.key === 'leccornie' ? 'Non dichiarati: chiedi allo staff' : undefined}
+                    />
+                  ))}
                 </div>
               </section>
             );

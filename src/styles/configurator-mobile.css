@@ -110,7 +110,9 @@
   /* Flavors: lista verticale compatta */
   .opt-grid.cols-flavors { grid-template-columns: 1fr 1fr; }
   .opt-flavor { padding: 0.55rem 0.6rem; gap: 0.5rem; }
-  .opt-flavor .flavor-dot { width: 22px; height: 22px; }
+  /* si cambia SOLO la misura: width/height/min- la leggono da qui e
+     restano uguali fra loro (pallino sempre tondo, mai schiacciato) */
+  .opt-flavor .flavor-dot { --dot-size: 22px; }
   .opt-flavor .flavor-name { font-size: 0.82rem; line-height: 1.15; }
 
   /* Form fields */
@@ -136,10 +138,54 @@
 
   /* Font picker e altri grid: 2 col */
   .font-grid { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-  .font-card { padding: 0.6rem 0.4rem; min-height: 60px; }
+  .font-card { padding: 0.6rem 0.4rem; min-height: 68px; }
+  .font-card .font-label { font-size: 0.62rem; letter-spacing: 0.04em; }
 
   /* Toggle pills pi� tappable */
   .toggle-pill { padding: 0.6rem 0.95rem; font-size: 0.82rem; }
+
+  /* Finestra delle proposte extra: su telefono occupa quasi tutto lo schermo,
+     le voci vanno una sotto l'altra (nome e prezzo sopra, +/- sotto) e i due
+     pulsanti di uscita stanno in colonna, a tutta larghezza. */
+  .extra-pop-overlay { padding: 0.8rem; align-items: flex-end; }
+  .extra-pop {
+    max-width: none;
+    max-height: 92dvh;
+    padding: 1.3rem 1rem 1rem;
+    border-radius: 20px;
+  }
+  .extra-pop h3 { font-size: 1.25rem; }
+  .extra-pop-lead { font-size: 0.82rem; margin-bottom: 0.8rem; }
+  .extra-pop-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+  .extra-pop-side { align-items: flex-start; }
+  .extra-pop-side .qty-row { width: 100%; justify-content: center; }
+  .extra-pop-side .extra-total { width: 100%; text-align: center; }
+  .extra-pop-total { justify-content: center; text-align: center; }
+  .extra-pop-actions { flex-direction: column; gap: 0.5rem; }
+  .extra-pop-skip,
+  .extra-pop-add { width: 100%; padding: 0.85rem 1rem; }
+
+  /* Selettore quantità: tasti più tappabili */
+  .qty-btn { width: 40px; height: 40px; font-size: 1.25rem; }
+  .qty-value { min-width: 3.4rem; font-size: 1rem; }
+  .extra-total { font-size: 0.78rem; }
+
+  /* Decorazioni multiple: card più strette, la spunta ✓ non deve coprire il nome */
+  .opt-card.deco-card { padding-right: 1.7rem; }
+
+  /* Colore decorazione: chip più tappabili */
+  .color-chip { padding: 0.5rem 1rem 0.5rem 0.5rem; font-size: 0.82rem; }
+  .color-dot { --dot-size: 22px; }
+
+  /* Palette una sotto l'altra: su telefono affiancarle le renderebbe illeggibili */
+  .deco-colors { grid-template-columns: 1fr; gap: 0.5rem; }
+  .deco-color-block { padding: 0.6rem 0.7rem; }
+  .deco-color-title { font-size: 0.8rem; margin-bottom: 0.4rem; }
 
   /* Summary box mobile */
   .summary-box { padding: 0.9rem; }

@@ -93,8 +93,11 @@ export default function Dashboard() {
               { value: 'crema', label: 'Creme Classiche' },
               { value: 'golosone', label: 'Golosoni' },
               { value: 'frutta-vegan', label: 'Frutta e Vegan' },
+              { value: 'leccornie', label: 'Altre Leccornie' },
             ] },
             { key: 'gusto', label: 'Gusto', type: 'text' },
+            // Frase che i clienti leggono nella carta, sotto al nome del gusto.
+            { key: 'descrizione', label: 'Descrizione', type: 'textarea', placeholder: 'Come lo racconti al cliente: compare nella carta sotto al nome del gusto' },
             { key: 'colore', label: 'Colore', type: 'color' },
             { key: 'tag', label: 'Tag', type: 'select', options: TAG_OPTIONS },
             { key: 'base', label: 'Base', type: 'text', placeholder: 'Bianca / Vegan / Frutta' },
@@ -111,7 +114,7 @@ export default function Dashboard() {
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
             { key: 'ordine', label: 'Ordine', type: 'number' },
           ],
-          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', colore: '#f5d97a', tag: null, base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, per_torte: false, attivo: true, ordine: 100 }),
+          newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', descrizione: '', colore: '#f5d97a', tag: null, base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, per_torte: false, attivo: true, ordine: 100 }),
         },
       },
       {
@@ -187,15 +190,62 @@ export default function Dashboard() {
         props: {
           table: 'decorazioni',
           title: 'Topping / decorazioni',
-          subtitle: 'Topping legati alla grafica 3D: attiva o disattiva quelli disponibili.',
+          subtitle: 'Topping legati alla grafica 3D: attiva o disattiva quelli disponibili. Il supplemento si somma al prezzo della torta. Se la decorazione esiste in più colori, spunta "Colore a scelta" ed elenca qui i colori: il cliente sceglierà il suo.',
           locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'emoji', label: 'Emoji', type: 'text' },
+            { key: 'supplemento', label: 'Supplemento €', type: 'number' },
+            // I colori si scrivono a mano: il configuratore li mostra come scelta
+            // solo se "Colore a scelta" è spuntato.
+            { key: 'colori', label: 'Colori', type: 'text', placeholder: 'colori separati da virgola: rosa, rossa, azzurra…' },
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+            { key: 'scelta_colore', label: '🎨 Colore a scelta', type: 'checkbox' },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuovo topping', descrizione: '', emoji: '✨', allergeni: '' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuovo topping', descrizione: '', emoji: '✨', supplemento: 0, colori: '', scelta_colore: false, allergeni: '' }),
+        },
+      },
+      {
+        // Stile della scritta sulla torta: prima erano tre caratteri fissi nel sito,
+        // ora si gestiscono da qui.
+        key: 'scritte',
+        label: 'Scritte',
+        props: {
+          table: 'scritte',
+          title: 'Scritte sulla torta',
+          subtitle: "Gli stili di scrittura fra cui il cliente sceglie per la dedica: nessuno costa di più, cambia solo l'aspetto. Il carattere è un dato tecnico (es. 'Caveat', cursive): se non sei sicura, lascialo com'è.",
+          fields: [
+            { key: 'nome', label: 'Nome', type: 'text' },
+            { key: 'font_family', label: 'Carattere (tecnico)', type: 'text', placeholder: "'Caveat', cursive" },
+            { key: 'esempio', label: 'Esempio', type: 'text', placeholder: 'Auguri!' },
+            { key: 'ordine', label: 'Ordine', type: 'number' },
+            { key: 'maiuscolo', label: 'Tutto maiuscolo', type: 'checkbox' },
+            { key: 'corsivo', label: 'Inclinato', type: 'checkbox' },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+          ],
+          newRow: () => ({ id: uuid(), nome: 'Nuova scritta', font_family: "'Inter', sans-serif", esempio: 'Auguri!', maiuscolo: false, corsivo: false, attivo: true, ordine: 100 }),
+        },
+      },
+      {
+        // Prodotti che il cliente aggiunge all'ordine oltre alla torta
+        // (salame dolce, cabaret di pasticcini…).
+        key: 'extra',
+        label: 'Extra',
+        props: {
+          table: 'extra',
+          title: 'Extra da aggiungere alla torta',
+          subtitle: 'Quello che il cliente può mettere nel suo ordine oltre alla torta: salame dolce, cabaret di pasticcini… Scrivi il prezzo di UNA unità e come la vendi (al kg, a cabaret).',
+          fields: [
+            { key: 'nome', label: 'Nome', type: 'text' },
+            { key: 'descrizione', label: 'Descrizione', type: 'text' },
+            { key: 'prezzo', label: 'Prezzo €', type: 'number' },
+            { key: 'unita', label: 'Unità', type: 'text', placeholder: 'al kg / a cabaret' },
+            { key: 'ordine', label: 'Ordine', type: 'number' },
+            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+          ],
+          newRow: () => ({ id: uuid(), nome: 'Nuovo extra', descrizione: '', prezzo: 0, unita: 'a pezzo', allergeni: '', attivo: true, ordine: 100 }),
         },
       },
       {
@@ -262,6 +312,51 @@ export default function Dashboard() {
         key: 'documenti',
         label: '📄 PDF e QR allergeni',
         custom: true,
+      },
+      {
+        // Le due schede qui sotto stanno accanto a "PDF e QR allergeni" perché
+        // è lì che si preme "Genera e pubblica": si scrive il testo e subito
+        // dopo si rifà il quaderno, senza girare per il gestionale.
+        key: 'quaderno-testi',
+        label: '📖 Testi del quaderno',
+        props: {
+          table: 'quaderno_testi',
+          title: 'Testi del quaderno allergeni',
+          subtitle: 'Le parti scritte del PDF: copertina, "la nostra filosofia", l\'elenco di legge dei 14 allergeni e la guida alla consultazione. Finiscono nel documento quando premi "Genera e pubblica" nella scheda "PDF e QR allergeni". Per rientrare una riga (i punti a, b, c) mettici due o più spazi davanti.',
+          fields: [
+            { key: 'titolo', label: 'Titolo', type: 'text', placeholder: 'compare in grassetto sopra al testo' },
+            { key: 'testo', label: 'Testo', type: 'textarea' },
+            { key: 'posizione', label: 'Dove va nel PDF', type: 'select', options: [
+              { value: 'copertina', label: 'In copertina' },
+              { value: 'apertura', label: 'Prima delle tabelle' },
+              { value: 'glossario', label: 'Sopra al glossario additivi' },
+              { value: 'chiusura', label: 'In fondo al quaderno' },
+            ] },
+            // Nome interno: lo usa il codice per riconoscere la frase della
+            // copertina. Si cambia solo sapendo cosa si sta facendo.
+            { key: 'chiave', label: 'Nome interno', type: 'text', placeholder: 'senza spazi, es. filosofia' },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+            { key: 'ordine', label: 'Ordine', type: 'number' },
+          ],
+          newRow: () => ({ id: uuid(), chiave: `testo-${Date.now()}`, titolo: 'Nuovo testo', testo: '', posizione: 'apertura', attivo: true, ordine: 100 }),
+        },
+      },
+      {
+        key: 'additivi',
+        label: '🧪 Additivi (E-xxx)',
+        props: {
+          table: 'additivi',
+          title: 'Glossario degli additivi',
+          subtitle: 'Le sigle E-xxx che compaiono nelle liste ingredienti, spiegate una per una. Vengono stampate in fondo al quaderno allergeni.',
+          fields: [
+            { key: 'codice', label: 'Sigla', type: 'text', placeholder: 'E330' },
+            { key: 'nome', label: 'Nome', type: 'text', placeholder: 'Acido citrico' },
+            { key: 'descrizione', label: 'A cosa serve', type: 'textarea' },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+            { key: 'ordine', label: 'Ordine', type: 'number' },
+          ],
+          newRow: () => ({ id: uuid(), codice: 'E000', nome: 'Nuovo additivo', descrizione: '', attivo: true, ordine: 1000 }),
+        },
       },
       {
         // Promemoria compleanno: coda + storico degli invii automatici.

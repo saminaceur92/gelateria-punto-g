@@ -24,6 +24,13 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Metodo non consentito' }, 405);
 
   try {
+    // La config arriva tale e quale dal configuratore e finisce intera in
+    // computeOrder: `decorations` (array di id) e `decorationColors` (mappa
+    // id → colore) restano array e oggetto dopo il JSON.parse, quindi non serve
+    // ricostruirli. Chi valida cosa: qui si controlla solo che l'ordine abbia il
+    // minimo indispensabile, mentre le decorazioni (doppioni, id sconosciuti,
+    // liste troppo lunghe, campi vecchi decoration/decorationColor) le ripulisce
+    // computeOrder, che è l'unico a decidere il prezzo.
     const { config, insert } = (await req.json()) as {
       config: CakeConfig & Record<string, unknown>;
       insert: Record<string, unknown>;

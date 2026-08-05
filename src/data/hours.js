@@ -1,5 +1,5 @@
 // Sorgente degli orari di apertura.
-// I dati arrivano da Airtable (tabella "Orari"): scaricati in fase di build da
+// I dati arrivano da Supabase (tabella "orari"): scaricati in fase di build da
 // scripts/build-data.mjs e salvati in ./generated/hours.json. Se mancano o non
 // sono validi, si usa la copia di sicurezza in ./fallback/hours.js.
 

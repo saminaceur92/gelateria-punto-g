@@ -75,12 +75,28 @@ export function validaPdf(file) {
   return null;
 }
 
+// Colonne aggiunte da migrations/2026-08-05-quaderno-generato.sql. Finché la
+// migrazione non è stata eseguita il database non le conosce: in quel caso si
+// salva senza, invece di far fallire la pubblicazione del PDF.
+const COLONNE_NUOVE = ['generato', 'dati_hash'];
+const colonnaMancante = (msg) => /schema cache|does not exist|column .* of relation/i.test(msg || '');
+
+const senzaColonneNuove = (patch) => {
+  const p = { ...patch };
+  COLONNE_NUOVE.forEach((k) => delete p[k]);
+  return p;
+};
+
 /**
  * Carica un nuovo PDF e lo rende quello ufficiale.
  * Ogni caricamento crea un file nuovo (versionato): niente problemi di cache e
  * le versioni precedenti restano consultabili.
+ *
+ * `generato`/`hash` valorizzati = PDF creato dal gestionale dai dati in
+ * database (vedi src/lib/quadernoPdf.js): servono a sapere se è ancora
+ * allineato a quello che c'è nella scheda "Gusti e allergeni".
  */
-export async function caricaDocumento({ chiave = DOC_ALLERGENI, file, titolo, email }) {
+export async function caricaDocumento({ chiave = DOC_ALLERGENI, file, titolo, email, generato = false, hash = null }) {
   if (!supabase) return { error: 'Supabase non configurato' };
   const bad = validaPdf(file);
   if (bad) return { error: bad };
@@ -105,29 +121,44 @@ export async function caricaDocumento({ chiave = DOC_ALLERGENI, file, titolo, em
     file_path: path,
     aggiornato_il: new Date().toISOString(),
     aggiornato_da: email || null,
+    generato: !!generato,
+    dati_hash: hash || null,
   };
 
   // Prima update (la riga esiste già dalla migrazione), altrimenti insert:
   // così non si sovrascrive mai `qr_url` con un valore vuoto.
-  const { data: upd, error: e1 } = await supabase
-    .from('documenti')
-    .update(patch)
-    .eq('chiave', chiave)
-    .select();
+  let upd;
+  let e1;
+  ({ data: upd, error: e1 } = await supabase.from('documenti').update(patch).eq('chiave', chiave).select());
+  if (e1 && colonnaMancante(e1.message)) {
+    ({ data: upd, error: e1 } = await supabase
+      .from('documenti')
+      .update(senzaColonneNuove(patch))
+      .eq('chiave', chiave)
+      .select());
+  }
   if (e1) return { error: e1.message };
 
+  const etichetta = generato ? 'PDF allergeni generato dai dati' : 'PDF allergeni aggiornato';
+
   if (!upd || upd.length === 0) {
-    const { data: ins, error: e2 } = await supabase
-      .from('documenti')
-      .insert({ chiave, titolo: titolo || '', qr_url: QR_URL_DEFAULT, ...patch })
-      .select()
-      .single();
+    const nuovo = { chiave, titolo: titolo || '', qr_url: QR_URL_DEFAULT, ...patch };
+    let ins;
+    let e2;
+    ({ data: ins, error: e2 } = await supabase.from('documenti').insert(nuovo).select().single());
+    if (e2 && colonnaMancante(e2.message)) {
+      ({ data: ins, error: e2 } = await supabase
+        .from('documenti')
+        .insert(senzaColonneNuove(nuovo))
+        .select()
+        .single());
+    }
     if (e2) return { error: e2.message };
-    logAction('PDF allergeni aggiornato', file.name);
+    logAction(etichetta, file.name);
     return { data: ins, error: null };
   }
 
-  logAction('PDF allergeni aggiornato', file.name);
+  logAction(etichetta, file.name);
   return { data: upd[0], error: null };
 }
 
