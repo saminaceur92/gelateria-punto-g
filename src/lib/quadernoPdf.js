@@ -33,7 +33,7 @@ export const GELATERIA = {
  * Cambiala quando cambia il LAYOUT del documento: entra nell'impronta, così
  * dopo un aggiornamento del sito il gestionale segnala che conviene rigenerare.
  */
-const VERSIONE_DOC = 1;
+const VERSIONE_DOC = 2;
 
 /* ───────── Allergeni e categorie ───────── */
 
@@ -263,7 +263,6 @@ export function improntaDati(dati) {
 
 const due = (n) => String(n).padStart(2, '0');
 const dataIt = (d) => `${due(d.getDate())}/${due(d.getMonth() + 1)}/${d.getFullYear()}`;
-const oraIt = (d) => `${due(d.getHours())}:${due(d.getMinutes())}`;
 
 /** Nome del file, con la data dentro: nello storage le versioni restano in ordine. */
 export function nomeFile(quando = new Date()) {
@@ -274,7 +273,7 @@ export function nomeFile(quando = new Date()) {
  * Costruisce il documento. `dati` è quello che torna da raccogliDati().
  * Torna { blob, nome, pagine }.
  */
-export function generaQuaderno(dati, { quando = new Date(), urlPagina = '' } = {}) {
+export function generaQuaderno(dati, { quando = new Date() } = {}) {
   const pdf = nuovoPdf();
   const M = 42;
   const LARG = pdf.larghezza - M * 2;
@@ -590,24 +589,12 @@ export function generaQuaderno(dati, { quando = new Date(), urlPagina = '' } = {
     y += h + 14;
   }
 
-  /**
-   * Da dove arriva questo documento. Sta in prima pagina, sotto la legenda,
-   * perché è quello che serve sapere PRIMA di leggere le tabelle: la data di
-   * generazione è comunque ripetuta nel piè di pagina di ogni foglio.
-   */
-  function riquadroProvenienza() {
-    const testi = [
-      'Questo quaderno è generato dal gestionale della gelateria e riporta gli stessi dati pubblicati sul sito e usati dal configuratore delle torte: quando cambia una ricetta si aggiorna il gestionale e si rigenera il quaderno.',
-      urlPagina ? `Versione sempre aggiornata online: ${urlPagina}` : '',
-      'In caso di allergie o intolleranze chiedi sempre conferma al personale prima dell\'acquisto.',
-    ].filter(Boolean);
-    const righe = testi.flatMap((t) => pdf.spezza(t, LARG - 26, 7.8));
-    const h = 20 + righe.length * 10;
-    spazio(h + 20);
-    pdf.rettangolo(M, y, LARG, h, { pieno: CREMA, bordo: FILETTO, spessore: 0.6 });
-    righe.forEach((r, i) => pdf.testo(r, M + 13, y + 16 + i * 10, { dim: 7.8, colore: INCHIOSTRO }));
-    y += h + 20;
-  }
+  // Qui c'era un riquadro che spiegava da dove arrivava il documento
+  // ("Questo quaderno è generato dal gestionale…"). Tolto su indicazione dei
+  // titolari: il quaderno è quello che legge il cliente, non deve raccontare
+  // come è fatto dietro. Se un giorno servisse un testo del genere si scrive
+  // dal gestionale, scheda "Testi del quaderno", posizione "Prima delle
+  // tabelle" — senza rimettere mano al codice.
 
   /* ── tabella ── */
 
@@ -759,7 +746,6 @@ export function generaQuaderno(dati, { quando = new Date(), urlPagina = '' } = {
 
   riquadroAvviso();
   legenda();
-  riquadroProvenienza();
 
   // Gusti, raggruppati per categoria. Le categorie fuori elenco non si perdono:
   // finiscono in fondo col loro nome così come è scritto in database.
@@ -821,7 +807,10 @@ export function generaQuaderno(dati, { quando = new Date(), urlPagina = '' } = {
     const yy = pdf.altezza - 34;
     pdf.linea(M, yy - 10, M + LARG, yy - 10, { colore: FILETTO, spessore: 0.5 });
     pdf.testo(
-      `${GELATERIA.nome} — documento generato dal gestionale il ${dataIt(quando)} alle ${oraIt(quando)}`,
+      // Al cliente serve sapere quanto è aggiornato il documento, non da quale
+      // programma esce: l'ora e il "generato dal gestionale" restano nello
+      // storico delle versioni, dentro al gestionale.
+      `${GELATERIA.nome} — aggiornato al ${dataIt(quando)}`,
       M, yy, { dim: 7, colore: GRIGIO },
     );
     pdf.testo(`Pagina ${i + 1} di ${tot}`, M + LARG, yy, { dim: 7, font: 'b', colore: GRIGIO, allinea: 'dx' });

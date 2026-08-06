@@ -145,7 +145,7 @@ export default function DocumentiPanel() {
   return (
     <div className="doc-wrap">
       {/* ─────────── Quaderno generato dai dati ─────────── */}
-      {!nonConfigurato && <QuadernoGenera doc={doc} urlPagina={qrTarget} onPubblicato={ricarica} />}
+      {!nonConfigurato && <QuadernoGenera doc={doc} onPubblicato={ricarica} />}
 
       {/* ─────────── PDF caricato a mano ─────────── */}
       <section className="adm-card">
