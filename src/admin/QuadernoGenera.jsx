@@ -24,7 +24,7 @@ const NOMI_TABELLE = {
   additivi: 'Additivi (E-xxx)',
 };
 
-export default function QuadernoGenera({ doc, urlPagina, onPubblicato }) {
+export default function QuadernoGenera({ doc, onPubblicato }) {
   const { user } = useAuth();
   const [dati, setDati] = useState(null);
   const [impronta, setImpronta] = useState('');
@@ -68,7 +68,7 @@ export default function QuadernoGenera({ doc, urlPagina, onPubblicato }) {
   }, [dati, doc, impronta, senzaTracciamento]);
 
   function costruisci(d) {
-    return generaQuaderno(d, { quando: new Date(), urlPagina });
+    return generaQuaderno(d, { quando: new Date() });
   }
 
   async function anteprima() {
