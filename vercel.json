@@ -6,6 +6,12 @@
   "devCommand": "npm run dev",
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "gelateria-punto-g.vercel.app" }],
+      "destination": "https://www.gelateriapuntogi.it/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "gelateria-punto-g.vercel.app" }],
       "destination": "https://www.gelateriapuntogi.it/:path*",
