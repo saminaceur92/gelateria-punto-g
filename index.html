@@ -26,10 +26,9 @@
 
     <!-- Dati strutturati per Google e per gli assistenti AI (schema.org).
          Sta nell'HTML statico apposta: viene letto anche da chi non esegue JavaScript.
-         NOTA: openingHoursSpecification è volutamente ASSENTE finché gli orari reali
-         non sono confermati dal negozio (in dashboard risultano 11:00-23:00 tutti i
-         giorni, che sembrano valori di prova). Pubblicare orari sbagliati su Google
-         manda i clienti a negozio chiuso: meglio nessun orario che uno errato. -->
+         NOTA orari: 11:00-23:00 tutti i giorni, confermati dal negozio (ago 2026).
+         Se cambiano in dashboard vanno aggiornati anche qui: Google li mostra
+         in scheda e nel local pack. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -58,6 +57,14 @@
         "latitude": 44.7921526,
         "longitude": 10.8794206
       },
+      "openingHoursSpecification": [
+        {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+          "opens": "11:00",
+          "closes": "23:00"
+        }
+      ],
       "hasMap": "https://goo.gl/maps/s96Pk7NbEPJhneC66",
       "areaServed": [
         { "@type": "City", "name": "Carpi" },
@@ -65,9 +72,30 @@
         { "@type": "City", "name": "Novi di Modena" },
         { "@type": "City", "name": "San Possidonio" }
       ],
+      "hasMenu": "https://gelateria-punto-g.vercel.app/allergeni",
+      "knowsAbout": [
+        "gelato artigianale",
+        "gelato senza lattosio",
+        "gelato vegan",
+        "gelato senza glutine",
+        "torte gelato su ordinazione",
+        "semifreddi",
+        "granita siciliana",
+        "pasticceria a freddo"
+      ],
+      "makesOffer": [
+        { "@type": "Offer", "name": "Gelato artigianale in coppetta o cono" },
+        { "@type": "Offer", "name": "Torte gelato personalizzate su ordinazione" },
+        { "@type": "Offer", "name": "Semifreddi e pasticceria a freddo" },
+        { "@type": "Offer", "name": "Consegna a domicilio a Carpi e dintorni" }
+      ],
       "sameAs": [
         "https://www.facebook.com/gelateriapuntogicarpi",
-        "https://www.instagram.com/gelateriapuntogicarpi/"
+        "https://www.instagram.com/gelateriapuntogicarpi/",
+        "https://www.tripadvisor.com/Restaurant_Review-g670816-d7600098-Reviews-Gelateria_Punto_Gi-Carpi_Province_of_Modena_Emilia_Romagna.html",
+        "https://deliveroo.it/it/menu/carpi/carpi/gelateria-punto-gi",
+        "https://www.italia.it/it/emilia-romagna/carpi/dove-mangiare/gelateria-punto-gi",
+        "https://www.paginegialle.it/carpi-mo/gelaterie/gelateria-punto-gi-di-bulgarelli-cristian-and-c-s-n-c"
       ]
     }
     </script>
@@ -98,7 +126,54 @@
       FINISH: unreviewed and undocumented is unfinished; this build ends with the
       finish review, the verdict, and DESIGN.md.
     -->
-    <div id="root"></div>
+    <!--
+      impeccable:direction-contract /v3 (HomeV3) - seed b3b6573f, code-led.
+      Manifesto tipografico di sagra emiliana: un solo foglio-poster, cornice
+      doppia, caratteri legno (Alfa Slab One) + Oswald + Bitter, due inchiostri
+      azzurro #2c7699 + legno #c0894c su carta #faf3e3, bandierine, fregi,
+      manicule, vignette ovali; il manifesto si affigge al load.
+
+      impeccable:direction-contract /v4 (HomeV4) - seed 6953f4c0, code-led.
+      Bar storico italiano: graniglia chiara #f0e9db dove OGNI SCAGLIA E' UN
+      GUSTO (dati live), lastre di marmo con giunti in ottone #c0894c, targhette
+      smaltate #2c7699, targa civica 46, Marcellus inciso + Cabin; le scaglie
+      dei gusti si posano una a una al load.
+
+      impeccable:direction-contract /v5 (HomeV5) - seed 203a50ff, code-led.
+      Vassoio della domenica: carta paglia #e9dcc0, cartoncino a righe azzurre,
+      etichetta ovale dorata, spago #a8845c con fiocco che si annoda al load,
+      scontrino Cutive Mono coi numeri veri, cartolina con francobollo;
+      Italiana + Gelasio + Caveat.
+    -->
+    <!--
+      Contenuto di partenza, visibile prima che React monti (e quindi leggibile
+      dai crawler che non eseguono JavaScript, come quelli degli assistenti AI).
+      React lo sostituisce con il sito vero al mount: per l'utente è il primo
+      frame invece di una pagina bianca.
+    -->
+    <div id="root">
+      <main>
+        <h1>Gelateria Punto Gi! — gelateria artigianale a Carpi (MO)</h1>
+        <p>
+          La Gelateria Punto Gi! si trova in Via Remesina Interna 46 a Carpi, in provincia di
+          Modena, ed è aperta tutti i giorni dalle 11:00 alle 23:00. Produciamo gelato
+          artigianale fresco ogni giorno nel nostro laboratorio, con una ricetta di famiglia
+          affinata negli anni: cremoso e denso come quello di una volta, ma leggero da digerire.
+          Accanto ai gusti classici proponiamo una linea <strong>senza lattosio</strong>, gusti
+          <strong>vegan</strong> a base acqua e diversi gusti <strong>senza glutine</strong>, con
+          l'elenco completo di ingredienti e allergeni consultabile online. Prepariamo inoltre
+          <strong>torte gelato personalizzate su ordinazione</strong>, semifreddi, granite
+          siciliane e pasticceria a freddo, con possibilità di consegna a domicilio a Carpi e nei
+          comuni vicini.
+        </p>
+        <ul>
+          <li><a href="/allergeni">Ingredienti e allergeni di tutti i gusti</a></li>
+          <li>Indirizzo: Via Remesina Interna 46, 41012 Carpi (MO)</li>
+          <li>Telefono: <a href="tel:+393203306009">320 330 6009</a></li>
+          <li>Orari: tutti i giorni 11:00 – 23:00</li>
+        </ul>
+      </main>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

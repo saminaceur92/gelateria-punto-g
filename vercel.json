@@ -7,7 +7,14 @@
   "rewrites": [
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/admin/:path*", "destination": "/index.html" },
-    { "source": "/allergeni", "destination": "/index.html" },
-    { "source": "/allergeni/:path*", "destination": "/index.html" }
+    { "source": "/allergeni/:path*", "destination": "/allergeni" },
+    { "source": "/v2", "destination": "/index.html" },
+    { "source": "/v2/:path*", "destination": "/index.html" },
+    { "source": "/v3", "destination": "/index.html" },
+    { "source": "/v3/:path*", "destination": "/index.html" },
+    { "source": "/v4", "destination": "/index.html" },
+    { "source": "/v4/:path*", "destination": "/index.html" },
+    { "source": "/v5", "destination": "/index.html" },
+    { "source": "/v5/:path*", "destination": "/index.html" }
   ]
 }
