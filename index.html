@@ -7,10 +7,70 @@
     <meta name="theme-color" content="#2c7699" />
     <meta name="description" content="Gelateria Punto Gi! a Carpi (MO) – Il gelato artigianale che ti emoziona. Cremoso, fresco ogni giorno, anche senza lattosio e Vegan. Torte, semifreddi e pasticceria a freddo." />
     <meta name="keywords" content="gelateria Carpi, gelato artigianale Carpi, Punto Gi, gelato senza lattosio, gelato vegan, torte gelato Carpi, semifreddo Modena" />
+    <!-- Dominio del sito. Quando si passa al dominio definitivo (es. gelateriapuntogi.it)
+         va aggiornato QUI, in public/robots.txt e in public/sitemap.xml. -->
+    <link rel="canonical" href="https://gelateria-punto-g.vercel.app/" />
+
     <meta property="og:title" content="Gelateria Punto Gi! – Carpi" />
     <meta property="og:description" content="Il gelato che ti emoziona. Artigianale, cremoso, fresco ogni giorno." />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="it_IT" />
+    <meta property="og:site_name" content="Gelateria Punto Gi!" />
+    <meta property="og:url" content="https://gelateria-punto-g.vercel.app/" />
+    <meta property="og:image" content="https://gelateria-punto-g.vercel.app/gelato.jpg" />
+    <meta property="og:image:alt" content="Gelato artigianale della Gelateria Punto Gi! di Carpi" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Gelateria Punto Gi! – Carpi" />
+    <meta name="twitter:description" content="Il gelato che ti emoziona. Artigianale, cremoso, fresco ogni giorno." />
+    <meta name="twitter:image" content="https://gelateria-punto-g.vercel.app/gelato.jpg" />
+
+    <!-- Dati strutturati per Google e per gli assistenti AI (schema.org).
+         Sta nell'HTML statico apposta: viene letto anche da chi non esegue JavaScript.
+         NOTA: openingHoursSpecification è volutamente ASSENTE finché gli orari reali
+         non sono confermati dal negozio (in dashboard risultano 11:00-23:00 tutti i
+         giorni, che sembrano valori di prova). Pubblicare orari sbagliati su Google
+         manda i clienti a negozio chiuso: meglio nessun orario che uno errato. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "IceCreamShop",
+      "@id": "https://gelateria-punto-g.vercel.app/#gelateria",
+      "name": "Gelateria Punto Gi!",
+      "legalName": "Gelateria Punto Gi di Bulgarelli Cristian & C. s.n.c.",
+      "description": "Gelateria artigianale a Carpi (MO). Gelato cremoso prodotto fresco ogni giorno, anche senza lattosio e vegan. Torte gelato su ordinazione, semifreddi, granite e pasticceria a freddo.",
+      "url": "https://gelateria-punto-g.vercel.app/",
+      "telephone": "+39 320 330 6009",
+      "image": "https://gelateria-punto-g.vercel.app/gelato.jpg",
+      "logo": "https://gelateria-punto-g.vercel.app/logo.png",
+      "priceRange": "€",
+      "currenciesAccepted": "EUR",
+      "servesCuisine": "Gelato artigianale",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Via Remesina Interna 46",
+        "addressLocality": "Carpi",
+        "addressRegion": "MO",
+        "postalCode": "41012",
+        "addressCountry": "IT"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 44.7921526,
+        "longitude": 10.8794206
+      },
+      "hasMap": "https://goo.gl/maps/s96Pk7NbEPJhneC66",
+      "areaServed": [
+        { "@type": "City", "name": "Carpi" },
+        { "@type": "City", "name": "Soliera" },
+        { "@type": "City", "name": "Novi di Modena" },
+        { "@type": "City", "name": "San Possidonio" }
+      ],
+      "sameAs": [
+        "https://www.facebook.com/gelateriapuntogicarpi",
+        "https://www.instagram.com/gelateriapuntogicarpi/"
+      ]
+    }
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,6 +79,25 @@
     <title>Gelateria Punto Gi! – Il gelato che ti emoziona | Carpi</title>
   </head>
   <body>
+    <!--
+      impeccable:direction-contract /v2 (HomeV2)
+      THESIS: la trasparenza e' l'appetito: la homepage come etichetta alimentare
+      italiana d'autore; rifiutata la vetrina di categoria crema+corsivo+pastello.
+      OWN-WORLD: campo azzurrino chiaro #d8eaf3, bande e azioni azzurro profondo
+      #2c7699/#235f7d (scelta dei proprietari; il viola non e' piu' brand),
+      superfici etichetta panna #fdfaf2 con filetto, accento legno #c0894c,
+      inchiostro testa di moro #32281f; Archivo condensed/expanded, Kode Mono
+      per dati, Caveat per note a mano; filetti, tabelle, marchi tondi, timbri, QR.
+      STORY: il visitatore legge l'etichetta, si fida (gusti, allergeni, numeri,
+      orari veri), agisce: carta gusti, torta, WhatsApp.
+      FIRST-VIEWPORT: fascia produttore; denominazione gigante "IL GELATO CHE TI
+      EMOZIONA."; foto coppetta annotata a linee di richiamo; celle dati e marchi
+      SL/VEG/SG; due CTA-etichetta; timbro "FRESCO DI OGGI" che si stampa al load
+      (interazione firma).
+      FORM: etichetta alimentare, candidato 6/7, seed 4125aeb2, code-led.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the
+      finish review, the verdict, and DESIGN.md.
+    -->
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
