@@ -21,7 +21,7 @@ export const BUCKET = 'documenti';
 export const PDF_FALLBACK = '/documenti/quaderno-allergeni-punto-gi.pdf';
 
 /** Dove porta il QR Code se in database non è stato impostato nulla. */
-export const QR_URL_DEFAULT = 'https://gelateria-punto-g.vercel.app/allergeni';
+export const QR_URL_DEFAULT = 'https://www.gelateriapuntogi.it/allergeni';
 
 export const MAX_MB = 25;
 

@@ -23,7 +23,7 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dist = resolve(__dirname, '..', 'dist');
-const SITE = 'https://gelateria-punto-g.vercel.app';
+const SITE = 'https://www.gelateriapuntogi.it';
 
 const URL_SB = process.env.VITE_SUPABASE_URL;
 const KEY_SB = process.env.VITE_SUPABASE_KEY;

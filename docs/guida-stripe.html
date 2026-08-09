@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Attivare Stripe — Gelateria Punto Gi!</title>
+<style>
+  :root{
+    --crema:#fbf6ec; --carta:#fffdf7; --inchiostro:#32281f; --grigio:#7a7166;
+    --azzurro:#2c7699; --azzurro-chiaro:#7cb7d7; --legno:#c0894c;
+    --linea:rgba(50,40,31,.13);
+    --ombra:0 1px 2px rgba(50,40,31,.04), 0 12px 28px -18px rgba(50,40,31,.4);
+    --allarme-bg:rgba(192,137,76,.11); --allarme-bordo:rgba(192,137,76,.45);
+    --info-bg:rgba(44,118,153,.08); --info-bordo:rgba(44,118,153,.28);
+    --spina:rgba(44,118,153,.22);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-tema="chiaro"]){
+      --crema:#1e1811; --carta:#2a2219; --inchiostro:#f3ecdf; --grigio:#b5a893;
+      --azzurro:#7cb7d7; --azzurro-chiaro:#a9d3e6; --legno:#d8a86c;
+      --linea:rgba(255,255,255,.11);
+      --ombra:0 1px 2px rgba(0,0,0,.3), 0 12px 28px -18px rgba(0,0,0,.8);
+      --allarme-bg:rgba(216,168,108,.13); --allarme-bordo:rgba(216,168,108,.38);
+      --info-bg:rgba(124,183,215,.11); --info-bordo:rgba(124,183,215,.3);
+      --spina:rgba(124,183,215,.24);
+    }
+  }
+
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--crema); color:var(--inchiostro);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px; line-height:1.62;
+  }
+  .foglio{max-width:780px; margin:0 auto; padding:clamp(1.5rem,5vw,3.5rem) clamp(1.1rem,4vw,2.2rem) 5rem}
+
+  /* ---------- Testata ---------- */
+  .testata{border-bottom:2px solid var(--inchiostro); padding-bottom:1.5rem; margin-bottom:2.2rem}
+  .occhiello{
+    font-size:.68rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--azzurro); margin:0 0 .7rem;
+  }
+  h1{
+    font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:700;
+    font-size:clamp(1.85rem,5.2vw,2.75rem); line-height:1.08; letter-spacing:-.02em;
+    margin:0 0 .7rem; text-wrap:balance;
+  }
+  .sottotitolo{color:var(--grigio); font-size:1.02rem; max-width:58ch; margin:0}
+  .sottotitolo strong{color:var(--inchiostro); font-weight:650}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; margin-top:1.1rem;
+    font-size:.8rem; color:var(--grigio);
+  }
+  .meta b{color:var(--inchiostro); font-weight:650}
+
+  /* ---------- Titoli ---------- */
+  h2.sezione{
+    font-family:Georgia,serif; font-size:1.5rem; font-weight:700; letter-spacing:-.015em;
+    margin:3rem 0 1rem; padding-bottom:.55rem; border-bottom:1px solid var(--linea);
+  }
+  p{margin:0 0 .9rem}
+  a{color:var(--azzurro)}
+
+  /* ---------- Riquadri ---------- */
+  .riquadro{
+    background:var(--carta); border:1px solid var(--linea); border-radius:14px;
+    padding:1.15rem 1.3rem; box-shadow:var(--ombra); margin:0 0 1.6rem;
+  }
+  .riquadro > :first-child{margin-top:0}
+  .riquadro > :last-child{margin-bottom:0}
+  .riquadro h3{font-size:.98rem; font-weight:700; margin:0 0 .8rem}
+
+  .dati{display:grid; grid-template-columns:auto 1fr; gap:.42rem 1.1rem; font-size:.93rem; margin:0}
+  .dati dt{color:var(--grigio)}
+  .dati dd{margin:0; font-weight:600; overflow-wrap:anywhere}
+  @media (max-width:520px){
+    .dati{grid-template-columns:1fr; gap:.1rem}
+    .dati dd{margin-bottom:.55rem}
+  }
+
+  .nota{border-radius:12px; padding:1rem 1.15rem; margin:1.2rem 0; font-size:.94rem; border:1px solid}
+  .nota.attenzione{background:var(--allarme-bg); border-color:var(--allarme-bordo)}
+  .nota.info{background:var(--info-bg); border-color:var(--info-bordo)}
+  .nota > :first-child{margin-top:0} .nota > :last-child{margin-bottom:0}
+  .nota .etichetta{
+    display:block; font-size:.7rem; font-weight:700; letter-spacing:.13em;
+    text-transform:uppercase; margin-bottom:.35rem;
+  }
+  .nota.attenzione .etichetta{color:var(--legno)}
+  .nota.info .etichetta{color:var(--azzurro)}
+
+  /* ---------- Passi con spina dorsale ---------- */
+  .passi{margin:0; padding:0; list-style:none; position:relative}
+  .passo{position:relative; padding:0 0 2.4rem 3.4rem}
+  .passo:last-child{padding-bottom:.5rem}
+  .passo::after{ /* linea che collega i passi */
+    content:""; position:absolute; left:1.09rem; top:2.4rem; bottom:0;
+    width:2px; background:var(--spina);
+  }
+  .passo:last-child::after{display:none}
+  .numero{
+    position:absolute; left:0; top:0; z-index:1;
+    width:2.25rem; height:2.25rem; border-radius:50%;
+    background:var(--azzurro); color:#fff;
+    display:grid; place-items:center;
+    font-weight:700; font-size:.95rem; font-variant-numeric:tabular-nums;
+  }
+  .passo h3{
+    font-family:Georgia,serif; font-size:1.18rem; font-weight:700; letter-spacing:-.01em;
+    margin:.15rem 0 .6rem; display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+  }
+  .ruolo{
+    font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    padding:.2rem .6rem; border-radius:999px; border:1.5px solid currentColor;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .ruolo.titolare{color:var(--legno)}
+  .ruolo.tu{color:var(--azzurro)}
+  .passo h4{font-size:.92rem; font-weight:700; margin:1.1rem 0 .3rem; color:var(--azzurro)}
+
+  ul,ol{margin:0 0 .9rem; padding-left:1.25rem}
+  li{margin-bottom:.42rem}
+
+  /* ---------- Codice ---------- */
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:rgba(44,118,153,.1); color:var(--azzurro);
+    padding:.13em .42em; border-radius:5px; font-size:.87em; overflow-wrap:anywhere;
+  }
+  pre{
+    background:var(--carta); border:1px solid var(--linea); border-radius:10px;
+    padding:.95rem 1.1rem; overflow-x:auto; margin:.7rem 0 1.1rem;
+    font-size:.83rem; line-height:1.55;
+  }
+  pre code{background:none; color:var(--inchiostro); padding:0; font-size:1em}
+  .copiabile{position:relative}
+  .copia{
+    position:absolute; top:.5rem; right:.5rem;
+    font:inherit; font-size:.7rem; font-weight:600; letter-spacing:.04em;
+    padding:.28rem .6rem; border-radius:7px; cursor:pointer;
+    background:var(--crema); color:var(--azzurro);
+    border:1px solid var(--linea);
+  }
+  .copia:hover{background:var(--azzurro); color:#fff; border-color:var(--azzurro)}
+  .copia:focus-visible{outline:2px solid var(--azzurro); outline-offset:2px}
+
+  /* ---------- Caselle ---------- */
+  .lista-check{list-style:none; padding:0; margin:.4rem 0}
+  .lista-check li{margin-bottom:.15rem}
+  .lista-check label{
+    display:flex; gap:.7rem; align-items:flex-start; cursor:pointer;
+    padding:.42rem .5rem; border-radius:9px; transition:background .15s ease;
+  }
+  .lista-check label:hover{background:var(--info-bg)}
+  .lista-check input{
+    appearance:none; -webkit-appearance:none; flex:0 0 auto;
+    width:1.2rem; height:1.2rem; margin:.18rem 0 0; border-radius:5px;
+    border:2px solid var(--azzurro); background:transparent; cursor:pointer;
+    display:grid; place-items:center; transition:background .15s ease;
+  }
+  .lista-check input:checked{background:var(--azzurro)}
+  .lista-check input:checked::after{
+    content:"✓"; color:#fff; font-size:.82rem; font-weight:800; line-height:1;
+  }
+  .lista-check input:focus-visible{outline:2px solid var(--azzurro); outline-offset:2px}
+  .lista-check input:checked + span{color:var(--grigio); text-decoration:line-through}
+  .lista-check span{transition:color .15s ease}
+
+  .avanzamento{
+    font-size:.78rem; color:var(--grigio); margin:.2rem 0 0; font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- Tabella ---------- */
+  .tabella-wrap{overflow-x:auto; margin:.9rem 0 1.2rem}
+  table{border-collapse:collapse; width:100%; font-size:.9rem; min-width:400px}
+  th,td{text-align:left; padding:.6rem .75rem; border-bottom:1px solid var(--linea)}
+  thead th{
+    font-size:.7rem; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--grigio); font-weight:700; border-bottom-width:1.5px;
+  }
+  td:not(:first-child){font-variant-numeric:tabular-nums}
+
+  .chiusura{
+    margin-top:3rem; padding-top:1.4rem; border-top:1px solid var(--linea);
+    color:var(--grigio); font-size:.89rem;
+  }
+
+  /* ---------- Stampa ---------- */
+  @media print{
+    body{background:#fff; color:#000; font-size:11pt}
+    .foglio{max-width:none; padding:0}
+    .copia{display:none}
+    .riquadro,.nota,pre{box-shadow:none; break-inside:avoid}
+    .passo{break-inside:avoid}
+    h2.sezione{break-after:avoid}
+    a{color:#000; text-decoration:underline}
+  }
+</style>
+</head>
+<body>
+<div class="foglio">
+
+  <header class="testata">
+    <p class="occhiello">Pagamenti online · Gelateria Punto Gi!</p>
+    <h1>Attivare Stripe per incassare davvero</h1>
+    <p class="sottotitolo">
+      Il sito è già pronto a incassare: manca solo collegare un account Stripe
+      <strong>intestato alla gelateria</strong>. Qui sotto la sequenza esatta, con accanto a ogni
+      passo chi lo deve fare.
+    </p>
+    <p class="meta">
+      <span>Serve circa <b>1 ora</b></span>
+      <span>di cui <b>30 min col titolare</b></span>
+      <span>Le caselle spuntate <b>restano salvate</b></span>
+    </p>
+  </header>
+
+  <div class="nota attenzione">
+    <span class="etichetta">La decisione che non si può sbagliare</span>
+    <p>L'account Stripe deve essere <strong>della gelateria, non tuo</strong>. Stripe versa gli
+    incassi sull'IBAN dell'intestatario: se l'account fosse tuo, i ricavi della gelateria
+    arriverebbero sul tuo conto e diventerebbero reddito tuo — un problema fiscale serio per
+    entrambi.</p>
+    <p>Tu entri come <strong>membro del team</strong> (passo 6): hai tutto l'accesso tecnico senza
+    toccare i soldi. E se un domani smettete di lavorare insieme, lui ti rimuove con un clic
+    tenendosi l'account.</p>
+  </div>
+
+  <div class="riquadro">
+    <h3>Dati dell'attività, già pronti</h3>
+    <dl class="dati">
+      <dt>Ragione sociale</dt><dd>Gelateria Punto Gi S.r.l.</dd>
+      <dt>Forma giuridica</dt><dd>S.r.l. — società di capitali <span style="font-weight:400;color:var(--grigio)">(trasformata di recente dalla s.n.c.)</span></dd>
+      <dt>Partita IVA</dt><dd>03578310363 <span style="font-weight:400;color:var(--grigio)">— da riconfermare sulla visura aggiornata</span></dd>
+      <dt>Sede</dt><dd>Via Remesina Interna 46, 41012 Carpi (MO)</dd>
+      <dt>Telefono</dt><dd>+39 320 330 6009</dd>
+      <dt>Sito</dt><dd>gelateria-punto-g.vercel.app</dd>
+    </dl>
+  </div>
+
+  <h2 class="sezione">Prima di iniziare</h2>
+  <p>Fai arrivare il titolare all'appuntamento con queste cose, altrimenti vi bloccate a metà:</p>
+
+  <ul class="lista-check" data-gruppo="prep">
+    <li><label><input type="checkbox" id="p1"><span><strong>Documento d'identità</strong> valido del rappresentante legale, fronte e retro</span></label></li>
+    <li><label><input type="checkbox" id="p2"><span><strong>Codice fiscale</strong> del rappresentante legale</span></label></li>
+    <li><label><input type="checkbox" id="p3"><span><strong>Visura camerale aggiornata</strong>: serve per P.IVA, codice fiscale della società, numero REA e capitale sociale. Essendo la S.r.l. recente, prendetela fresca</span></label></li>
+    <li><label><input type="checkbox" id="p4"><span><strong>IBAN del conto intestato alla società</strong> — non un conto personale</span></label></li>
+    <li><label><input type="checkbox" id="p5"><span><strong>Dati dei soci con più del 25%</strong> delle quote: nome, cognome, data di nascita, codice fiscale, indirizzo, percentuale</span></label></li>
+    <li><label><input type="checkbox" id="p8"><span><strong>Dati dell'amministratore</strong> (se diverso dai soci sopra)</span></label></li>
+    <li><label><input type="checkbox" id="p6"><span>Un'<strong>email aziendale</strong> che resterà valida negli anni (non la tua)</span></label></li>
+    <li><label><input type="checkbox" id="p7"><span>Un <strong>telefono</strong> a portata di mano per i codici di verifica</span></label></li>
+  </ul>
+  <p class="avanzamento" data-per="prep"></p>
+
+  <div class="nota info">
+    <span class="etichetta">Perché chiedono i dati dei soci</span>
+    <p>La normativa antiriciclaggio obbliga Stripe a identificare i <em>titolari effettivi</em>:
+    per una S.r.l. sono i soci che detengono <strong>più del 25%</strong> delle quote, più
+    l'amministratore. È la stessa cosa che chiede la banca quando apre un conto aziendale — se il
+    titolare si insospettisce, rassicuralo.</p>
+  </div>
+
+  <h2 class="sezione">La procedura</h2>
+
+  <ol class="passi">
+
+    <li class="passo">
+      <span class="numero">1</span>
+      <h3>Creare l'account <span class="ruolo titolare">Titolare</span></h3>
+      <p>Andate su <strong>stripe.com</strong> → <em>Inizia ora</em>. Registratevi con
+      <strong>l'email aziendale della gelateria</strong> e una password che il titolare conserva.
+      Paese: <strong>Italia</strong>. Confermate l'email dal link che arriva.</p>
+      <p>Fatelo fare materialmente a lui, con te accanto che guidi: è il suo account.</p>
+    </li>
+
+    <li class="passo">
+      <span class="numero">2</span>
+      <h3>Dichiarare il tipo di attività <span class="ruolo titolare">Titolare</span></h3>
+      <p>Alla domanda sul tipo di attività scegliete <strong>Società</strong> →
+      <strong>Società a responsabilità limitata (S.r.l.)</strong>, cioè una
+      <em>società di capitali</em>.</p>
+      <div class="nota attenzione">
+        <p><strong>Non scegliete "Ditta individuale" né "Società di persone".</strong> La gelateria
+        è diventata S.r.l. da poco: se dichiarate la forma vecchia, i dati non combaciano con la
+        visura, la verifica viene respinta e si ricomincia da capo.</p>
+      </div>
+      <p>Settore: <em>Alimentari / Ristorazione</em> → gelateria o pasticceria. Poi denominazione,
+      P.IVA, codice fiscale della società, indirizzo della sede e telefono — li trovi nel riquadro
+      in cima e sulla visura.</p>
+    </li>
+
+    <li class="passo">
+      <span class="numero">3</span>
+      <h3>Amministratore e titolari effettivi <span class="ruolo titolare">Titolare</span></h3>
+      <p>Inserite i dati dell'<strong>amministratore / rappresentante legale</strong> e caricate il
+      documento d'identità. Poi aggiungete i <strong>titolari effettivi</strong>: per una S.r.l.
+      sono i soci con <strong>più del 25%</strong> delle quote.</p>
+      <p>Se un socio ha meno del 25% non va inserito. Se nessuno supera il 25%, si indica
+      l'amministratore come titolare effettivo: la visura vi dice esattamente le percentuali.</p>
+      <p>La verifica di solito è immediata, ma può richiedere <strong>fino a un paio di giorni
+      lavorativi</strong>: mettete in conto che il lancio potrebbe slittare di 48 ore.</p>
+    </li>
+
+    <li class="passo">
+      <span class="numero">4</span>
+      <h3>IBAN per gli accrediti <span class="ruolo titolare">Titolare</span></h3>
+      <p>Inserite l'<strong>IBAN del conto intestato alla società</strong>. Deve corrispondere alla
+      ragione sociale, altrimenti Stripe blocca i versamenti.</p>
+      <p>Gli accrediti partono in automatico: per i nuovi account italiani in genere dopo circa
+      <strong>7 giorni</strong> dal primo incasso, poi la cadenza si accorcia.</p>
+    </li>
+
+    <li class="passo">
+      <span class="numero">5</span>
+      <h3>Attivare i metodi di pagamento <span class="ruolo titolare">Titolare</span></h3>
+      <p><strong>Impostazioni → Metodi di pagamento.</strong> Attivate:</p>
+      <ul>
+        <li><strong>Carte</strong> e <strong>Apple Pay / Google Pay</strong> — immediati</li>
+        <li><strong>PayPal</strong> e <strong>Satispay</strong> — possono richiedere una verifica in più</li>
+      </ul>
+      <p>Sistemate anche <strong>Impostazioni → Dati pubblici</strong>: nome, logo e soprattutto la
+      <strong>dicitura sull'estratto conto</strong> — qualcosa di riconoscibile come
+      <code>GELATERIA PUNTO GI</code>. Se il cliente non riconosce l'addebito, contesta il pagamento.</p>
+    </li>
+
+    <li class="passo">
+      <span class="numero">6</span>
+      <h3>Aggiungere te al team <span class="ruolo titolare">Titolare</span></h3>
+      <p><strong>Impostazioni → Team</strong> → invita la tua email con ruolo
+      <strong>Sviluppatore</strong>.</p>
+      <p>Da qui in poi la parte tecnica la fai tu, senza che il titolare debba condividere password
+      né toccare chiavi.</p>
+    </li>
+
+    <li class="passo">
+      <span class="numero">7</span>
+      <h3>Chiavi e webhook <span class="ruolo tu">Tu</span></h3>
+      <p>Entra col tuo accesso e passa in <strong>modalità Live</strong> (interruttore in alto).</p>
+
+      <h4>a. Chiave segreta</h4>
+      <p><em>Sviluppatori → Chiavi API</em> → rivela la <strong>chiave segreta</strong>
+      (<code>sk_live_…</code>). Non passarla su WhatsApp o email: usala direttamente nel comando qui sotto.</p>
+
+      <h4>b. Webhook</h4>
+      <p><em>Sviluppatori → Webhook</em> → aggiungi endpoint con questo URL:</p>
+      <div class="copiabile">
+        <button class="copia" type="button">copia</button>
+<pre><code>https://bqmoxdeagqpzvcblpcbm.supabase.co/functions/v1/stripe-webhook</code></pre>
+      </div>
+      <p>Evento da ascoltare: <strong>solo</strong> <code>checkout.session.completed</code>.
+      Salva e copia il <strong>signing secret</strong> (<code>whsec_…</code>).</p>
+
+      <h4>c. Secret e redeploy</h4>
+      <div class="copiabile">
+        <button class="copia" type="button">copia</button>
+<pre><code>npx supabase secrets set \
+  STRIPE_SECRET_KEY=sk_live_... \
+  STRIPE_WEBHOOK_SECRET=whsec_... \
+  SITE_URL=https://gelateria-punto-g.vercel.app \
+  --project-ref bqmoxdeagqpzvcblpcbm
+
+npx supabase functions deploy create-checkout --project-ref bqmoxdeagqpzvcblpcbm
+npx supabase functions deploy stripe-webhook --no-verify-jwt --project-ref bqmoxdeagqpzvcblpcbm</code></pre>
+      </div>
+      <div class="nota attenzione">
+        <p><strong>Quando comprate il dominio definitivo</strong>, <code>SITE_URL</code> va
+        aggiornato qui, altrimenti dopo il pagamento il cliente viene rimandato al vecchio indirizzo.</p>
+      </div>
+    </li>
+
+    <li class="passo">
+      <span class="numero">8</span>
+      <h3>Prova finale con soldi veri <span class="ruolo tu">Tu</span></h3>
+      <p>In Live le carte di test non funzionano più: serve un ordine vero, di importo piccolo.</p>
+      <ol>
+        <li>Configura una torta sul sito e paga con una carta vera</li>
+        <li>Controlla che arrivi la <strong>notifica Telegram</strong> in gelateria</li>
+        <li>Controlla che l'ordine compaia in dashboard tra i <strong>“Da fare”</strong></li>
+        <li>Controlla che al cliente arrivi l'<strong>email di conferma</strong></li>
+        <li>Su Stripe, <em>Pagamenti</em>: il pagamento risulta riuscito</li>
+        <li><strong>Rimborsa l'ordine di prova</strong> e cancellalo dalla dashboard</li>
+      </ol>
+      <p>Il rimborso restituisce l'importo ma <strong>non</strong> la commissione: la prova costa
+      qualche decina di centesimi. È il modo più economico per dormire tranquilli.</p>
+    </li>
+
+  </ol>
+
+  <h2 class="sezione">Quanto costa</h2>
+  <div class="tabella-wrap">
+    <table>
+      <thead><tr><th>Metodo</th><th>Commissione indicativa</th><th>Su una torta da €34</th></tr></thead>
+      <tbody>
+        <tr><td>Carte UE</td><td>1,5% + €0,25</td><td>≈ €0,76</td></tr>
+        <tr><td>Carte extra-UE</td><td>più alta</td><td>—</td></tr>
+        <tr><td>PayPal / Satispay via Stripe</td><td>tariffa Stripe</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:.89rem;color:var(--grigio)">
+    Le tariffe cambiano nel tempo e si possono negoziare a volume: <strong>verificale nel pannello
+    Stripe</strong> prima di comunicarle al titolare. Nessun canone fisso, si paga solo sull'incassato.
+  </p>
+
+  <div class="nota attenzione">
+    <span class="etichetta">Da girare al commercialista</span>
+    <p>Le vendite online sono <em>commercio elettronico indiretto</em> e vanno gestite fiscalmente
+    (corrispettivi o fattura). Stripe incassa e basta: <strong>non emette scontrini né fatture</strong>
+    al posto vostro. Fai presente al titolare di parlarne col suo commercialista
+    <strong>prima</strong> di andare live.</p>
+  </div>
+
+  <h2 class="sezione">Checklist finale</h2>
+  <ul class="lista-check" data-gruppo="fine">
+    <li><label><input type="checkbox" id="f1"><span>Account intestato alla gelateria, non a te</span></label></li>
+    <li><label><input type="checkbox" id="f2"><span>Tipo attività: Società di capitali (S.r.l.)</span></label></li>
+    <li><label><input type="checkbox" id="f3"><span>Amministratore verificato e titolari effettivi (soci oltre il 25%) inseriti</span></label></li>
+    <li><label><input type="checkbox" id="f4"><span>IBAN della società collegato</span></label></li>
+    <li><label><input type="checkbox" id="f5"><span>Metodi di pagamento attivi</span></label></li>
+    <li><label><input type="checkbox" id="f6"><span>Dicitura estratto conto riconoscibile</span></label></li>
+    <li><label><input type="checkbox" id="f7"><span>Tu nel team come sviluppatore</span></label></li>
+    <li><label><input type="checkbox" id="f8"><span>Chiavi Live nei secret Supabase e funzioni ridistribuite</span></label></li>
+    <li><label><input type="checkbox" id="f9"><span>Webhook attivo su <code>checkout.session.completed</code></span></label></li>
+    <li><label><input type="checkbox" id="f10"><span>Ordine di prova completato, verificato e rimborsato</span></label></li>
+    <li><label><input type="checkbox" id="f11"><span>Commercialista informato</span></label></li>
+  </ul>
+  <p class="avanzamento" data-per="fine"></p>
+
+  <p class="chiusura">
+    Finché tutto questo non è fatto, il sito resta in <strong>modalità test</strong>: si può
+    ordinare, ma nessun soldo si muove davvero. Non c'è alcun rischio a lasciarlo così finché non
+    siete pronti.
+  </p>
+
+</div>
+
+<script>
+  // Caselle che restano spuntate anche chiudendo la pagina.
+  (function () {
+    var CHIAVE = 'guida-stripe-punto-gi';
+    var stato = {};
+    try { stato = JSON.parse(localStorage.getItem(CHIAVE) || '{}'); } catch (e) { stato = {}; }
+
+    var caselle = document.querySelectorAll('.lista-check input[type=checkbox]');
+    caselle.forEach(function (c) {
+      if (stato[c.id]) c.checked = true;
+      c.addEventListener('change', function () {
+        stato[c.id] = c.checked;
+        try { localStorage.setItem(CHIAVE, JSON.stringify(stato)); } catch (e) {}
+        aggiorna();
+      });
+    });
+
+    function aggiorna() {
+      document.querySelectorAll('.avanzamento').forEach(function (p) {
+        var gruppo = document.querySelector('.lista-check[data-gruppo="' + p.dataset.per + '"]');
+        if (!gruppo) return;
+        var tutte = gruppo.querySelectorAll('input[type=checkbox]');
+        var fatte = gruppo.querySelectorAll('input[type=checkbox]:checked');
+        p.textContent = fatte.length === tutte.length
+          ? '✓ Completato (' + tutte.length + ' su ' + tutte.length + ')'
+          : fatte.length + ' di ' + tutte.length + ' completati';
+      });
+    }
+    aggiorna();
+
+    // Pulsanti "copia" sui blocchi di comandi.
+    document.querySelectorAll('.copia').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var pre = b.parentElement.querySelector('pre');
+        if (!pre) return;
+        var testo = pre.innerText;
+        var fatto = function () {
+          var prima = b.textContent;
+          b.textContent = 'copiato ✓';
+          setTimeout(function () { b.textContent = prima; }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(testo).then(fatto, function () {});
+        } else {
+          var t = document.createElement('textarea');
+          t.value = testo; document.body.appendChild(t); t.select();
+          try { document.execCommand('copy'); fatto(); } catch (e) {}
+          document.body.removeChild(t);
+        }
+      });
+    });
+  })();
+</script>
+</body>
+</html>

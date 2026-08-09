@@ -7,9 +7,9 @@
 
 ## Pagine
 
-- [Home](https://gelateria-punto-g.vercel.app/): chi siamo, la carta dei gusti, la gallery e i contatti.
-- [Ingredienti e allergeni](https://gelateria-punto-g.vercel.app/allergeni): elenco completo, gusto per gusto, di ingredienti, allergeni presenti e possibili tracce ai sensi del Reg. UE 1169/2011, con indicazione dei gusti vegan, senza glutine e senza lattosio.
-- [Quaderno degli allergeni (PDF ufficiale)](https://gelateria-punto-g.vercel.app/documenti/quaderno-allergeni-punto-gi.pdf): il documento firmato dal laboratorio.
+- [Home](https://www.gelateriapuntogi.it/): chi siamo, la carta dei gusti, la gallery e i contatti.
+- [Ingredienti e allergeni](https://www.gelateriapuntogi.it/allergeni): elenco completo, gusto per gusto, di ingredienti, allergeni presenti e possibili tracce ai sensi del Reg. UE 1169/2011, con indicazione dei gusti vegan, senza glutine e senza lattosio.
+- [Quaderno degli allergeni (PDF ufficiale)](https://www.gelateriapuntogi.it/documenti/quaderno-allergeni-punto-gi.pdf): il documento firmato dal laboratorio.
 
 ## Dati principali
 

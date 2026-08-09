@@ -4,6 +4,14 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "gelateria-punto-g.vercel.app" }],
+      "destination": "https://www.gelateriapuntogi.it/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/admin/:path*", "destination": "/index.html" },
@@ -15,6 +23,12 @@
     { "source": "/v4", "destination": "/index.html" },
     { "source": "/v4/:path*", "destination": "/index.html" },
     { "source": "/v5", "destination": "/index.html" },
-    { "source": "/v5/:path*", "destination": "/index.html" }
+    { "source": "/v5/:path*", "destination": "/index.html" },
+    { "source": "/v6", "destination": "/index.html" },
+    { "source": "/v6/:path*", "destination": "/index.html" },
+    { "source": "/v7", "destination": "/index.html" },
+    { "source": "/v7/:path*", "destination": "/index.html" },
+    { "source": "/v8", "destination": "/index.html" },
+    { "source": "/v8/:path*", "destination": "/index.html" }
   ]
 }
