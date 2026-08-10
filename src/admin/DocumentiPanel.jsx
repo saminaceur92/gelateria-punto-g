@@ -287,11 +287,6 @@ export default function DocumentiPanel() {
               <a className="adm-btn" href={qrTarget} target="_blank" rel="noopener noreferrer">Prova la pagina</a>
             </div>
 
-            <p className="adm-muted doc-hint">
-              ⚠️ Quando collegherai il dominio definitivo, cambia qui l’indirizzo e ristampa i QR già
-              stampati: quelli vecchi punterebbero al vecchio indirizzo.
-            </p>
-
             <div className="doc-actions">
               <button
                 type="button"
