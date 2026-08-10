@@ -5,6 +5,7 @@ import TableEditor from './TableEditor';
 import OrdersPanel from './OrdersPanel';
 import StaffPanel from './StaffPanel';
 import DocumentiPanel from './DocumentiPanel';
+import GalleryPanel from './GalleryPanel';
 import PromemoriaPanel from './PromemoriaPanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
@@ -70,7 +71,7 @@ export default function Dashboard() {
 
   // Notifica anche nel titolo della scheda del browser (se è in secondo piano)
   useEffect(() => {
-    const base = 'Punto Gi! — Gestione';
+    const base = 'Punto Gi — Gestione';
     document.title = newCount > 0 ? `(${newCount}) ${base}` : base;
   }, [newCount]);
 
@@ -314,6 +315,12 @@ export default function Dashboard() {
         custom: true,
       },
       {
+        // Foto della gallery del sito: caricamento ed eliminazione.
+        key: 'gallery',
+        label: '🖼️ Foto della gallery',
+        custom: true,
+      },
+      {
         // Le due schede qui sotto stanno accanto a "PDF e QR allergeni" perché
         // è lì che si preme "Genera e pubblica": si scrive il testo e subito
         // dopo si rifà il quaderno, senza girare per il gestionale.
@@ -388,7 +395,7 @@ export default function Dashboard() {
     <div className="adm">
       <header className="adm-top">
         <div className="adm-brand">
-          <strong>Punto Gi!</strong> <span>Gestione contenuti</span>
+          <strong>Punto Gi</strong> <span>Gestione contenuti</span>
         </div>
         <div className="adm-user">
           <span>{user?.email}</span>
@@ -433,6 +440,8 @@ export default function Dashboard() {
           <StaffPanel />
         ) : active === 'documenti' ? (
           <DocumentiPanel />
+        ) : active === 'gallery' ? (
+          <GalleryPanel />
         ) : active === 'promemoria' ? (
           <PromemoriaPanel />
         ) : (

@@ -85,7 +85,7 @@ ${righe}
 
   // Blocco di apertura auto-contenuto: risponde alla domanda nelle prime righe,
   // che e' cio' che le AI estraggono per le citazioni.
-  const intro = `      <p>La Gelateria Punto Gi! di Carpi (MO), in Via Remesina Interna 46, pubblica qui
+  const intro = `      <p>La Gelateria Punto Gi di Carpi (MO), in Via Remesina Interna 46, pubblica qui
       l'elenco completo degli ingredienti e degli allergeni di ogni gusto di gelato, ai sensi del
       Regolamento (UE) n. 1169/2011. Per ogni gusto trovi la base di partenza, gli ingredienti,
       gli allergeni presenti e le possibili tracce, oltre alle indicazioni per chi segue una dieta
@@ -96,10 +96,10 @@ ${righe}
       In caso di allergie o intolleranze chiedi sempre conferma al personale.</p>`;
 
   return `    <main>
-      <h1>Ingredienti e allergeni — Gelateria Punto Gi!, Carpi (MO)</h1>
+      <h1>Ingredienti e allergeni — Gelateria Punto Gi, Carpi (MO)</h1>
 ${intro}
 ${sezioni}
-      <p><a href="${SITE}/">Torna al sito della Gelateria Punto Gi!</a></p>
+      <p><a href="${SITE}/">Torna al sito della Gelateria Punto Gi</a></p>
     </main>`;
 }
 
@@ -135,7 +135,7 @@ function schemaMenu(rows) {
     '@context': 'https://schema.org',
     '@type': 'Menu',
     '@id': `${SITE}/allergeni#menu`,
-    name: 'Gusti, ingredienti e allergeni — Gelateria Punto Gi!',
+    name: 'Gusti, ingredienti e allergeni — Gelateria Punto Gi',
     inLanguage: 'it-IT',
     provider: { '@type': 'IceCreamShop', '@id': `${SITE}/#gelateria` },
     hasMenuSection: sections,
@@ -175,9 +175,9 @@ async function main() {
   }
 
   const shell = readFileSync(shellPath, 'utf8');
-  const title = 'Allergeni e ingredienti dei gusti — Gelateria Punto Gi! Carpi';
+  const title = 'Allergeni e ingredienti dei gusti — Gelateria Punto Gi Carpi';
   const description =
-    'Elenco completo di ingredienti e allergeni di ogni gusto della Gelateria Punto Gi! di Carpi (MO), '
+    'Elenco completo di ingredienti e allergeni di ogni gusto della Gelateria Punto Gi di Carpi (MO), '
     + 'ai sensi del Reg. UE 1169/2011: gusti vegan, senza glutine e senza lattosio, con allergeni e possibili tracce.';
 
   let page = conMeta(shell, { title, description, canonical: `${SITE}/allergeni` });

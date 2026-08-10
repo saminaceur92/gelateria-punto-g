@@ -63,7 +63,7 @@ export default function Hero({ onOpenConfigurator }) {
         >
           <div className="hero-blob" />
           <div className="hero-img">
-            <img src="/hero-cup.jpg" alt="Coppetta di gelato Punto Gi!" />
+            <img src="/hero-cup.jpg" alt="Coppetta di gelato Punto Gi" />
           </div>
 
           <motion.div

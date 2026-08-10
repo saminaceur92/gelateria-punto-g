@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useInView, animate } from 'framer-motion';
-import { IceCream2, Cake, CalendarDays, Sparkles } from 'lucide-react';
+import { IceCream2, Cake, Cookie, Smile } from 'lucide-react';
 
 const reveal = {
   initial: { opacity: 0, y: 40 },
@@ -35,11 +35,13 @@ function Counter({ to, duration = 2 }) {
   return <span ref={ref}>{formatted}</span>;
 }
 
+// Numeri veri dati dai titolari: niente "+" davanti, si leggono come dati precisi.
+// I 115.564 salgono più piano degli altri: sono sei cifre, altrimenti scorrono nervose.
 const stats = [
-  { icon: <IceCream2 size={22} />, prefix: '+', to: 12000, suffix: 'kg', label: 'di gelato prodotto ogni anno' },
-  { icon: <Cake size={22} />, prefix: '+', to: 2000, label: 'torte create ogni anno' },
-  { icon: <CalendarDays size={22} />, to: 365, label: 'giorni all’anno di gelato fresco' },
-  { icon: <Sparkles size={22} />, text: 'Ogni giorno', label: 'torte sfornate fresche' },
+  { icon: <IceCream2 size={22} />, to: 12500, suffix: 'kg', label: 'di gelato prodotto ogni anno' },
+  { icon: <Cake size={22} />, to: 2354, label: 'torte create ogni anno' },
+  { icon: <Cookie size={22} />, to: 6874, label: 'pasticcini creati ogni anno' },
+  { icon: <Smile size={22} />, to: 115564, duration: 2.6, label: 'clienti felici ogni anno' },
 ];
 
 export default function Stats() {
@@ -74,7 +76,7 @@ export default function Stats() {
                 ) : (
                   <>
                     {s.prefix && <span className="affix">{s.prefix}</span>}
-                    <Counter to={s.to} />
+                    <Counter to={s.to} duration={s.duration} />
                     {s.suffix && <span className="affix">{s.suffix}</span>}
                   </>
                 )}

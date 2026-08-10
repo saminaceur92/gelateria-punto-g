@@ -46,8 +46,16 @@
   .cake-card-flavors,
   .cake-card-base,
   .cake-card-message,
-  .cake-card-icons,
-  .cake-card-footer { display: none; }
+  .cake-card-icons { display: none; }
+  /* Il footer resta visibile anche su telefono: contiene l'avviso che
+     l'immagine è dimostrativa, ed è proprio da telefono che la torta si guarda.
+     Solo più compatto, per non rubare spazio alla scelta. */
+  .cake-card-footer {
+    margin-top: 0.5rem;
+    padding-top: 0.45rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
   .cake-card-type { font-size: 1.15rem; margin-top: 0.2rem; }
   .cake-card-size { font-size: 0.78rem; margin: 0.1rem 0 0; }
 
@@ -198,4 +206,67 @@
   .opt-grid.cols-2,
   .opt-grid.cols-3 { grid-template-columns: 1fr; }
   .cake3d-stage { max-width: 200px; height: 200px; }
+}
+/* ═══════════════════════════════════════════════════════════════════
+   Riepilogo su telefono: barretta in fondo che si apre (agosto 2026).
+   Sopra i 900px il riepilogo sta nella colonna di sinistra, quindi qui
+   si accende la barretta e si spegne la copia della colonna.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .riepilogo-colonna { display: none; }
+
+  /* La barra dei pulsanti passa a due righe: sopra il riepilogo, sotto i
+     pulsanti di sempre (che restano su una riga sola, come prima). */
+  .cfg-footer { flex-wrap: wrap; }
+  .riepilogo-barra {
+    display: flex;
+    order: -1;
+    flex-basis: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid rgba(124, 183, 215, 0.5);
+    border-radius: 999px;
+    background: rgba(124, 183, 215, 0.12);
+    color: var(--violet-deep);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .riepilogo-barra-prezzo { font-family: var(--font-display); font-size: 1rem; }
+
+  .riepilogo-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 210; /* sopra la barra dei pulsanti del configuratore */
+    max-height: 70vh;
+    background: var(--cream);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 32px -12px rgba(0, 0, 0, 0.35);
+  }
+  .riepilogo-sheet-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.1rem;
+    border-bottom: 1px solid rgba(42, 26, 62, 0.08);
+    font-family: var(--font-display);
+  }
+  .riepilogo-sheet-head button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: var(--ink);
+    display: flex;
+  }
+  .riepilogo-sheet-body {
+    padding: 1rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  .riepilogo-sheet .riepilogo-lista > div { grid-template-columns: 5.6rem 1fr; }
 }

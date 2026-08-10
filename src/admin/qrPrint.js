@@ -18,7 +18,7 @@ export function fogliStampaHtml(url, modo) {
 
   const cartellino = `
     <div class="card">
-      <p class="kicker">Punto Gi!</p>
+      <p class="kicker">Punto Gi</p>
       <h2>Ingredienti e Allergeni</h2>
       <div class="qr">${qr}</div>
       <p class="sub">Inquadra il QR<br/>con la fotocamera</p>
@@ -26,7 +26,7 @@ export function fogliStampaHtml(url, modo) {
     </div>`;
 
   const html = `<!doctype html><html lang="it"><head><meta charset="utf-8"/>
-<title>QR Allergeni — Punto Gi!</title>
+<title>QR Allergeni — Punto Gi</title>
 <style>
   @page { size: A4; margin: 10mm; }
   * { box-sizing: border-box; }

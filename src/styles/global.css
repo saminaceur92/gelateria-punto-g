@@ -1,5 +1,5 @@
 /* ===========================================================
-   Gelateria Punto Gi! – Design System
+   Gelateria Punto Gi – Design System
    =========================================================== */
 
 :root {
@@ -1089,7 +1089,14 @@ p {
   will-change: transform;
 }
 
-.gallery-scroll:hover .gallery-track { animation-play-state: paused; }
+/* La pausa al passaggio del mouse vale SOLO dove c'è un mouse vero.
+   Senza questo filtro, sui telefoni il browser simula il :hover al tocco e lo
+   tiene attaccato finché non si tocca qualcosa fuori dalla fascia: siccome la
+   fascia occupa tutto lo schermo, ogni tocco successivo ricade dentro e il
+   nastro non ripartiva più. */
+@media (hover: hover) and (pointer: fine) {
+  .gallery-scroll:hover .gallery-track { animation-play-state: paused; }
+}
 
 .gallery-shot {
   flex: 0 0 auto;
@@ -1371,4 +1378,142 @@ p {
 @keyframes pulse {
   0% { transform: scale(0.95); opacity: 0.6; }
   100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Foto ingrandita (Lightbox) e pagina Galleria — agosto 2026
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* La foto della fascia ora è un pulsante: toccandola si apre ingrandita. */
+.gallery-shot-btn {
+  display: block;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 300; /* sopra header (100) e menu mobile (200) */
+  background: rgba(28, 22, 16, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.5rem, 3vw, 2rem);
+}
+.lightbox-figura {
+  margin: 0;
+  max-width: min(1100px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+.lightbox-figura img {
+  max-width: 100%;
+  max-height: calc(100vh - 8rem);
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  cursor: zoom-in;
+  transition: transform 0.25s ease;
+  touch-action: none; /* il dito serve a spostare la foto zoomata, non a scrollare */
+  user-select: none;
+}
+.lightbox-figura img.zoom { cursor: grab; transition: none; }
+.lightbox-figura figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.78rem;
+}
+.lightbox-zoom-hint { display: inline-flex; align-items: center; gap: 0.35rem; }
+.lightbox-conta { font-variant-numeric: tabular-nums; }
+
+.lightbox-chiudi,
+.lightbox-freccia {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.lightbox-chiudi:hover,
+.lightbox-freccia:hover { background: rgba(255, 255, 255, 0.28); }
+.lightbox-chiudi { top: 1rem; right: 1rem; }
+.lightbox-freccia { top: 50%; transform: translateY(-50%); }
+.lightbox-freccia.sx { left: 0.6rem; }
+.lightbox-freccia.dx { right: 0.6rem; }
+@media (max-width: 600px) {
+  .lightbox-freccia { width: 40px; height: 40px; }
+  .lightbox-figura img { max-height: calc(100vh - 9rem); }
+}
+
+/* ── Pagina /galleria ─────────────────────────────────────────────── */
+.galleria-page { background: var(--cream); min-height: 100vh; }
+.galleria-griglia {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: clamp(0.6rem, 1.4vw, 1rem);
+  margin-top: 2rem;
+}
+.galleria-cella {
+  padding: 0;
+  border: 0;
+  background: var(--cream-warm);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  cursor: zoom-in;
+  box-shadow: 0 12px 26px -18px rgba(50, 40, 31, 0.5);
+}
+.galleria-cella img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .galleria-cella:hover img { transform: scale(1.06); }
+}
+@media (max-width: 600px) {
+  .galleria-griglia { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Riquadro Instagram in fondo alla pagina galleria */
+.galleria-ig {
+  margin-top: clamp(2.5rem, 6vw, 4rem);
+  padding: clamp(1.4rem, 3vw, 2.2rem);
+  border-radius: var(--radius);
+  background: var(--cream-warm);
+  border: 1px solid rgba(44, 118, 153, 0.18);
+  text-align: center;
+}
+.galleria-ig h3 { margin: 0.6rem 0 0.4rem; font-family: var(--font-display); }
+.galleria-ig p { margin: 0 auto 1.2rem; max-width: 46ch; color: var(--grey); font-size: 0.92rem; }
+.galleria-ig-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.5rem;
+  max-width: 560px;
+  margin: 0 auto 1.4rem;
+}
+.galleria-ig-strip img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 10px;
+  display: block;
 }

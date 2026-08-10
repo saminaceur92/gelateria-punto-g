@@ -37,10 +37,10 @@ export default function Navbar({ onOpenConfigurator }) {
         <div className="container nav-inner">
           <a href="#top" className="brand">
             <span className="brand-mark">
-              <img src="/logo.png" alt="Gelateria Punto Gi! logo" />
+              <img src="/logo.png" alt="Gelateria Punto Gi logo" />
             </span>
             <span>
-              Punto Gi<span style={{ color: 'var(--orange)' }}>!</span>
+              Punto Gi
               <small>Gelateria · Carpi</small>
             </span>
           </a>

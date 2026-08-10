@@ -115,7 +115,7 @@ export default function Allergeni() {
   const [doc, setDoc] = useState(null);
 
   useEffect(() => {
-    document.title = 'Allergeni · Gelateria Punto Gi!';
+    document.title = 'Allergeni · Gelateria Punto Gi';
     getDocumento().then(({ data }) => setDoc(data));
     if (!supabase) { setRows([]); return; }
     supabase.from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine')
@@ -147,7 +147,7 @@ export default function Allergeni() {
           <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: 'var(--violet-deep)' }}>
             <ArrowLeft size={18} /> Torna al sito
           </a>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}>Punto Gi<span style={{ color: 'var(--orange)' }}>!</span></span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}>Punto Gi</span>
         </div>
       </header>
 

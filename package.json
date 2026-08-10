@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Sito ufficiale Gelateria Punto Gi! - Carpi (MO)",
+  "description": "Sito ufficiale Gelateria Punto Gi - Carpi (MO)",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/build-data.mjs && vite build && node --env-file-if-exists=.env scripts/prerender-seo.mjs",

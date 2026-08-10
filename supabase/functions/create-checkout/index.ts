@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
           currency: 'eur',
           unit_amount: amountCents,
           product_data: {
-            name: 'Torta personalizzata — Gelateria Punto Gi!',
+            name: 'Torta personalizzata — Gelateria Punto Gi',
             description: summary || undefined,
           },
         },

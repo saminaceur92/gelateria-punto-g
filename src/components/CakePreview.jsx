@@ -228,7 +228,7 @@ export default function CakePreview({ config }) {
       transition={{ duration: 0.4 }}
     >
       <div className="cake-card-ribbon">
-        <span>Punto Gi!</span>
+        <span>Punto Gi</span>
         <span className="dot" />
         <span>Pasticceria</span>
       </div>
@@ -365,8 +365,10 @@ export default function CakePreview({ config }) {
         </div>
       </div>
 
+      {/* L'anteprima è un disegno, non una foto della torta che riceverai: meglio
+          dirlo qui sotto, dove si guarda l'immagine, che scoprirlo al ritiro. */}
       <div className="cake-card-footer">
-        <span>fatta a mano · ingredienti freschi</span>
+        <span>l'immagine è a fini dimostrativi, può non rispecchiare la torta reale al 100%</span>
       </div>
 
     </motion.div>
@@ -405,7 +407,7 @@ function CakeSvg({ shape, flavors, base, filling, covering, candle, photo, decor
   const baseColor = base?.color || '#e8d2a8';
   const fillingColor = filling?.color;
 
-  // Vassoio viola Punto Gi! (più largo e prominente)
+  // Vassoio viola Punto Gi (più largo e prominente)
   const platterRx = halfW + 55;
   const platterRy = topRy + 24;
   const platterCy = baseY + 14;

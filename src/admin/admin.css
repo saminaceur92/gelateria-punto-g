@@ -279,3 +279,39 @@
   .prom-actions { margin-left: 0; flex-basis: 100%; }
   .prom-actions .adm-btn { flex: 1; }
 }
+
+/* ── Foto della gallery (scheda "🖼️ Foto della gallery") ─────────── */
+.adm-sub {
+  margin: 1.4rem 0 0.6rem;
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+  color: var(--v-deep, var(--violet-deep));
+}
+.gal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+.gal-item {
+  margin: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(50, 40, 31, 0.12);
+}
+.gal-item img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+.gal-item figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.72rem;
+}
+/* Le foto già incluse nel sito non si eliminano: niente barra sotto. */
+.gal-item-fissa { opacity: 0.85; }

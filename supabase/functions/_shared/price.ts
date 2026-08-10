@@ -29,7 +29,7 @@ const MAX_EXTRA_ITEMS = 20;
 // Quante decorazioni si possono mettere su una torta: stessa costante del
 // frontend (MAX_DECORAZIONI in CakeConfigurator.jsx). Oltre, la torta diventa
 // illeggibile — e un client "creativo" non deve poter allungare la lista.
-const MAX_DECORAZIONI = 3;
+const MAX_DECORAZIONI = 5;
 // Id dell'opzione "niente decorazioni": si scarta dal conteggio e dal riepilogo
 // (supplemento 0, non è una decorazione vera). Stesso id della tabella
 // `decorazioni` e della copia di sicurezza src/data/fallback/cakeOptions.js.
@@ -217,10 +217,10 @@ export async function computeOrder(supabase: SupabaseClient, config: CakeConfig)
     extrasOf(supabase, config.extras),
   ]);
 
-  const nFlavors = Array.isArray(config.flavors) ? config.flavors.length : 0;
   let euros = tipoBase + dim + forma + base + crumble + farc + cop + deco.euros + extra.euros;
-  if (nFlavors > 1) euros += (nFlavors - 1) * 2;
-  if (config.candle) euros += 1;
+  // I gusti sono TUTTI compresi nel prezzo della torta (nessun supplemento per gli
+  // strati in più) e la candelina è un regalo della gelateria.
+  // ⚠️ Stessa regola lato sito: `total` in src/components/CakeConfigurator.jsx.
   if (config.photo) euros += 5;
   if (config.delivery) euros += 4; // consegna a domicilio (DELIVERY_FEE)
 

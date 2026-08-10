@@ -22,7 +22,7 @@ import { nuovoPdf, ripulisci } from './pdf';
 
 // Dati d'intestazione, gli stessi del quaderno impaginato a mano dai titolari.
 export const GELATERIA = {
-  nome: 'Gelateria Punto Gi!',
+  nome: 'Gelateria Punto Gi',
   ragioneSociale: 'Gelateria Punto Gi S.r.l.',
   piva: '03578310363',
   indirizzo: 'Via Remesina Interna 46 — 41012 Carpi (MO)',

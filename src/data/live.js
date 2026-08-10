@@ -121,6 +121,18 @@ export async function fetchCakeOptions() {
     const { data: apRows } = await supabase
       .from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine');
     const splitLower = (s) => (s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+    // Diete (vegan / senza zuccheri aggiunti): le colonne `vegan` e
+    // `senza_zucchero` sulle tabelle dei componenti torta sono NUOVE. Finché la
+    // migrazione non è stata eseguita Supabase non restituisce nemmeno la chiave:
+    // in quel caso vale quanto dichiarato nella copia di sicurezza, così il filtro
+    // funziona lo stesso. Stesso schema già usato per `allergeni`.
+    const dieta = (row, fbList) => {
+      const fb = (fbList || []).find((x) => x.id === row.id) || {};
+      return {
+        vegan: row.vegan != null ? !!row.vegan : !!fb.vegan,
+        senzaZucchero: row.senza_zucchero != null ? !!row.senza_zucchero : !!fb.senzaZucchero,
+      };
+    };
     // Come splitLower ma senza minuscolizzare: per i colori delle decorazioni, che
     // sono etichette da mostrare così come sono ("Rosa", "Arcobaleno", ...).
     const splitList = (s) => (s || '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -137,6 +149,7 @@ export async function fetchCakeOptions() {
         priceDelta: num(c.supplemento),
         color: c.colore || null,
         allergeni: splitLower(c.allergeni),
+        ...dieta(c, fbCake.cakeCrumbles),
       }))
       : fbCake.cakeCrumbles;
     // Scritte ed extra: tabelle NUOVE, entrambe opzionali (stesso pattern di
@@ -171,7 +184,7 @@ export async function fetchCakeOptions() {
       : safeList(fbCake.cakeExtras);
     const perTorte = (apRows || []).filter((r) => r.per_torte);
     const cakeFlavors = perTorte.length
-      ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi) }))
+      ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi), vegan: !!r.vegan, senzaZucchero: !!r.senza_zucchero }))
       : gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] }));
     return {
       cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
@@ -182,10 +195,10 @@ export async function fetchCakeOptions() {
         return o;
       }),
       cakeFlavors,
-      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: b.allergeni != null ? splitLower(b.allergeni) : (BASE_ALLERG[b.id] || []) })),
+      cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: b.allergeni != null ? splitLower(b.allergeni) : (BASE_ALLERG[b.id] || []), ...dieta(b, fbCake.cakeBases) })),
       cakeCrumbles,
-      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []) })),
-      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []) })),
+      cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []), ...dieta(f, fbCake.cakeFillings) })),
+      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []), ...dieta(c, fbCake.cakeCoverings) })),
       // Le colonne `supplemento`, `scelta_colore` e `colori` sono nuove: se non
       // esistono ancora si ottengono 0 / false / lista dal fallback, mai un errore.
       cakeDecorations: dec.map((d) => ({
@@ -197,6 +210,7 @@ export async function fetchCakeOptions() {
         allergeni: d.allergeni != null ? splitLower(d.allergeni) : (DECO_ALLERG[d.id] || []),
         colorChoice: !!d.scelta_colore,
         colors: d.colori != null ? splitList(d.colori) : (DECO_COLORS[d.id] || []),
+        ...dieta(d, fbCake.cakeDecorations),
       })),
       cakeScritte,
       cakeExtras,
