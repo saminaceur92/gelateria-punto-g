@@ -1542,7 +1542,41 @@ p {
   font-size: 0.9rem;
   max-width: 42ch;
 }
+/* Seconda riga: gli altri posti dove trovare la gelateria. Va a capo da sola
+   (flex-basis 100%) così resta sotto al blocco profilo su qualsiasi schermo. */
+.galleria-ig-altri {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.7rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(44, 118, 153, 0.18);
+}
+.canale-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: var(--cream);
+  border: 1.5px solid rgba(44, 118, 153, 0.25);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.canale-chip:hover { background: #fff; border-color: var(--violet-deep); }
+.canale-sep {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-left: 0.6rem;
+}
+
 @media (max-width: 700px) {
   .galleria-ig { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
   .galleria-ig .btn { width: 100%; justify-content: center; }
+  .canale-sep { margin-left: 0; flex-basis: 100%; }
 }

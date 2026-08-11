@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Instagram, Camera } from 'lucide-react';
+import { ArrowLeft, Instagram, Facebook, Camera } from 'lucide-react';
 import galleryImages from '../data/galleryImages';
 import { fetchGalleryCompleta } from '../lib/galleryFoto';
 import Lightbox from '../components/Lightbox';
@@ -13,6 +13,11 @@ import Lightbox from '../components/Lightbox';
  * smetterebbero di caricarsi, anche in home).
  */
 const IG_URL = 'https://www.instagram.com/gelateriapuntogicarpi/';
+// Gli altri posti dove la gelateria si trova. Deliveroo e Glovo non sono
+// "social": sono canali di vendita, per questo hanno una riga loro.
+const FB_URL = 'https://www.facebook.com/gelateriapuntogicarpi';
+const GLOVO_URL = 'https://glovoapp.com/it/it/carpi/stores/gelateria-punto-gi-crp';
+const DELIVEROO_URL = 'https://deliveroo.it/it/menu/Carpi/carpi/gelateria-punto-gi';
 
 const statiche = (galleryImages || []).map((url) => ({ url }));
 
@@ -84,6 +89,19 @@ export default function Galleria() {
           <a className="btn btn-primary" href={IG_URL} target="_blank" rel="noopener noreferrer">
             <Instagram size={18} /> Seguici su Instagram
           </a>
+
+          <div className="galleria-ig-altri">
+            <a className="canale-chip" href={FB_URL} target="_blank" rel="noopener noreferrer">
+              <Facebook size={16} /> Facebook
+            </a>
+            <span className="canale-sep">Consegna a domicilio:</span>
+            <a className="canale-chip" href={GLOVO_URL} target="_blank" rel="noopener noreferrer">
+              🛵 Glovo
+            </a>
+            <a className="canale-chip" href={DELIVEROO_URL} target="_blank" rel="noopener noreferrer">
+              🛵 Deliveroo
+            </a>
+          </div>
         </section>
 
         <div className="galleria-griglia">
