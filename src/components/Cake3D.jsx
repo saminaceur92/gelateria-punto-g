@@ -502,7 +502,13 @@ function perimeterPts(shape, R, inset, n) {
       if (segs[i].acc + segs[i].len >= target) { seg = segs[i]; break; }
     }
     const t = seg.len ? (target - seg.acc) / seg.len : 0;
-    out.push([seg.a[0] + (seg.b[0] - seg.a[0]) * t, seg.a[1] + (seg.b[1] - seg.a[1]) * t, k]);
+    // Insieme al punto porto anche la DIREZIONE DEL LATO su cui sta: serve a
+    // orientare i pezzi che hanno un davanti. Ricavarla dai punti vicini non
+    // basta — su un angolo verrebbe la diagonale, e il pezzo d'angolo
+    // guarderebbe di sbieco rispetto a tutti i suoi vicini.
+    const dx = seg.len ? (seg.b[0] - seg.a[0]) / seg.len : 0;
+    const dz = seg.len ? (seg.b[1] - seg.a[1]) / seg.len : 0;
+    out.push([seg.a[0] + (seg.b[0] - seg.a[0]) * t, seg.a[1] + (seg.b[1] - seg.a[1]) * t, k, dx, dz]);
   }
   return out;
 }
@@ -631,23 +637,20 @@ function Pieces({ items, geometry, order = 'XYZ', children }) {
  * per far "guardare fuori" i pezzi che hanno un davanti (macarons, fiocchi).
  */
 function decoSpots(shape, R, n, inset = 0.8) {
-  const pts = perimeterPts(shape, R, inset, n);
-  return pts.map(([x, z, i], k) => {
-    // Verso "fuori" preso dal BORDO, non dal centro della torta.
-    // Sul tondo è lo stesso; sul quadrato no: un pezzo appoggiato all'angolo
-    // guarderebbe in diagonale mentre i suoi vicini guardano dritti, e si vede
-    // subito — sembra storto. Qui il verso lo dà il lato su cui sta appoggiato.
-    const p = pts[(k - 1 + pts.length) % pts.length];
-    const q = pts[(k + 1) % pts.length];
-    const tx = q[0] - p[0];
-    const tz = q[1] - p[1];
+  return perimeterPts(shape, R, inset, n).map(([x, z, i, dx, dz]) => {
+    // Verso "fuori" preso dal LATO su cui il pezzo è appoggiato, non dal centro
+    // della torta. Sul tondo è la stessa cosa; sul quadrato no: col verso preso
+    // dal centro, un pezzo vicino all'angolo guarda in diagonale mentre i suoi
+    // vicini guardano dritti — ed è esattamente il macaron che sembrava storto.
+    // Così invece tutti quelli sullo stesso lato guardano nella stessa identica
+    // direzione, angoli compresi.
     let ang;
-    if (Math.hypot(tx, tz) < 1e-6) {
-      ang = Math.atan2(z, x);
+    if (dx === undefined || Math.hypot(dx, dz) < 1e-6) {
+      ang = Math.atan2(z, x); // ripiego: forme senza lati (non dovrebbe capitare)
     } else {
-      // normale = tangente ruotata di 90°, girata verso l'esterno
-      let nx = tz;
-      let nz = -tx;
+      // normale = direzione del lato ruotata di 90°, girata verso l'esterno
+      let nx = dz;
+      let nz = -dx;
       if (nx * x + nz * z < 0) { nx = -nx; nz = -nz; }
       ang = Math.atan2(nz, nx);
     }
