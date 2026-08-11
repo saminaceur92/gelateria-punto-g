@@ -151,6 +151,9 @@ export const cakeCoverings = [
 // stesso codice (src/data/live.js) e questo file fa anche da default se la
 // colonna `colori` non c'è ancora.
 
+// Panna montata colorata: gli 8 colori indicati dai titolari (l'unica
+// decorazione con "tutti i colori").
+const COLORI_PANNA = ['Rosa', 'Rossa', 'Azzurra', 'Blu', 'Verde', 'Nera', 'Gialla', 'Arcobaleno'];
 // Perline: «placcate oro o argento o rosa o bianco».
 const COLORI_PERLINE = ['Oro', 'Argento', 'Rosa', 'Bianco'];
 // Fiocchi: «in colore nero, rosa, rosso e oro».
@@ -181,6 +184,8 @@ export const cakeDecorations = [
   { id: 'cioccolato-deco', name: 'Decorazioni cioccolato', desc: 'Decorazioni in cioccolato bianco, latte e fondente', emoji: '🍫', priceDelta: 2, allergeni: ['latte', 'frutta a guscio', 'soia'], colorChoice: false, colors: [] },
   { id: 'drip', name: 'Drip cake', desc: 'Colature di glassa che scendono dal bordo', emoji: '🍫', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
   { id: 'frutta-fresca', name: 'Frutta fresca', desc: 'Ribes, more, lamponi…', emoji: '🫐', priceDelta: 4, allergeni: [], colorChoice: false, colors: [], vegan: true },
+  { id: 'panna-deco', name: 'Panna montata', desc: 'Panna montata spatolata intorno e decorazione con ciuffi', emoji: '🍦', priceDelta: 2, allergeni: ['latte'], colorChoice: false, colors: [] },
+  { id: 'panna-colorata', name: 'Panna montata colorata', desc: 'Colore a scelta tra rosa, rossa, azzurra, blu, verde, nera, gialla e arcobaleno', emoji: '🎨', priceDelta: 2, allergeni: ['latte'], colorChoice: true, colors: COLORI_PANNA },
   { id: 'fantasia', name: 'Fantasia del gelataio', desc: 'Renderemo bella la torta per il tuo evento usando la nostra fantasia e il nostro estro', emoji: '✨', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
   { id: 'colorate', name: 'Decorazioni colorate e divertenti', desc: 'Lasciati stupire dalle nostre decorazioni colorate e simpatiche!', emoji: '🎉', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
 ];

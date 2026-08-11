@@ -34,9 +34,6 @@ const MAX_DECORAZIONI = 5;
 // (supplemento 0, non è una decorazione vera). Stesso id della tabella
 // `decorazioni` e della copia di sicurezza src/data/fallback/cakeOptions.js.
 const NESSUNA_DECORAZIONE_ID = 'nessuna';
-// I due vecchi topping di panna sono stati sostituiti dalle due file standard
-// presenti su ogni torta. Un client vecchio non deve più farli pagare.
-const DECORAZIONI_RIMOSSE = new Set(['panna-deco', 'panna-colorata']);
 
 export interface CakeConfig {
   type?: string;
@@ -134,12 +131,7 @@ async function decorationsOf(
   const ids: string[] = [];
   for (const raw of scelte) {
     const id = typeof raw === 'string' ? raw.trim() : '';
-    if (
-      !id ||
-      id === NESSUNA_DECORAZIONE_ID ||
-      DECORAZIONI_RIMOSSE.has(id) ||
-      ids.includes(id)
-    ) continue;
+    if (!id || id === NESSUNA_DECORAZIONE_ID || ids.includes(id)) continue;
     ids.push(id);
     if (ids.length >= MAX_DECORAZIONI) break;
   }

@@ -7,11 +7,13 @@
  * automatica + trascinamento col mouse/dito.
  *
  * Forme supportate: tonda (cilindro), cuore (extrude), quadrata/rettangolare
- * (rounded box). Ogni torta ha due file di panna sul bordo superiore; le
- * coperture di PANNA possono avvolgere anche i fianchi, a ruche col sac-à-poche
- * oppure lisce e spatolate. Le altre coperture restano sulla calotta. Farcitura
- * come anelli sottili tra gli strati. Decorazioni 3D (macarons, spumini, fiori,
- * fiocchi…), foto su cialda e candelina.
+ * (rounded box). La panna NON è di serie: arriva solo se scelta — con le
+ * coperture (a ruche col sac-à-poche o lisce e spatolate; quelle col
+ * sac-à-poche portano sul bordo di sopra UNA fila di ciuffi grossi il doppio)
+ * o con la decorazione di panna (fila fitta di ciuffi normali). Le altre
+ * coperture restano sulla calotta. Farcitura come anelli sottili tra gli
+ * strati. Decorazioni 3D (macarons, spumini, fiori, fiocchi…), foto su cialda
+ * e candelina; quando c'è l'anello di panna ci si appoggiano sopra.
  *
  * Le decorazioni possono essere PIÙ D'UNA: arrivano come lista di id
  * (`decorations`) più la mappa dei colori (`decorationColors`). I posti sul
@@ -101,6 +103,68 @@ function colorFromChoice(choice) {
 /** True se il colore scelto è "arcobaleno". */
 function isRainbowChoice(choice) {
   return String(choice || '').trim().toLowerCase().startsWith('arcobaleno');
+}
+
+/**
+ * Toni della PANNA COLORATA. Sono volutamente PASTELLO: è panna montata con
+ * dentro il colorante, non una caramella. I titolari scrivono i colori al
+ * femminile ("Rossa", "Azzurra"), quindi teniamo entrambe le forme.
+ */
+const CREAM_COLORS = {
+  rosa: '#f8c4d6',
+  // "Rossa" deve restare distinguibile da "Rosa": i titolari le offrono come
+  // due scelte diverse, quindi qui il rosso è pieno (lampone) e non un rosa
+  // appena più carico — con le luci della scena schiarisce già parecchio.
+  rosso: '#d8434f',
+  rossa: '#d8434f',
+  azzurro: '#bde2f6',
+  azzurra: '#bde2f6',
+  blu: '#95a7dd',
+  verde: '#b7ddab',
+  nero: '#565062',
+  nera: '#565062',
+  giallo: '#f8e296',
+  gialla: '#f8e296',
+  bianco: '#fff8e6',
+  bianca: '#fff8e6',
+};
+
+/** Panna ARCOBALENO: settori pastello che girano intorno alla torta. */
+const CREAM_RAINBOW = ['#f79ab6', '#f6bc7d', '#f5e089', '#a4d69b', '#95cfef', '#b8a3e6'];
+
+/** Colore della PANNA dal nome scelto dal cliente; null se non riconosciuto. */
+function creamColorFromChoice(choice) {
+  const key = String(choice || '').trim().toLowerCase();
+  if (!key) return null;
+  if (key.startsWith('#')) return key;
+  return CREAM_COLORS[key] || null;
+}
+
+/**
+ * Dipinge una geometria a SETTORI arcobaleno: il colore dipende dall'angolo
+ * intorno all'asse verticale e sfuma da un settore all'altro. Va bene per
+ * qualsiasi forma (disco, cuore, box) perché guarda solo X e Z.
+ */
+function paintRainbow(geom, palette = CREAM_RAINBOW) {
+  const pos = geom.attributes.position;
+  const cols = new Float32Array(pos.count * 3);
+  const a = new THREE.Color();
+  const b = new THREE.Color();
+  const n = palette.length;
+  for (let i = 0; i < pos.count; i++) {
+    const ang = Math.atan2(pos.getZ(i), pos.getX(i)); // -PI..PI
+    const t = ((ang / (Math.PI * 2) + 1) % 1) * n; // 0..n
+    const k = Math.floor(t);
+    a.set(palette[k % n]);
+    b.set(palette[(k + 1) % n]);
+    // sfumatura corta: i settori restano leggibili, il passaggio è morbido
+    const w = Math.min(1, Math.max(0, (t - k - 0.7) / 0.3));
+    cols[i * 3] = a.r + (b.r - a.r) * w;
+    cols[i * 3 + 1] = a.g + (b.g - a.g) * w;
+    cols[i * 3 + 2] = a.b + (b.b - a.b) * w;
+  }
+  geom.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  return geom;
 }
 
 /**
@@ -1455,6 +1519,18 @@ const CREAM_COVERINGS = new Set([
 /** Copertura che avvolge tutto il fianco della torta. */
 const CREAM_WRAP_FULL = new Set(['panna', 'panna-spatolata']);
 
+/**
+ * Coperture che portano l'ANELLO di ciuffi sul bordo di sopra: quelle fatte
+ * col sac-à-poche. La spatolata no (è liscia per scelta), la meringa nemmeno.
+ */
+const CREAM_RING_COVERINGS = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra']);
+
+/**
+ * Decorazioni di panna montata: mettono la fila di ciuffi sul bordo, e portano
+ * con sé la panna spatolata intorno se la copertura non è già di panna.
+ */
+const CREAM_DECORATIONS = new Set(['panna-deco', 'panna-colorata']);
+
 /** Decorazione "drip cake": le colature che scendono dal bordo. */
 const DRIP_ID = 'drip';
 
@@ -1469,14 +1545,15 @@ const DRIP_ID = 'drip';
 const RUCHE_LARGHEZZA = 0.15;
 
 /**
- * Le due file standard di ciuffi: una esterna e una appena più interna. La
- * granella e le decorazioni solide si appoggiano sopra entrambe.
+ * L'anello di ciuffi sul bordo di sopra. Non c'è di serie: arriva SOLO con la
+ * panna — con le coperture fatte col sac-à-poche (una fila sola di ciuffi
+ * GROSSI, larghi il doppio: "non 2 righe ma una dello spessore di 2") o con la
+ * decorazione di panna (la fila fitta di ciuffi normali).
+ * Granella e decorazioni solide scelte insieme si appoggiano sopra l'anello.
  */
 const ANELLO_CIUFFI = 0.86;
-const DISTANZA_FILE_PANNA = 0.09;
-const ANELLO_CIUFFI_ESTERNO = ANELLO_CIUFFI + DISTANZA_FILE_PANNA;
-const ANELLO_CIUFFI_INTERNO = ANELLO_CIUFFI - DISTANZA_FILE_PANNA;
 const CIUFFO_LARGO = 0.175;
+const CIUFFO_DOPPIO = CIUFFO_LARGO * 2;
 
 /**
  * RUCHE su tutto il fianco: cordoni verticali attaccati uno all'altro, dal
@@ -1790,21 +1867,44 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   }, [decoKey]);
   // stringa dei colori scelti: serve solo come dipendenza stabile per i useMemo
   const colorKey = decoIds.map((id) => decoColors[id] || '').join('|');
+  const creamIds = decoIds.filter((id) => CREAM_DECORATIONS.has(id));
   // "Drip cake": le colature lungo il bordo. Prima venivano da sole con ogni
   // copertura lucida; è uno stile preciso, quindi ora si sceglie.
   const hasDrip = decoIds.includes(DRIP_ID);
 
   // ---- PANNA: quanto veste la torta e di che colore è ----
+  // La panna NON è di serie: c'è solo se la si sceglie, come copertura o come
+  // decorazione. (Per un giorno ogni torta usciva con due file di ciuffi
+  // standard: no — chi vuole la torta pulita la deve poter avere pulita.)
   const coverIsCream = !!useCover && CREAM_COVERINGS.has(covering?.id);
-  const wrapFull = coverIsCream && CREAM_WRAP_FULL.has(covering.id);
-  // "Sotto e sopra" è composta soltanto dalle due ghirlande a ciuffi: serve
-  // qui per sapere quanto sporge il bordo, ma non genera fasce lisce sul fianco.
+  // La decorazione di panna porta con sé la panna spatolata intorno alla torta
+  // (è proprio quello che dicono le loro descrizioni), ma solo se la copertura
+  // scelta non è già di panna: in quel caso comanda la copertura.
+  const creamDecoWrap = creamIds.length > 0 && !coverIsCream;
+  const wrapFull = (coverIsCream && CREAM_WRAP_FULL.has(covering.id)) || creamDecoWrap;
+  // "Sotto e sopra" è composta soltanto dalle ghirlande a ciuffi: serve qui per
+  // sapere quanto sporge il bordo, ma non genera fasce lisce sul fianco.
   const pannaSottoSopra = coverIsCream && covering?.id === 'panna-sotto-sopra';
-  // Le due file decorative sono sempre di panna bianca. Se la COPERTURA scelta
-  // è di panna, il suo guscio mantiene invece il colore previsto dal listino.
-  const creamColor = coverIsCream ? coverColor : '#fff8e6';
-  const dollopColor = () => shade(creamColor, 0.05);
-  const capColor = coverColor;
+  // panna aggiunta dalla decorazione su una torta senza copertura: ci vuole
+  // anche la superficie superiore, altrimenti resterebbe il gusto scoperto
+  const extraCreamCap = creamDecoWrap && !useCover;
+
+  // Panna montata colorata: il colore scelto tinge TUTTA la panna — copertura
+  // sopra, fianchi e ciuffi. Toni pastello, da panna vera. Se la prop non arriva
+  // o il colore non è riconosciuto, resta la panna bianca.
+  const creamChoice = decoIds.includes('panna-colorata') ? decoColors['panna-colorata'] || '' : '';
+  const creamRainbow = isRainbowChoice(creamChoice);
+  const creamHex = creamColorFromChoice(creamChoice);
+  const creamColor = creamHex || (coverIsCream ? coverColor : '#fff8e6');
+  const dollopColor = (i) =>
+    creamRainbow ? CREAM_RAINBOW[i % CREAM_RAINBOW.length] : shade(creamColor, 0.05);
+  // la calotta è di panna solo se la copertura è di panna; altrimenti resta
+  // la copertura scelta (cioccolato, pistacchio…) con la panna solo intorno
+  const capColor = coverIsCream ? creamColor : coverColor;
+  const capRainbow = creamRainbow && coverIsCream;
+  // `vertexColors` cambia la compilazione dello shader: senza una key nuova il
+  // materiale resterebbe quello di prima e l'arcobaleno non si vedrebbe.
+  const creamMatKey = creamRainbow ? 'panna-arcobaleno' : 'panna-tinta-unita';
 
   // Topping "a chicchi": se la decorazione prevede la scelta del colore e il
   // cliente l'ha fatta, i chicchi prendono quel colore (arcobaleno → alternati).
@@ -1847,7 +1947,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const stackTop = bodyTop + bandH * ((OV - 1) / 2);
   const capY = stackTop - capH * 0.35;
   const capBottom = capY - capH * 0.55;
-  const hasTopCap = !!useCover;
+  const hasTopCap = !!useCover || extraCreamCap;
   // dove poggiano granella/decorazioni/foto/scritta: sopra il bombamento del disco superiore
   const surfaceY = (hasTopCap ? capY + capH * 0.8 : stackTop) + bandH * 0.06;
   // guscio di panna intorno alla torta: un filo più largo dei gusti, così li copre
@@ -1864,18 +1964,22 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const geos = useMemo(() => {
     const bands = [];
     for (let i = 0; i < layers; i++) bands.push(makeLayerGeo(shape, R, bandH * OV, i * 1.7 + 1));
+    // panna arcobaleno → la stessa panna dipinta a settori di colore
+    const rainbow = (g) => (g && creamRainbow ? paintRainbow(g) : g);
     const capGeo = makeLayerGeo(shape, capR, capH * 1.6, 5.5);
     return {
       base: makeLayerGeo(shape, R * 0.985, baseH * 1.3, 0.3),
       bands,
-      cap: useCover ? capGeo : null,
+      cap: useCover ? (coverIsCream ? rainbow(capGeo) : capGeo) : null,
       fill: fillingColor ? makeLayerGeo(shape, R * 1.015, 0.06, 8.2) : null,
       // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
-      shell: wrapFull ? makeLayerGeo(shape, wrapR, bodyH, 3.3) : null,
+      shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
+      // calotta di panna aggiunta dalla decorazione su una torta senza copertura
+      creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, wrapR * 0.998, capH * 1.6, 5.5)) : null,
     };
   }, [
-    shape, R, bandH, baseH, capH, layers, useCover, fillingColor,
-    wrapFull, wrapR, capR, bodyH,
+    shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
+    wrapFull, extraCreamCap, wrapR, capR, bodyH, creamRainbow,
   ]);
 
   // ---- Piatto (vassoio) ORO, con forma dedicata ----
@@ -1948,6 +2052,19 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const pannaACiuffi = coverIsCream && covering?.id === 'panna';
   const fiancoR =
     wrapFull || pannaSottoSopra ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
+
+  // ---- L'ANELLO di ciuffi sul bordo di sopra: c'è solo se c'è la panna ----
+  // Con le coperture fatte col sac-à-poche è UNA fila di ciuffi grossi il
+  // doppio (Lucia: "non 2 righe di panna ma una dello spessore di 2"); con la
+  // decorazione di panna è la fila fitta di ciuffi normali. Se ci sono tutti e
+  // due, comanda la copertura e la decorazione non aggiunge una seconda fila.
+  const coverRing = coverIsCream && CREAM_RING_COVERINGS.has(covering.id);
+  const decoRing = creamIds.length > 0 && !coverRing;
+  const hasRing = coverRing || decoRing;
+  // dove sta l'anello (in frazione di R) e quanto è largo il suo ciuffo
+  const ringInset = coverRing ? (wrapR * 0.93) / R : ANELLO_CIUFFI;
+  const ringS = coverRing ? CIUFFO_DOPPIO : CIUFFO_LARGO;
+
   // I ciuffi di panna hanno la loro ghirlanda dedicata; qui passano soltanto le
   // decorazioni solide. In questo modo panna + pezzi non genera una seconda
   // fila, ma un unico bordo con i pezzi posati sui ciuffi.
@@ -1955,30 +2072,34 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     () => decoIds.filter((id) => PIECE_DECORATIONS.has(id)),
     [decoIds]
   );
+  const pezziSopra = ids3D.filter((id) => !EDGE_DECORATIONS.has(id));
 
   // Scritta / foto al centro → il topping si sagoma con un buco al centro
   const hasMessage = !!(message && message.trim());
+  const hasGranella = toppings.length > 0;
   // Anche la granella sta sul BORDO, come tutto il resto: è una fascia lungo il
   // contorno, non una spolverata su tutta la torta. Se sul bordo ci sono già i
   // pezzi (macarons, frutta…) la fascia si sposta appena più dentro, così i due
   // anelli convivono senza pestarsi invece di sovrapporsi.
   //
-  // Coi CIUFFI DI PANNA invece no: la granella non fa una seconda fila più
+  // Con l'ANELLO di panna invece no: la granella non fa una seconda fila più
   // dentro, va SOPRA i ciuffi — è quello che si fa davvero, si spolvera sulla
-  // panna appena fatta. Quindi la fascia sta esattamente sull'anello dei ciuffi
-  // e i chicchi si alzano fino alla loro cima.
-  const granellaCoverage = ANELLO_CIUFFI_ESTERNO + CIUFFO_LARGO / 2 / R;
-  const granellaBanda =
-    ANELLO_CIUFFI_ESTERNO - ANELLO_CIUFFI_INTERNO + CIUFFO_LARGO / R;
-  const granellaSuiCiuffi = CIUFFO_LARGO * 0.9;
-  // Riquadro scritta: ora TUTTE le decorazioni stanno sul contorno, quindi il
-  // centro resta libero allo stesso modo — un solo livello, 'panna'. (Prima la
-  // granella copriva il top e comprimeva la scritta: non serve più.)
-  const borderLevel = 'panna';
+  // panna appena fatta. Quindi la fascia sta esattamente sull'anello e i
+  // chicchi si alzano fino alla sua cima.
+  const granellaCoverage = hasRing
+    ? ringInset + ringS / 2 / R
+    : (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * (pezziSopra.length ? 0.82 : 1);
+  const granellaBanda = hasRing ? ringS / R : pezziSopra.length ? 0.22 : 0.32;
+  const granellaSuiCiuffi = hasRing ? ringS * 0.9 : 0;
+  // Riquadro scritta: TUTTE le decorazioni stanno sul contorno, quindi quando
+  // c'è qualcosa sul bordo il centro si restringe allo stesso modo.
+  const borderLevel = hasGranella || hasRing || pezziSopra.length ? 'panna' : 'none';
   const msgBox = messageBox(shape, R, borderLevel);
   // colore del fondo sotto la scritta → scritta bianca (panna) su scuro, cioccolato su chiaro
   const topFlavor = flavors[layers - 1] || flavors[flavors.length - 1] || { color: '#fff4e0' };
-  const msgOnDark = isDark(useCover ? coverColor : topFlavor.color);
+  const msgOnDark = isDark(
+    coverIsCream || extraCreamCap ? creamColor : useCover ? coverColor : topFlavor.color
+  );
   const photoFoot = photoFootprint(shape, R, borderLevel);
   // buco ellittico nella granella che segue il contenuto centrale (foto o scritta)
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
@@ -2021,7 +2142,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
       {/* ---- PANNA INTORNO: guscio liscio che riveste i fianchi e copre i gusti ---- */}
       {geos.shell && (
         <LayerMesh geometry={geos.shell} y={stackBottom + bodyH / 2}>
-          <meshPhysicalMaterial {...softMat(creamColor)} />
+          <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
         </LayerMesh>
       )}
 
@@ -2030,7 +2151,9 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         <>
           <LayerMesh geometry={geos.cap} y={capY}>
             <meshPhysicalMaterial
+              key={`${glossyCover ? 'glossy' : 'soft'}-${capRainbow ? 'rb' : 'flat'}`}
               {...(glossyCover ? glossyMat(capColor) : softMat(capColor))}
+              vertexColors={capRainbow}
             />
           </LayerMesh>
           {/* Le colature NON sono più automatiche: prima ogni copertura lucida
@@ -2038,6 +2161,13 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
               vuole una copertura liscia se le ritrovava per forza. Ora sono una
               decorazione a sé — vedi più sotto. */}
         </>
+      )}
+
+      {/* ---- Calotta di panna portata dalla decorazione (torta senza copertura) ---- */}
+      {geos.creamCap && (
+        <LayerMesh geometry={geos.creamCap} y={capY}>
+          <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
+        </LayerMesh>
       )}
 
       {/* ---- Drip cake: colature dal bordo, ora che è una decorazione a sé ----
@@ -2081,33 +2211,31 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         />
       )}
 
-      {/* ---- Due file fitte di panna montata, presenti su ogni torta. ---- */}
-      <GhirlandaDiPanna
-        shape={shape}
-        R={R}
-        inset={ANELLO_CIUFFI_ESTERNO}
-        y={surfaceY - 0.03}
-        s={CIUFFO_LARGO}
-        colore={dollopColor}
-      />
-      <GhirlandaDiPanna
-        shape={shape}
-        R={R}
-        inset={ANELLO_CIUFFI_INTERNO}
-        y={surfaceY - 0.03}
-        s={CIUFFO_LARGO}
-        colore={dollopColor}
-      />
+      {/* ---- L'ANELLO sul bordo di sopra: solo se la panna è stata scelta.
+              Dalle coperture col sac-à-poche: UNA fila di ciuffi grossi il
+              doppio. Dalla decorazione di panna: la fila fitta normale. ---- */}
+      {hasRing && (
+        <GhirlandaDiPanna
+          shape={shape}
+          R={R}
+          inset={ringInset}
+          y={surfaceY - 0.03}
+          s={ringS}
+          colore={dollopColor}
+        />
+      )}
 
       {/* ---- Decorazioni 3D "a pezzi": macarons, spumini, fiori, fiocchi…
-              Se sono più d'una si dividono i posti sul contorno. ---- */}
+              Se sono più d'una si dividono i posti sul contorno. Quando c'è
+              l'anello di panna si appoggiano SOPRA i ciuffi (come la granella);
+              senza panna stanno sulla torta, come sempre. ---- */}
       {ids3D.length > 0 && (
         <Decorazioni3D
           ids={ids3D}
           shape={shape}
           R={R}
-          y={surfaceY + CIUFFO_LARGO * 0.62}
-          topInset={ANELLO_CIUFFI}
+          y={surfaceY + (hasRing ? ringS * 0.55 : 0)}
+          topInset={hasRing ? ringInset : 0.79}
           colors={decoColors}
           // per i fiocchi, che si legano sul fianco: raggio esterno VERO della
           // torta, altezza del nodo appena sotto il bordo superiore, e altezza
