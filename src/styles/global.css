@@ -288,7 +288,10 @@ p {
 
 .nav-links {
   display: flex;
-  gap: 2.2rem;
+  /* Il distacco si stringe con lo schermo: con "Ordina a domicilio" le voci
+     sono tante, e a distacco fisso andavano a capo dentro se stesse
+     ("La nostra / storia"). Ogni voce resta su UNA riga, sempre. */
+  gap: clamp(0.8rem, 2vw, 2rem);
   list-style: none;
 }
 
@@ -298,6 +301,7 @@ p {
   color: var(--ink);
   position: relative;
   padding: 4px 0;
+  white-space: nowrap;
   transition: color 0.3s ease;
 }
 
@@ -331,7 +335,9 @@ p {
   justify-content: center;
 }
 
-@media (max-width: 920px) {
+/* Sotto i 1120px le voci non ci stanno più su una riga nemmeno strette:
+   si passa al menu a panino un po' prima di prima (920px). */
+@media (max-width: 1120px) {
   .nav-links, .nav-cta .btn { display: none; }
   .nav-toggle { display: flex; }
 }
