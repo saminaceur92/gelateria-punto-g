@@ -66,6 +66,7 @@ export default function Services({ onOpenConfigurator }) {
             return (
               <motion.div
                 key={i}
+                className="service-cell"
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-50px' }}

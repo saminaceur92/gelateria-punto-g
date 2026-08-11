@@ -1,40 +1,28 @@
 import { useEffect } from 'react';
-import { ArrowLeft, Bike, MessageCircle, MapPin, Clock } from 'lucide-react';
+import { ArrowLeft, Bike, MessageCircle, MapPin, Clock, Gift } from 'lucide-react';
 
 /**
  * Pagina pubblica /consegna: come farsi portare il gelato a casa.
- * Ci si arriva dalla card "Consegna a domicilio" dei servizi in home.
+ * Ci si arriva da "Ordina a domicilio" nell'header e dalla card dei servizi.
  *
- * Tre strade, in ordine di praticità per la gelateria: le piattaforme
- * (Glovo e Deliveroo, con i loro fattorini) e WhatsApp per accordarsi
- * direttamente — stessi link e numeri usati nel resto del sito.
+ * Testo e ordine li hanno decisi i titolari: PRIMA WhatsApp — l'ordine diretto
+ * con loro, con l'elenco di cosa si può ordinare e la consegna "a sorpresa" —
+ * e POI, in alternativa, Deliveroo e Glovo. Link e numeri sono gli stessi
+ * usati nel resto del sito.
  */
 const GLOVO_URL = 'https://glovoapp.com/it/it/carpi/stores/gelateria-punto-gi-crp';
 const DELIVEROO_URL = 'https://deliveroo.it/it/menu/Carpi/carpi/gelateria-punto-gi';
 const WA_URL = 'https://api.whatsapp.com/send?phone=393203306009';
 
-const canali = [
-  {
-    nome: 'Glovo',
-    emoji: '🛵',
-    href: GLOVO_URL,
-    testo: 'Ordina dall’app o dal sito Glovo: vaschette, torte in vetrina e specialità, consegnate in giornata.',
-    bottone: 'Ordina su Glovo',
-  },
-  {
-    nome: 'Deliveroo',
-    emoji: '🛵',
-    href: DELIVEROO_URL,
-    testo: 'Il nostro menù è anche su Deliveroo, con le consegne coperte dai loro rider.',
-    bottone: 'Ordina su Deliveroo',
-  },
-  {
-    nome: 'WhatsApp',
-    emoji: '💬',
-    href: WA_URL,
-    testo: 'Per richieste particolari — una torta, un vassoio di pasticcini, un orario preciso — scrivici: ci accordiamo direttamente.',
-    bottone: 'Scrivici su WhatsApp',
-  },
+// L'elenco dei titolari, parola per parola.
+const PRODOTTI = [
+  { emoji: '🍨', nome: 'Gelato' },
+  { emoji: '🍦', nome: 'Maritozzi, coni, cialde, coppette' },
+  { emoji: '🧁', nome: 'Pasticcini' },
+  { emoji: '🎂', nome: 'Torte gelato' },
+  { emoji: '🍰', nome: 'Torte semifreddo' },
+  { emoji: '🍫', nome: 'Salame Dolce' },
+  { emoji: '🥤', nome: 'Bibite' },
 ];
 
 export default function Consegna() {
@@ -54,29 +42,45 @@ export default function Consegna() {
       </header>
 
       <main className="container" style={{ padding: '2.5rem var(--pad-x) 4rem' }}>
-        <span className="eyebrow"><Bike size={16} style={{ marginRight: 6 }} /> Consegna a domicilio</span>
+        <span className="eyebrow"><Bike size={16} style={{ marginRight: 6 }} /> Il gelato arriva da te</span>
         <h1 style={{ fontSize: 'clamp(2rem,5vw,3.2rem)', margin: '0.8rem 0 0.6rem' }}>
-          Il gelato arriva da te
+          Consegna a domicilio
         </h1>
-        <p className="lead" style={{ maxWidth: '56ch' }}>
-          Divano, festa in famiglia o cena con gli amici: il nostro gelato viaggia.
-          Ordina dalle piattaforme partner, oppure scrivici su WhatsApp e ci accordiamo direttamente.
-        </p>
 
-        <div className="consegna-canali">
-          {canali.map((c) => (
-            <article key={c.nome} className="consegna-canale">
-              <div className="consegna-canale-testa">
-                <span className="consegna-canale-emoji" aria-hidden="true">{c.emoji}</span>
-                <h2>{c.nome}</h2>
-              </div>
-              <p>{c.testo}</p>
-              <a className="btn btn-primary" href={c.href} target="_blank" rel="noopener noreferrer">
-                {c.nome === 'WhatsApp' && <MessageCircle size={18} />} {c.bottone}
-              </a>
-            </article>
-          ))}
-        </div>
+        {/* ── WhatsApp: l'ordine diretto con la gelateria ── */}
+        <section className="consegna-wa">
+          <h2>Ordina su WhatsApp direttamente con noi:</h2>
+          <ul className="consegna-prodotti">
+            {PRODOTTI.map((p) => (
+              <li key={p.nome}>
+                <span aria-hidden="true">{p.emoji}</span> {p.nome}
+              </li>
+            ))}
+          </ul>
+          <p className="consegna-sorpresa">
+            <Gift size={18} />
+            <span>
+              Qualsiasi prodotto può essere consegnato <strong>&ldquo;a sorpresa&rdquo;</strong> dove
+              vuoi tu, se ordini su WhatsApp con noi!
+            </span>
+          </p>
+          <a className="btn btn-primary" href={WA_URL} target="_blank" rel="noopener noreferrer">
+            <MessageCircle size={18} /> Ordina su WhatsApp
+          </a>
+        </section>
+
+        {/* ── Le piattaforme, in alternativa ── */}
+        <section className="consegna-alt">
+          <h2>In alternativa, ordina a domicilio con Deliveroo e Glovo!</h2>
+          <div className="consegna-alt-bottoni">
+            <a className="btn btn-ghost" href={DELIVEROO_URL} target="_blank" rel="noopener noreferrer">
+              🛵 Ordina su Deliveroo
+            </a>
+            <a className="btn btn-ghost" href={GLOVO_URL} target="_blank" rel="noopener noreferrer">
+              🛵 Ordina su Glovo
+            </a>
+          </div>
+        </section>
 
         <section className="consegna-note">
           <div className="consegna-nota">
@@ -90,7 +94,7 @@ export default function Consegna() {
             <Clock size={18} />
             <p>
               <strong>Aperti 7 giorni su 7</strong>, orario continuato. Zone e orari di consegna
-              dipendono dalla piattaforma scelta: li vedi al momento dell&rsquo;ordine.
+              delle piattaforme li vedi al momento dell&rsquo;ordine.
             </p>
           </div>
         </section>

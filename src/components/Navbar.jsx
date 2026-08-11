@@ -8,6 +8,7 @@ const links = [
   { href: '#menu', label: 'Gusti' },
   { href: '/allergeni', label: 'Allergeni' },
   { href: '#torte', label: 'Crea la torta' },
+  { href: '/consegna', label: 'Ordina a domicilio' },
   { href: '#gallery', label: 'Gallery' },
   { href: '#contatti', label: 'Contatti' },
 ];

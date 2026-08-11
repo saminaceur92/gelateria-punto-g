@@ -1383,10 +1383,12 @@ function Granella({
     const larghezza = Math.max(0.06, banda) * R; // spessore della fascia
     let maxExt = 0;
     for (const [px, pz] of contorno) maxExt = Math.max(maxExt, Math.hypot(px, pz));
-    const sample = () => {
-      // punto a caso lungo il contorno, interpolato fra due vertici vicini per
-      // non far vedere i 240 gradini
-      const t = Math.random() * contorno.length;
+    const sample = (i) => {
+      // Ogni chicco ha la SUA fettina di contorno (i/n + un po' di caso): con
+      // il caso puro venivano i grumi — archi fitti di granella e archi nudi —
+      // e la fascia sembrava buttata lì storta invece che spolverata in giro.
+      const quota = ((i + Math.random()) / nChicchi) % 1;
+      const t = quota * contorno.length;
       const i0 = Math.floor(t) % contorno.length;
       const i1 = (i0 + 1) % contorno.length;
       const f = t - Math.floor(t);
@@ -1401,20 +1403,20 @@ function Granella({
       const k = Math.max(0, (l - dentro) / l);
       // pizzico di disordine, altrimenti sembra tracciata col righello
       const j = () => (Math.random() - 0.5) * larghezza * 0.28;
-      return [x0 * k + j(), z0 * k + j()];
+      return [x0 * k + j(), z0 * k + j(), dentro];
     };
 
     const dummy = new THREE.Object3D();
     const cols = colors.map((c) => new THREE.Color(c));
     const tmp = new THREE.Color();
     for (let i = 0; i < nChicchi; i++) {
-      let [x, z] = sample();
+      let [x, z, dentro] = sample(i);
       let dist = Math.hypot(x, z);
       // buco centrale ellittico (per scritta/foto): granella solo nella corona esterna
       if (holeW > 0 && holeH > 0) {
         const inHole = () => (x * x) / (holeW * holeW) + (z * z) / (holeH * holeH) < 1;
         let tries = 0;
-        while (inHole() && tries < 30) { [x, z] = sample(); tries++; }
+        while (inHole() && tries < 30) { [x, z, dentro] = sample(i); tries++; }
         if (inHole()) {
           const e = Math.sqrt((x * x) / (holeW * holeW) + (z * z) / (holeH * holeH)) || 1e-3;
           const s = (1.05 + Math.random() * 0.12) / e;
@@ -1423,10 +1425,14 @@ function Granella({
         dist = Math.hypot(x, z);
       }
       const pile = (1 - Math.min(1, dist / (maxExt + 1e-3))) * 0.04;
-      // Spolverata sui ciuffi: i chicchi si distribuiscono sull'ultimo pezzo
-      // del ciuffo — qualcuno proprio in cima, qualcuno incastrato più giù fra
-      // un ciuffo e l'altro, come cade davvero.
-      const alto = sopraCiuffi ? sopraCiuffi * (0.55 + Math.random() * 0.45) : 0;
+      // Spolverata sui ciuffi: il chicco si alza quanto è alta la panna NEL
+      // PUNTO dove sta — il ciuffo è una gobba, pieno al centro della fila e
+      // basso ai lati. Prima ogni chicco saliva di una quota a caso, e quelli
+      // ai bordi della fascia restavano campati in aria.
+      const gobba = sopraCiuffi
+        ? Math.sin(Math.PI * Math.min(1, dentro / larghezza)) * (0.9 + Math.random() * 0.18)
+        : 0;
+      const alto = sopraCiuffi ? sopraCiuffi * gobba : 0;
       const yy = y + 0.008 + Math.random() * 0.035 + pile + alto;
       dummy.position.set(x, yy, z);
       dummy.rotation.set(Math.random() * 3.1, Math.random() * 3.1, Math.random() * 3.1);
@@ -1546,18 +1552,16 @@ const RUCHE_LARGHEZZA = 0.15;
 
 /**
  * L'anello di ciuffi sul bordo di sopra. Non c'è di serie: arriva SOLO con la
- * panna — con le coperture fatte col sac-à-poche (una fila sola di ciuffi
- * GROSSI, larghi il doppio: "non 2 righe ma una dello spessore di 2") o con la
- * decorazione di panna (la fila fitta di ciuffi normali).
- * Granella e decorazioni solide scelte insieme si appoggiano sopra l'anello.
+ * panna — dalle coperture fatte col sac-à-poche o dalla decorazione di panna,
+ * ed è SEMPRE LO STESSO: una fila sola, stessa grandezza e stessa posizione
+ * sul bordo, da qualsiasi delle due strade arrivi ("voglio sia uguale").
+ * Granella, decorazioni solide e fiocchi scelti insieme ci si appoggiano sopra.
+ *
+ * "Doppio" = ben più grosso del ciuffo base, non il doppio esatto: a 2× i
+ * ciuffi di sopra sembravano enormi accanto alla ghirlanda della base
+ * ("sproporzionate"); a 1.5×, con la base a 0.22, stanno in proporzione.
  */
-const ANELLO_CIUFFI = 0.86;
-const CIUFFO_LARGO = 0.175;
-// "Doppio" nel senso di ben più grosso del ciuffo normale, non del doppio
-// esatto: a 2× i ciuffi di sopra sembravano enormi accanto alla ghirlanda
-// della base ("sproporzionate", Lucia). 1.5× sopra e la base a 0.22 stanno
-// in proporzione.
-const CIUFFO_DOPPIO = CIUFFO_LARGO * 1.5;
+const CIUFFO_DOPPIO = 0.2625;
 const CIUFFO_BASE = 0.22;
 
 /**
@@ -2059,16 +2063,17 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     wrapFull || pannaSottoSopra ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
 
   // ---- L'ANELLO di ciuffi sul bordo di sopra: c'è solo se c'è la panna ----
-  // Con le coperture fatte col sac-à-poche è UNA fila di ciuffi grossi il
-  // doppio (Lucia: "non 2 righe di panna ma una dello spessore di 2"); con la
-  // decorazione di panna è la fila fitta di ciuffi normali. Se ci sono tutti e
-  // due, comanda la copertura e la decorazione non aggiunge una seconda fila.
+  // UNA fila sola, sempre la stessa — che arrivi dalla copertura fatta col
+  // sac-à-poche o dalla decorazione di panna: stessa grandezza, stessa
+  // posizione sul bordo (Lucia: "voglio sia uguale"). E se la copertura ha già
+  // il suo anello, la decorazione non aggiunge niente: al massimo il colore,
+  // con la panna colorata.
   const coverRing = coverIsCream && CREAM_RING_COVERINGS.has(covering.id);
   const decoRing = creamIds.length > 0 && !coverRing;
   const hasRing = coverRing || decoRing;
   // dove sta l'anello (in frazione di R) e quanto è largo il suo ciuffo
-  const ringInset = coverRing ? (wrapR * 0.93) / R : ANELLO_CIUFFI;
-  const ringS = coverRing ? CIUFFO_DOPPIO : CIUFFO_LARGO;
+  const ringInset = (wrapR * 0.93) / R;
+  const ringS = CIUFFO_DOPPIO;
 
   // I ciuffi di panna hanno la loro ghirlanda dedicata; qui passano soltanto le
   // decorazioni solide. In questo modo panna + pezzi non genera una seconda
@@ -2111,11 +2116,14 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
 
   // La torta deve stare TUTTA nell'inquadratura. La camera è fissa e tarata
-  // sulle torte normali: una "Alta" con più gusti sforava di sopra e usciva
-  // decapitata dall'immagine. Oltre una certa altezza l'intera scena si
-  // rimpicciolisce in proporzione — piatto compreso, come allontanare la
-  // macchina fotografica — così le proporzioni restano vere.
-  const fit = Math.min(1, 1.0 / (stackBottom + bodyH));
+  // sulle torte normali: una "Alta" sforava e usciva decapitata dall'immagine.
+  // Oltre un certo ingombro l'intera scena si rimpicciolisce in proporzione —
+  // piatto compreso, come allontanare la macchina fotografica — così le
+  // proporzioni restano vere.
+  // Nell'ingombro contano anche calotta e anello di ciuffi (+0.35 fisso): al
+  // primo giro guardavo solo gli strati, e una Alta a 2 gusti con la panna a
+  // ciuffi passava il controllo ma sforava comunque.
+  const fit = Math.min(1, 1.22 / (stackBottom + bodyH + 0.35));
 
   return (
     <group scale={fit}>
@@ -2249,12 +2257,14 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           y={surfaceY + (hasRing ? ringS * 0.55 : 0)}
           topInset={hasRing ? ringInset : 0.79}
           colors={decoColors}
-          // per i fiocchi, che si legano sul fianco: raggio esterno VERO della
-          // torta, altezza del nodo appena sotto il bordo superiore, e altezza
-          // del corpo per i nastri
-          edgeR={fiancoR}
-          edgeY={bodyTop - bandH * 0.38}
-          drop={bodyH}
+          // I FIOCCHI: senza panna si annodano sul fianco (raggio esterno vero
+          // della torta, nodo sotto il bordo, nastri lungo il corpo). Con
+          // l'anello di panna invece si APPOGGIANO SOPRA i ciuffi, col nodo
+          // sulla cresta e i nastri corti che ricadono sulla panna — annodati
+          // al fianco finivano sepolti in mezzo alle due ghirlande.
+          edgeR={hasRing ? R * ringInset + 0.04 : fiancoR}
+          edgeY={hasRing ? surfaceY + ringS * 0.55 : bodyTop - bandH * 0.38}
+          drop={hasRing ? ringS * 1.5 : bodyH}
         />
       )}
 
