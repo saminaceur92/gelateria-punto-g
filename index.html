@@ -5,6 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#2c7699" />
+
+    <!-- iubenda — Privacy Controls & Cookie Solution.
+         Va PRIMA di ogni altro script/risorsa di terze parti: è lo script che
+         fa il blocco preventivo (la mappa Google non parte finché l'utente non
+         acconsente). Progetto: www.gelateriapuntogi.it (piano Advanced). -->
+    <script type="text/javascript" src="https://embeds.iubenda.com/widgets/22586995-b0e8-4907-a473-1510fa97c231.js"></script>
+
     <meta name="description" content="Gelateria Punto Gi! a Carpi (MO) – Il gelato artigianale che ti emoziona. Cremoso, fresco ogni giorno, anche senza lattosio e Vegan. Torte, semifreddi e pasticceria a freddo." />
     <meta name="keywords" content="gelateria Carpi, gelato artigianale Carpi, Punto Gi, gelato senza lattosio, gelato vegan, torte gelato Carpi, semifreddo Modena" />
     <!-- Dominio del sito. Quando si passa al dominio definitivo (es. gelateriapuntogi.it)
@@ -36,6 +43,8 @@
       "@id": "https://www.gelateriapuntogi.it/#gelateria",
       "name": "Gelateria Punto Gi!",
       "legalName": "Gelateria Punto Gi S.r.l.",
+      "vatID": "IT03578310363",
+      "taxID": "03578310363",
       "description": "Gelateria artigianale a Carpi (MO). Gelato cremoso prodotto fresco ogni giorno, anche senza lattosio e vegan. Torte gelato su ordinazione, semifreddi, granite e pasticceria a freddo.",
       "url": "https://www.gelateriapuntogi.it/",
       "telephone": "+39 320 330 6009",
@@ -187,6 +196,14 @@
         </ul>
       </main>
     </div>
+    <script>
+      /* Chi ha JavaScript non deve MAI vedere il blocco qui sopra: e' li' solo
+         per i crawler che non eseguono JS. Questo script gira durante il parsing
+         della pagina, quindi prima che il browser disegni: nessun lampo di testo
+         prima che React monti. Chi non ha JS (i crawler) non lo esegue e legge
+         il contenuto normalmente. */
+      document.getElementById('root').textContent = '';
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
