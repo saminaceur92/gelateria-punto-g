@@ -1175,45 +1175,40 @@ function Granella({
   sizeMax = 0.046,
   holeW = 0,
   holeH = 0,
+  // Spessore della fascia lungo il bordo, in frazione del raggio.
+  banda = 0.3,
 }) {
   const ref = useRef();
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    // campionatore di punti che SEGUE la forma del top
-    let sample;
-    let maxExt;
-    if (shape === 'quadrata' || shape === 'rettangolare') {
-      const [w, d] = boxDims(shape, R);
-      const hw = (w / 2) * coverage;
-      const hd = (d / 2) * coverage;
-      maxExt = Math.max(hw, hd);
-      sample = () => [(Math.random() * 2 - 1) * hw, (Math.random() * 2 - 1) * hd];
-    } else if (shape === 'cuore') {
-      const poly = heartFootprint(R * coverage);
-      let mnx = Infinity, mxx = -Infinity, mnz = Infinity, mxz = -Infinity;
-      for (const [x, z] of poly) {
-        if (x < mnx) mnx = x; if (x > mxx) mxx = x;
-        if (z < mnz) mnz = z; if (z > mxz) mxz = z;
-      }
-      maxExt = Math.max(mxx - mnx, mxz - mnz) / 2;
-      sample = () => {
-        for (let k = 0; k < 40; k++) {
-          const x = mnx + Math.random() * (mxx - mnx);
-          const z = mnz + Math.random() * (mxz - mnz);
-          if (pointInPoly(x, z, poly)) return [x, z];
-        }
-        return [0, 0];
-      };
-    } else {
-      const rMax = R * coverage;
-      maxExt = rMax;
-      sample = () => {
-        const a = Math.random() * Math.PI * 2;
-        const rr = Math.sqrt(Math.random()) * rMax;
-        return [Math.cos(a) * rr, Math.sin(a) * rr];
-      };
-    }
+    // I chicchi vanno in una FASCIA lungo il bordo, non sparsi su tutto il piano:
+    // così granelle, zuccherini, smarties e perline stanno dove stanno già gli
+    // altri pezzi (macarons, frutta fresca…) e il centro resta libero.
+    // `perimeterPts` conosce la forma: sul quadrato percorre il rettangolo, sul
+    // cuore il cuore. Prendo il contorno esterno della fascia una volta sola e
+    // poi, per ogni chicco, scivolo verso l'interno di una quantità a caso.
+    const contorno = perimeterPts(shape, R, coverage, 240);
+    const larghezza = Math.max(0.06, banda) * R; // spessore della fascia
+    let maxExt = 0;
+    for (const [px, pz] of contorno) maxExt = Math.max(maxExt, Math.hypot(px, pz));
+    const sample = () => {
+      // punto a caso lungo il contorno, interpolato fra due vertici vicini per
+      // non far vedere i 240 gradini
+      const t = Math.random() * contorno.length;
+      const i0 = Math.floor(t) % contorno.length;
+      const i1 = (i0 + 1) % contorno.length;
+      const f = t - Math.floor(t);
+      const x0 = contorno[i0][0] + (contorno[i1][0] - contorno[i0][0]) * f;
+      const z0 = contorno[i0][1] + (contorno[i1][1] - contorno[i0][1]) * f;
+      // verso il centro: più chicchi vicino al bordo che verso l'interno
+      const l = Math.hypot(x0, z0) || 1e-3;
+      const dentro = Math.pow(Math.random(), 0.7) * larghezza;
+      const k = Math.max(0, (l - dentro) / l);
+      // pizzico di disordine, altrimenti sembra tracciata col righello
+      const j = () => (Math.random() - 0.5) * larghezza * 0.28;
+      return [x0 * k + j(), z0 * k + j()];
+    };
 
     const dummy = new THREE.Object3D();
     const cols = colors.map((c) => new THREE.Color(c));
@@ -1247,7 +1242,7 @@ function Granella({
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [shape, R, y, coverage, count, colors, shiny, round, flat, sizeMin, sizeMax, holeW, holeH]);
+  }, [shape, R, y, coverage, banda, count, colors, shiny, round, flat, sizeMin, sizeMax, holeW, holeH]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow receiveShadow>
       <icosahedronGeometry args={[1, round ? 1 : 0]} />
@@ -1773,17 +1768,18 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const hasMessage = !!(message && message.trim());
   const hasGranella = toppings.length > 0;
   const hasPieces = pieceIds.length > 0;
-  // La granella copre il top; se sul contorno ci sono anche pezzi o ciuffi si
-  // stringe verso il centro, così i pezzi restano sul bordo e la granella non
-  // ci finisce sotto: convivono senza pestarsi.
+  // Anche la granella sta sul BORDO, come tutto il resto: è una fascia lungo il
+  // contorno, non una spolverata su tutta la torta. Se sul bordo ci sono già i
+  // pezzi (macarons, frutta…) la fascia si sposta appena più dentro, così i due
+  // anelli convivono senza pestarsi invece di sovrapporsi.
   const contornoOccupato = showRosetteRing || pezziSopra.length > 0;
   const granellaCoverage =
-    (shape === 'tonda' ? 0.98 : shape === 'cuore' ? 0.92 : 0.9) * (contornoOccupato ? 0.74 : 1);
-  // Riquadro scritta: dipende da forma e dal bordo occupato — e tiene conto di
-  // TUTTE le decorazioni scelte. Ciuffi e decorazioni 3D stanno sul contorno →
-  // 'panna'; la granella copre il top → 'granella'; con una panna liscia il
-  // bordo è libero → 'none'.
-  const borderLevel = hasGranella ? 'granella' : showRosetteRing || hasPieces ? 'panna' : 'none';
+    (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * (contornoOccupato ? 0.82 : 1);
+  const granellaBanda = contornoOccupato ? 0.22 : 0.32;
+  // Riquadro scritta: ora TUTTE le decorazioni stanno sul contorno, quindi il
+  // centro resta libero allo stesso modo — un solo livello, 'panna'. (Prima la
+  // granella copriva il top e comprimeva la scritta: non serve più.)
+  const borderLevel = hasGranella || showRosetteRing || hasPieces ? 'panna' : 'none';
   const msgBox = messageBox(shape, R, borderLevel);
   // colore del fondo sotto la scritta → scritta bianca (panna) su scuro, cioccolato su chiaro
   const topFlavor = flavors[layers - 1] || flavors[flavors.length - 1] || { color: '#fff4e0' };
@@ -1905,7 +1901,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         />
       )}
 
-      {/* ---- Topping: granella croccante sopra, SEGUE la forma; buco per scritta/foto ---- */}
+      {/* ---- Topping: granella croccante in una fascia lungo il BORDO (segue la forma) ---- */}
       {toppings.map(({ id, ...granella }) => (
         <Granella
           key={`gr-${id}`}
@@ -1913,6 +1909,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           R={R}
           y={surfaceY}
           coverage={granellaCoverage}
+          banda={granellaBanda}
           holeW={holeW}
           holeH={holeH}
           {...granella}
