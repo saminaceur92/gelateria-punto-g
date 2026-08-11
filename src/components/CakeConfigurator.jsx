@@ -322,6 +322,9 @@ function makeInitialConfig(cake, initial = {}) {
     phone: '',
     email: '',
     notes: '',
+    // Codice sconto applicato: { codice, tipo, valore, descrizione }.
+    // È solo quello che si VEDE — l'importo addebitato lo ricalcola il server.
+    sconto: null,
   };
 
   // Precompilazione (es. torta dell'anno scorso): solo i campi previsti e solo
@@ -628,6 +631,19 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // di loro il totale resterebbe fermo ai prezzi della copia di sicurezza.
   }, [config, cakeTypes, cakeSizes, cakeBases, cakeCrumbles, cakeShapes, cakeFillings, cakeCoverings, cakeDecorations, cakeExtras]);
 
+  // Sconto del codice, ricalcolato sul totale corrente: se il cliente torna
+  // indietro e cambia la torta, la cifra resta coerente da sola.
+  // ⚠️ Questa è la cifra MOSTRATA. Quella addebitata la ricalcola il server
+  // (supabase/functions/_shared/price.ts), che riverifica il codice da capo:
+  // scrivere un codice a mano nel browser non fa pagare di meno.
+  const scontoEuro = useMemo(() => {
+    const s = config.sconto;
+    if (!s) return 0;
+    const v = s.tipo === 'percentuale' ? (total * Number(s.valore || 0)) / 100 : Number(s.valore || 0);
+    return Math.min(Math.max(Math.round(v * 100) / 100, 0), total);
+  }, [config.sconto, total]);
+  const totaleFinale = Math.round((total - scontoEuro) * 100) / 100;
+
   // Allergeni: unione di gusti + base (+ crumble) + farcitura + copertura +
   // TUTTE le decorazioni scelte + extra scelti (indicativi)
   const allergeni = useMemo(() => {
@@ -798,13 +814,29 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // la sua) e totale coerente: il resto della torta non cambia, quindi basta
     // sostituire nel totale la quota degli extra. Senza proposte è `total`.
     const extras = chosenExtras(cfg.extras, cakeExtras);
-    const totale = extraFinali
+    const lordo = extraFinali
       ? Math.round(
           (total
             - chosenExtras(config.extras, cakeExtras).reduce((s, e) => s + e.total, 0)
             + extras.reduce((s, e) => s + e.total, 0)) * 100
         ) / 100
       : total;
+    // Lo sconto si ricalcola sul totale definitivo (gli extra dell'ultima
+    // finestra possono averlo cambiato), sempre entro i limiti.
+    const scontoOrdine = config.sconto
+      ? Math.min(
+          Math.max(
+            Math.round(
+              (config.sconto.tipo === 'percentuale'
+                ? (lordo * Number(config.sconto.valore || 0)) / 100
+                : Number(config.sconto.valore || 0)) * 100
+            ) / 100,
+            0
+          ),
+          lordo
+        )
+      : 0;
+    const totale = Math.round((lordo - scontoOrdine) * 100) / 100;
     // Allergeni scelti dal cliente, in MAIUSCOLO (per riepilogo/Telegram/mail)
     const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
     const allergLine = allergNames.length ? allergNames.join(', ').toUpperCase() : '';
@@ -832,6 +864,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.photo ? `*Foto su cialda:* sì (verrà inviata a parte)` : '',
       config.candle ? `*Candelina:* sì` : '',
       config.occasion ? `*Occasione:* ${config.occasion}` : '',
+      scontoOrdine > 0 ? `*Sconto:* ${config.sconto?.codice} (−€${scontoOrdine.toFixed(2)})` : '',
       noteConsegna ? `*Attenzione:* ${noteConsegna}` : '',
       ``,
       config.delivery
@@ -877,6 +910,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const insertBase = {
       immagine: immagineUrl,
       stato: 'da_fare',
+      // Sconto: qui c'è quello CHIESTO dal cliente. Per gli ordini pagati online
+      // il webhook lo riscrive con quello davvero applicato dal server.
+      sconto_codice: config.sconto?.codice || null,
+      sconto_euro: scontoOrdine || null,
       cliente_nome: config.name,
       cliente_telefono: config.phone,
       cliente_email: config.email || null,
@@ -931,6 +968,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.photo ? `Foto su cialda: sì` : '',
       config.candle ? `Candelina: sì` : '',
       config.occasion ? `Occasione: ${config.occasion}` : '',
+      scontoOrdine > 0 ? `Sconto ${config.sconto?.codice}: -€${scontoOrdine.toFixed(2)}` : '',
       noteConsegna ? `Attenzione: ${noteConsegna}` : '',
       config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
       quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
@@ -979,7 +1017,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Il server ricalcola il prezzo da `config` (computeOrder): deve ricevere
       // gli extra definitivi, altrimenti Stripe farebbe pagare un altro totale.
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { config: cfg, insert: insertBase },
+        // Il codice sconto va mandato: il server lo riverifica da capo e
+        // ricalcola l'importo. Non mandiamo mai un totale, solo le scelte.
+        body: { config: { ...cfg, scontoCodice: config.sconto?.codice || null }, insert: insertBase },
       });
       if (error) throw error;
       if (data?.url) { window.location.href = data.url; return; }
@@ -1092,7 +1132,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               </div>
               <div className="price-row">
                 <div className="price">
-                  €{total.toFixed(0)}
+                  €{totaleFinale.toFixed(0)}
                   <small>totale</small>
                 </div>
                 {config.flavors.length > 0 && (
@@ -1147,7 +1187,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                   {steps[step] === 'decoration' && <StepDecoration config={config} set={set} />}
                   {steps[step] === 'message' && <StepMessage config={config} set={set} staff={staff} />}
                   {steps[step] === 'details' && <StepDetails config={config} set={set} staff={staff} orari={orari} earliestISO={earliestISO} earliestMin={earliestMin} />}
-                  {steps[step] === 'review' && <StepReview config={config} total={total} staff={staff} />}
+                  {steps[step] === 'review' && (
+                    <StepReview config={config} total={total} sconto={scontoEuro} set={set} staff={staff} />
+                  )}
                 </motion.div>
               </AnimatePresence>
             )}
@@ -1162,10 +1204,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
             <footer className="cfg-footer">
               {/* Solo su telefono: barretta che apre il riepilogo (su schermi
                   grandi il riepilogo sta già nella colonna di sinistra). */}
-              <RiepilogoBarra config={config} total={total} staff={staff} steps={steps} step={step} />
+              <RiepilogoBarra config={config} total={totaleFinale} staff={staff} steps={steps} step={step} />
               <div className="price-tag">
                 <span>Prezzo totale</span>
-                <strong>€{total.toFixed(2)}</strong>
+                <strong>€{totaleFinale.toFixed(2)}</strong>
               </div>
               {/* su mobile, al posto del totale, c'è Sorprendimi (sbloccato dopo il n° persone) */}
               <button
@@ -1191,7 +1233,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                       ? (staff ? 'Invio…' : 'Attendi…')
                       : staff
                         ? (<><Check size={16} /> Crea ordine</>)
-                        : (<><CreditCard size={16} /> Ordina e paga €{total.toFixed(2)}</>)}
+                        : (<><CreditCard size={16} /> Ordina e paga €{totaleFinale.toFixed(2)}</>)}
                   </button>
                 )}
               </div>
@@ -1206,7 +1248,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               set={set}
               staff={staff}
               listino={extraProponibili}
-              total={total}
+              total={totaleFinale}
               onOrdinaSenza={ordinaSenzaExtra}
               onOrdinaCon={ordinaConExtra}
               onChiudi={chiudiProposte}
@@ -2315,7 +2357,81 @@ function RiepilogoBarra({ config, total, staff, steps, step }) {
   );
 }
 
-function StepReview({ config, total, staff }) {
+/**
+ * Campo del codice sconto, in fondo al riepilogo.
+ * Il codice NON si verifica qui dentro con una lista scaricata dal browser
+ * (sarebbe come lasciare l'elenco degli sconti in vetrina): si chiede al
+ * database, che risponde solo su quel codice. E comunque l'importo vero lo
+ * ricalcola il server al momento del pagamento.
+ */
+function CampoSconto({ config, set, total }) {
+  const [codice, setCodice] = useState(config.sconto?.codice || '');
+  const [stato, setStato] = useState(null); // { ok, messaggio }
+  const [busy, setBusy] = useState(false);
+
+  async function applica() {
+    const c = codice.trim();
+    if (!c) return;
+    if (!supabase) {
+      setStato({ ok: false, messaggio: 'Non riesco a verificare il codice adesso.' });
+      return;
+    }
+    setBusy(true);
+    setStato(null);
+    const { data, error } = await supabase.rpc('verifica_sconto', { p_codice: c, p_totale: total });
+    setBusy(false);
+    if (error) {
+      setStato({ ok: false, messaggio: 'Non riesco a verificare il codice adesso. Riprova.' });
+      return;
+    }
+    if (!data?.valido) {
+      set({ sconto: null });
+      setStato({ ok: false, messaggio: data?.motivo || 'Codice non valido.' });
+      return;
+    }
+    set({ sconto: { codice: data.codice, tipo: data.tipo, valore: data.valore, descrizione: data.descrizione } });
+    setStato({ ok: true, messaggio: `Codice applicato: −€${Number(data.sconto).toFixed(2)}` });
+  }
+
+  function togli() {
+    set({ sconto: null });
+    setCodice('');
+    setStato(null);
+  }
+
+  return (
+    <div className="cfg-field sconto-box">
+      <label htmlFor="codice-sconto">Hai un codice sconto?</label>
+      <div className="sconto-riga">
+        <input
+          id="codice-sconto"
+          type="text"
+          value={codice}
+          onChange={(e) => setCodice(e.target.value.toUpperCase())}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applica())}
+          placeholder="Es. ESTATE10"
+          autoComplete="off"
+          spellCheck="false"
+          disabled={!!config.sconto || busy}
+        />
+        {config.sconto ? (
+          <button type="button" className="cfg-btn cfg-btn-back" onClick={togli}>Togli</button>
+        ) : (
+          <button type="button" className="cfg-btn cfg-btn-next" onClick={applica} disabled={busy || !codice.trim()}>
+            {busy ? 'Verifico…' : 'Applica'}
+          </button>
+        )}
+      </div>
+      {stato && (
+        <p className={stato.ok ? 'sconto-ok' : 'sconto-ko'}>
+          {stato.ok ? '✅ ' : '⚠️ '}{stato.messaggio}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StepReview({ config, total, sconto = 0, set, staff }) {
   const cake = useCakeData();
   const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeCrumbles = [], cakeFillings, cakeCoverings, cakeDecorations, cakeExtras = [], cakeAllergens } = cake;
   const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
@@ -2351,6 +2467,7 @@ function StepReview({ config, total, staff }) {
           {config.photo && (<><dt>Foto</dt><dd>su cialda alimentare</dd></>)}
           {config.candle && (<><dt>Candelina</dt><dd>sì</dd></>)}
           {config.occasion && (<><dt>Occasione</dt><dd>{config.occasion}</dd></>)}
+          {config.sconto && (<><dt>Codice sconto</dt><dd>{config.sconto.codice}</dd></>)}
           {(config.surprise || config.gift) && (
             <><dt>Attenzione</dt><dd>{[config.surprise && 'è una sorpresa', config.gift && 'è un regalo'].filter(Boolean).join(' · ')}</dd></>
           )}
@@ -2363,11 +2480,20 @@ function StepReview({ config, total, staff }) {
       </div>
       {!staff && (
         <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(124,183,215,0.2)' }}>
+          {sconto > 0 && (
+            <p style={{ margin: '0 0 0.3rem', fontSize: '0.9rem', color: 'var(--grey)' }}>
+              Prezzo pieno €{total.toFixed(2)} — codice <strong>{config.sconto?.codice}</strong>: −€{sconto.toFixed(2)}
+            </p>
+          )}
           <p style={{ margin: 0, fontSize: '1rem', color: 'var(--ink)' }}>
-            <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{total.toFixed(2)}</strong>
+            <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{(total - sconto).toFixed(2)}</strong>
           </p>
         </div>
       )}
+
+      {/* Il codice sconto si mette alla fine, quando il prezzo è già sotto agli
+          occhi: è lì che uno si ricorda di averne uno. */}
+      <CampoSconto config={config} set={set} total={total} />
     </>
   );
 }

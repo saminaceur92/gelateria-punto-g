@@ -182,10 +182,18 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                     />
                   ) : (
                     <input
-                      type={f.type === 'number' ? 'number' : 'text'}
+                      type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
                       value={row[f.key] ?? ''}
                       placeholder={f.placeholder || ''}
-                      onChange={(e) => edit(row.id, f.key, f.type === 'number' ? Number(e.target.value) : e.target.value)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        // Numeri e date possono restare VUOTI e in quel caso vanno
+                        // salvati come "niente", non come 0 o stringa vuota: una
+                        // scadenza vuota vuol dire "non scade", non "1 gennaio".
+                        if (f.type === 'number') return edit(row.id, f.key, v === '' ? null : Number(v));
+                        if (f.type === 'date') return edit(row.id, f.key, v === '' ? null : v);
+                        edit(row.id, f.key, v);
+                      }}
                     />
                   )}
                 </label>

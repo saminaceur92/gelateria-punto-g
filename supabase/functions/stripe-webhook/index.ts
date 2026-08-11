@@ -50,18 +50,45 @@ Deno.serve(async (req) => {
     let insert: Record<string, unknown> = {};
     try { insert = JSON.parse(payload); } catch { insert = {}; }
 
+    // Sconto: vale quello DECISO DAL SERVER quando ha preparato il pagamento,
+    // non quello che il browser aveva messo nella riga ordine.
+    const scontoCodice = md.sconto_codice || null;
+    const scontoEuro = md.sconto_euro ? Number(md.sconto_euro) : 0;
+
     // Salva l'ordine PAGATO come 'da_fare' → trigger DB notifica Telegram
     const row = {
       ...insert,
       stato: 'da_fare',
       totale: (session.amount_total ?? 0) / 100,
+      sconto_codice: scontoCodice,
+      sconto_euro: scontoEuro || null,
       stripe_session_id: session.id,
       stripe_payment_intent: (session.payment_intent as string) ?? null,
       pagato_il: new Date().toISOString(),
     };
 
+    // Stripe può rimandare lo stesso evento più di una volta: senza questo
+    // controllo nascerebbe un ordine doppio (e il codice sconto verrebbe
+    // scalato due volte).
+    const { data: gia } = await supabase
+      .from('ordini').select('id').eq('stripe_session_id', session.id).maybeSingle();
+    if (gia) {
+      console.log('Evento già registrato, salto:', session.id);
+      return new Response(JSON.stringify({ received: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const { error } = await supabase.from('ordini').insert(row);
     if (error) console.error('Insert ordine fallito:', error.message);
+
+    // Il codice sconto si consuma SOLO ora: qui sappiamo che il cliente ha
+    // pagato davvero. Se lo scalassimo all'apertura del pagamento, chi ci
+    // ripensa brucerebbe un utilizzo per niente.
+    if (!error && scontoCodice) {
+      const { error: e2 } = await supabase.rpc('consuma_sconto', { p_codice: scontoCodice });
+      if (e2) console.error('Conteggio del codice sconto fallito:', e2.message);
+    }
   }
 
   return new Response(JSON.stringify({ received: true }), {

@@ -321,6 +321,30 @@ export default function Dashboard() {
         custom: true,
       },
       {
+        key: 'codici_sconto',
+        label: '🏷️ Codici sconto',
+        props: {
+          table: 'codici_sconto',
+          title: 'Codici sconto',
+          subtitle: 'I codici che i clienti possono scrivere alla fine dell\'ordine online. "Percentuale" toglie una percentuale dal totale (valore 10 = −10%), "Fisso" toglie tanti euro (valore 5 = −5€). Lascia vuota la scadenza se non deve scadere e gli utilizzi massimi se può essere usato all\'infinito. Il codice si scrive da solo in MAIUSCOLO: il cliente può scriverlo come vuole.',
+          fields: [
+            { key: 'codice', label: 'Codice', type: 'text', placeholder: 'ESTATE10' },
+            { key: 'descrizione', label: 'A cosa serve', type: 'text', placeholder: 'promo estate sui social' },
+            { key: 'tipo', label: 'Tipo', type: 'select', options: [
+              { value: 'percentuale', label: 'Percentuale (−%)' },
+              { value: 'fisso', label: 'Importo fisso (−€)' },
+            ] },
+            { key: 'valore', label: 'Valore', type: 'number' },
+            { key: 'minimo', label: 'Spesa minima €', type: 'number' },
+            { key: 'scadenza', label: 'Scade il', type: 'date' },
+            { key: 'usi_max', label: 'Utilizzi massimi', type: 'number' },
+            { key: 'usi', label: 'Già usato (volte)', type: 'number' },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+          ],
+          newRow: () => ({ id: uuid(), codice: '', descrizione: '', tipo: 'percentuale', valore: 10, minimo: 0, scadenza: null, usi_max: null, usi: 0, attivo: true }),
+        },
+      },
+      {
         // Le due schede qui sotto stanno accanto a "PDF e QR allergeni" perché
         // è lì che si preme "Genera e pubblica": si scrive il testo e subito
         // dopo si rifà il quaderno, senza girare per il gestionale.

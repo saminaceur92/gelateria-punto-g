@@ -55,6 +55,9 @@ export interface CakeConfig {
   candle?: boolean;
   photo?: unknown; // url o flag: se presente, +5€
   delivery?: boolean; // consegna a domicilio +4€
+  // Codice sconto scritto dal cliente: qui è solo una richiesta, la validità la
+  // decide il database (funzione `verifica_sconto`), non il browser.
+  scontoCodice?: string | null;
   message?: string;
   messageFont?: string; // id della tabella `scritte` (nessun costo)
   extras?: Record<string, number>; // { idExtra: quantità }
@@ -224,6 +227,30 @@ export async function computeOrder(supabase: SupabaseClient, config: CakeConfig)
   if (config.photo) euros += 5;
   if (config.delivery) euros += 4; // consegna a domicilio (DELIVERY_FEE)
 
+  // ── Codice sconto ────────────────────────────────────────────────────
+  // Qui è l'unico posto che conta: l'importo addebitato nasce da questa riga.
+  // Il codice che arriva dal browser NON è preso per buono — si richiede al
+  // database se vale, adesso, su QUESTO totale (scadenza, utilizzi, minimo di
+  // spesa). Chi scrivesse un codice a mano nella console non pagherebbe meno.
+  const lordo = Math.round(euros * 100) / 100;
+  let sconto = 0;
+  let scontoCodice: string | null = null;
+  if (config.scontoCodice) {
+    const { data } = await supabase.rpc('verifica_sconto', {
+      p_codice: config.scontoCodice,
+      p_totale: lordo,
+    });
+    if (data && data.valido) {
+      sconto = Number(data.sconto) || 0;
+      scontoCodice = data.codice as string;
+    }
+  }
+  // Mai sotto il minimo addebitabile da Stripe (~0,50 €): uno sconto che porta
+  // il totale a zero farebbe fallire il pagamento con un errore incomprensibile.
+  const MINIMO = 0.5;
+  if (lordo - sconto < MINIMO) sconto = Math.max(0, Math.round((lordo - MINIMO) * 100) / 100);
+  euros = lordo - sconto;
+
   const amountCents = Math.round(euros * 100);
 
   // Riepilogo leggibile per Stripe e per la notifica Telegram
@@ -242,5 +269,5 @@ export async function computeOrder(supabase: SupabaseClient, config: CakeConfig)
     extra.labels.length && `extra: ${extra.labels.join(', ')}`,
   ].filter(Boolean).join(' · ');
 
-  return { amountCents, summary };
+  return { amountCents, summary, sconto, scontoCodice, lordo };
 }

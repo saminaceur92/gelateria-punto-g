@@ -1860,3 +1860,21 @@
 
 /* La barretta e il pannello a scomparsa esistono solo su telefono. */
 .riepilogo-barra, .riepilogo-sheet { display: none; }
+
+/* ── Codice sconto in fondo al riepilogo ──────────────────────────── */
+.sconto-box { margin-top: 1.4rem; }
+.sconto-riga { display: flex; gap: 0.5rem; align-items: stretch; }
+.sconto-riga input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.sconto-riga .cfg-btn { flex: none; }
+.sconto-ok, .sconto-ko {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.sconto-ok { color: #357168; font-weight: 600; }
+.sconto-ko { color: var(--grey); }
