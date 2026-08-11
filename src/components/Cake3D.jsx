@@ -1261,7 +1261,18 @@ function DecorazioneSopra({ id, spots, y, color, dollopColor }) {
  * sopra l'altra. I nastri (fiocchi, e quelli del mix) fanno storia a sé: si
  * annodano sul FIANCO, su un anello loro, e non tolgono spazio alla superficie.
  */
-function Decorazioni3D({ ids, shape, R, y, colors, dollopColor, edgeR, edgeY, drop }) {
+function Decorazioni3D({
+  ids,
+  shape,
+  R,
+  y,
+  colors,
+  dollopColor,
+  topInset = 0.79,
+  edgeR,
+  edgeY,
+  drop,
+}) {
   const shapeF = shape === 'rettangolare' ? 1.15 : shape === 'quadrata' ? 1.05 : 1;
 
   // chi occupa la superficie e chi il fianco (il mix sta di qua e di là)
@@ -1284,7 +1295,10 @@ function Decorazioni3D({ ids, shape, R, y, colors, dollopColor, edgeR, edgeY, dr
     return Math.max(k * 3, Math.ceil(grezzo / k) * k);
   }, [sopra, shapeF]);
 
-  const spotsSopra = useMemo(() => decoSpots(shape, R, nSopra, 0.79), [shape, R, nSopra]);
+  const spotsSopra = useMemo(
+    () => decoSpots(shape, R, nSopra, topInset),
+    [shape, R, nSopra, topInset]
+  );
   const gruppiSopra = useMemo(
     () => sopra.map((_, k) => spotsSopra.filter((s) => s.i % sopra.length === k)),
     [sopra, spotsSopra]
@@ -2025,11 +2039,13 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
 
   // Anello di ciuffi: SOLO le decorazioni di panna montata. Una copertura di
   // panna è liscia e spatolata, i ciuffi non c'entrano.
-  // I ciuffi tengono l'anello tutto loro finché la panna è l'unica decorazione
-  // sulla superficie; se ci sono anche pezzi si mettono in fila con loro sul
-  // contorno (vedi Decorazioni3D), altrimenti si accavallerebbero.
+  // I ciuffi tengono SEMPRE l'anello tutto loro. Se ci sono anche macarons,
+  // marshmallow, frutta o fiori, quei pezzi vengono appoggiati sopra la panna:
+  // la ghirlanda quindi resta fitta e continua, senza trasformarsi in ciuffi
+  // radi alternati alle altre decorazioni.
   const pezziSopra = pieceIds.filter((id) => !EDGE_DECORATIONS.has(id));
-  const showRosetteRing = creamIds.length > 0 && pezziSopra.length === 0;
+  const showRosetteRing = creamIds.length > 0;
+  const pezziSopraPanna = showRosetteRing && pezziSopra.length > 0;
 
   // Dove finisce DAVVERO il fianco della torta. I fiocchi si annodano intorno,
   // e finora si legavano al raggio del guscio di panna: con le ruche, che
@@ -2039,14 +2055,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const pannaACiuffi = coverIsCream && covering?.id === 'panna';
   const fiancoR =
     wrapFull || wrapBands ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
-  // Decorazioni passate alla resa 3D "a pezzi": quelle scelte e — se non hanno
-  // l'anello tutto loro — anche i ciuffi di panna.
+  // I ciuffi di panna hanno la loro ghirlanda dedicata; qui passano soltanto le
+  // decorazioni solide. In questo modo panna + pezzi non genera una seconda
+  // fila, ma un unico bordo con i pezzi posati sui ciuffi.
   const ids3D = useMemo(
-    () =>
-      decoIds.filter(
-        (id) => PIECE_DECORATIONS.has(id) || (CREAM_DECORATIONS.has(id) && !showRosetteRing)
-      ),
-    [decoIds, showRosetteRing]
+    () => decoIds.filter((id) => PIECE_DECORATIONS.has(id)),
+    [decoIds]
   );
 
   // Scritta / foto al centro → il topping si sagoma con un buco al centro
@@ -2241,7 +2255,8 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           ids={ids3D}
           shape={shape}
           R={R}
-          y={surfaceY}
+          y={surfaceY + (pezziSopraPanna ? CIUFFO_LARGO * 0.62 : 0)}
+          topInset={pezziSopraPanna ? ANELLO_CIUFFI : 0.79}
           colors={decoColors}
           dollopColor={dollopColor}
           // per i fiocchi, che si legano sul fianco: raggio esterno VERO della
