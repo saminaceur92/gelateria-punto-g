@@ -195,7 +195,8 @@ declare v json; v_nome text; begin
     return json_build_object('ok', false, 'motivo', 'Serve un codice da amministratore.');
   end if;
   if p_id = (v ->> 'id')::uuid then
-    return json_build_object('ok', false, 'motivo', 'Non puoi togliere il tuo stesso codice.');
+    return json_build_object('ok', false, 'motivo',
+      'Questo è il codice con cui sei entrato adesso: toglierlo ti chiuderebbe fuori. Premi "Blocca la scheda", rientra con un altro codice da amministratore e da lì puoi eliminarlo.');
   end if;
   select nome into v_nome from public.staff_codici where id = p_id;
   -- Ultimo amministratore: se lo si toglie, nessuno può più gestire i codici.
