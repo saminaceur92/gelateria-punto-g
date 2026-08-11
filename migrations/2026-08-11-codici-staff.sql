@@ -223,10 +223,16 @@ alter table public.ordini add column if not exists pronto_il timestamptz;
 -- ─────────────────────────────────────────────────────────────
 -- 7. PRIMO AMMINISTRATORE — DA PERSONALIZZARE PRIMA DI ESEGUIRE
 -- ─────────────────────────────────────────────────────────────
--- Cambia nome e codice qui sotto: è il primo accesso, quello che poi crea
--- tutti gli altri dalla dashboard. Sceglietelo voi e NON lasciate 1234.
+-- ⚠️ QUESTO FILE STA IN UN REPOSITORY PUBBLICO SU GITHUB.
+-- Il codice che scrivi qui sotto lo può leggere chiunque, per sempre (resta
+-- anche nella storia delle modifiche). Ed è il codice più potente di tutti:
+-- è quello che crea e toglie i codici di tutti gli altri.
+--
+-- Quindi: sostituisci CAMBIAMI con un codice vostro PRIMA di eseguire, e
+-- appena sei entrato creane uno nuovo dalla scheda "Codici e attività" e
+-- cancella questo. Non riscriverlo mai dentro un file.
 insert into public.staff_codici (nome, ruolo, pin_hash)
-select 'Titolare', 'admin', extensions.crypt('4071', extensions.gen_salt('bf'))
+select 'Titolare', 'admin', extensions.crypt('CAMBIAMI', extensions.gen_salt('bf'))
  where not exists (select 1 from public.staff_codici where ruolo = 'admin');
 
 -- ─────────────────────────────────────────────────────────────
