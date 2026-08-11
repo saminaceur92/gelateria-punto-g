@@ -21,12 +21,12 @@ export default function Gallery() {
   const [inVista, setInVista] = useState(true);
   const nastro = useRef(null);
 
-  // Foto caricate dalla dashboard: si aggiungono a quelle incluse nel sito.
-  // Se Supabase non risponde (o la tabella non c'è ancora) restano le statiche.
+  // La tabella gestita dalla dashboard è l'elenco definitivo, anche se viene
+  // svuotata. Se non esiste ancora, fetchGalleryCompleta usa le statiche.
   useEffect(() => {
     let vivo = true;
     fetchGalleryCompleta().then((lista) => {
-      if (vivo && lista?.length) setImgs(lista);
+      if (vivo) setImgs(lista || []);
     });
     return () => { vivo = false; };
   }, []);

@@ -36,12 +36,13 @@ function MultiCheckField({ value, options, onChange }) {
   );
 }
 
-export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false }) {
+export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [] }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const excludeKey = excludeIds.join('|');
   const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.giorno || r.etichetta || 'voce';
 
   // La riga si legge male se i campi sono tutti in fila: li dividiamo in tre
@@ -58,13 +59,16 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       setError(/does not exist|schema cache/i.test(error.message)
         ? `Questa scheda non è ancora attiva: la tabella "${table}" va creata su Supabase eseguendo la migrazione SQL della cartella migrations/. (${error.message})`
         : error.message);
-    } else setRows(data || []);
+    } else {
+      const nascosti = new Set(excludeKey.split('|').filter(Boolean));
+      setRows((data || []).filter((r) => !nascosti.has(String(r.id))));
+    }
     setLoaded(true);
   }
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table]);
+  }, [table, excludeKey]);
 
   const edit = (id, key, value) => {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [key]: value } : r)));

@@ -298,6 +298,14 @@
   overflow: hidden;
   background: #fff;
   border: 1px solid rgba(50, 40, 31, 0.12);
+  transition: opacity 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.gal-item[draggable="true"] { cursor: grab; }
+.gal-item[draggable="true"]:active { cursor: grabbing; }
+.gal-item-drag {
+  opacity: 0.42;
+  transform: scale(0.96);
+  box-shadow: 0 8px 24px rgba(50, 40, 31, 0.18);
 }
 .gal-item img {
   width: 100%;
@@ -308,13 +316,31 @@
 .gal-item figcaption {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.4rem;
   padding: 0.35rem 0.5rem;
   font-size: 0.72rem;
 }
-/* Le foto già incluse nel sito non si eliminano: niente barra sotto. */
-.gal-item-fissa { opacity: 0.85; }
+.gal-pos {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--v-deep, var(--violet-deep));
+  font-weight: 800;
+}
+.gal-actions {
+  display: flex;
+  gap: 0.22rem;
+  margin-left: auto;
+}
+.gal-actions .adm-btn {
+  min-width: 1.65rem;
+  padding: 0.25rem 0.36rem;
+  line-height: 1;
+}
+.gal-move { font-size: 0.95rem; }
 
 /* ── Codice personale: finestrella di conferma ────────────────────── */
 .codice-overlay {

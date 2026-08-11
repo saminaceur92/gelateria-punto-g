@@ -49,6 +49,9 @@ const MAX_DECORAZIONI = 5;
 // Id dell'opzione "niente decorazioni": non finisce mai nella lista delle
 // scelte (lista vuota = nessuna decorazione), serve solo come card da toccare.
 const NO_DECO = 'nessuna';
+// La panna ora è una finitura standard in due file su tutte le torte. I due
+// vecchi id restano riconosciuti solo per ripulire bozze e ordini storici.
+const DECORAZIONI_RIMOSSE = new Set(['panna-deco', 'panna-colorata']);
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
 // Tetto di sicurezza per gli extra: nessuno ordina 50 kg di salame dal sito.
 const MAX_EXTRA_QTY = 20;
@@ -127,7 +130,7 @@ const chosenDecorations = (decorations, cakeDecorations) => {
   const ids = [];
   for (const raw of decorations || []) {
     const id = typeof raw === 'string' ? raw.trim() : '';
-    if (!id || id === NO_DECO || ids.includes(id)) continue;
+    if (!id || id === NO_DECO || DECORAZIONI_RIMOSSE.has(id) || ids.includes(id)) continue;
     ids.push(id);
     if (ids.length >= MAX_DECORAZIONI) break;
   }
@@ -344,7 +347,7 @@ function makeInitialConfig(cake, initial = {}) {
       // FORMATO VECCHIO (ordini già salvati e link "Rifai questa torta"): una
       // sola decorazione, in una stringa. Diventa una lista di una decorazione.
       // 'nessuna' — come una decorazione tolta dal menù — resta lista vuota.
-      if (typeof v !== 'string' || !v || v === NO_DECO) continue;
+      if (typeof v !== 'string' || !v || v === NO_DECO || DECORAZIONI_RIMOSSE.has(v)) continue;
       if (!exists(cake.cakeDecorations, v)) continue;
       base.decorations = [v];
       continue;
@@ -368,7 +371,13 @@ function makeInitialConfig(cake, initial = {}) {
       if (!Array.isArray(v)) continue;
       base.decorations = [
         ...new Set(
-          v.filter((id) => typeof id === 'string' && id && id !== NO_DECO && exists(cake.cakeDecorations, id))
+          v.filter((id) =>
+            typeof id === 'string' &&
+            id &&
+            id !== NO_DECO &&
+            !DECORAZIONI_RIMOSSE.has(id) &&
+            exists(cake.cakeDecorations, id)
+          )
         ),
       ].slice(0, MAX_DECORAZIONI);
       // I colori ripresi dal formato vecchio non valgono per questa lista.
@@ -514,7 +523,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Decorazioni in conflitto: si tolgono dalla lista (con il loro colore),
       // le altre restano scelte.
       const decorations = (c.decorations || []).filter(
-        (id) => !conflictsAllergies(cakeDecorations.find((d) => d.id === id), c.allergies, c.diets)
+        (id) =>
+          !DECORAZIONI_RIMOSSE.has(id) &&
+          !conflictsAllergies(cakeDecorations.find((d) => d.id === id), c.allergies, c.diets)
       );
       if (decorations.length !== (c.decorations || []).length) {
         patch.decorations = decorations;
@@ -1698,7 +1709,8 @@ function StepCrumble({ config, set }) {
 // svuota tutto ed è selezionata quando non c'è nessuna decorazione.
 function StepDecoration({ config, set }) {
   const { cakeDecorations } = useCakeData();
-  const scelte = config.decorations || [];
+  const disponibili = cakeDecorations.filter((d) => !DECORAZIONI_RIMOSSE.has(d.id));
+  const scelte = (config.decorations || []).filter((id) => !DECORAZIONI_RIMOSSE.has(id));
   const colori = config.decorationColors || {};
   const pieno = scelte.length >= MAX_DECORAZIONI;
 
@@ -1711,7 +1723,7 @@ function StepDecoration({ config, set }) {
       return;
     }
     set((c) => {
-      const lista = c.decorations || [];
+      const lista = (c.decorations || []).filter((id) => !DECORAZIONI_RIMOSSE.has(id));
       const tinte = c.decorationColors || {};
       if (lista.includes(d.id)) {
         // Tolta: se ne va anche il suo colore, così non torna appiccicato dopo.
@@ -1750,7 +1762,7 @@ function StepDecoration({ config, set }) {
         {pieno && ' Hai raggiunto il massimo: togline una per cambiarla.'}
       </div>
       <div className="opt-grid cols-3">
-        {cakeDecorations.map((d) => {
+        {disponibili.map((d) => {
           const blocked = conflictsAllergies(d, config.allergies, config.diets);
           const nessuna = d.id === NO_DECO;
           // "Nessuna" è accesa quando non c'è nessuna decorazione scelta.

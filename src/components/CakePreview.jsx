@@ -7,19 +7,9 @@ import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
 
-// Coperture fatte di panna montata. Due modi di stenderla, e si scelgono:
-// 'panna' è quella fatta col sac-à-poche (ruche e ciuffi), 'panna-spatolata'
-// quella spianata col coltello. ('meringa' è storica, ormai disattivata.)
-const COPERTURE_PANNA = new Set([
-  'panna',
-  'panna-spatolata',
-  'panna-sopra',
-  'panna-sotto-sopra',
-  'meringa',
-]);
-
-// Decorazioni fatte di panna: sono loro (e solo loro) a portare i ciuffi.
-const DECORAZIONI_PANNA = new Set(['panna-deco', 'panna-colorata']);
+// Vecchi topping di panna: ora la panna è presente di serie in due file su ogni
+// torta, quindi non deve ricomparire nei riepiloghi degli ordini storici.
+const DECORAZIONI_RIMOSSE = new Set(['panna-deco', 'panna-colorata']);
 
 // Decorazioni che NON si disegnano sulla torta: dipendono da cosa c'è in
 // gelateria quel giorno e da come decide di decorare il gelataio. Disegnarle
@@ -50,17 +40,6 @@ function descriviCopertura(covering) {
   return testo ? `coperto da ${testo}` : '';
 }
 
-// Riga della panna decorativa: i ciuffi (e la panna colorata) arrivano SOLO
-// dalla decorazione scelta, mai dalla copertura.
-function descriviPannaDeco(decorationId, colore, coveringId) {
-  if (!DECORAZIONI_PANNA.has(decorationId)) return '';
-  if (decorationId === 'panna-deco') return 'con ciuffi di panna montata';
-  const tinta = colore ? ` ${colore}` : '';
-  return COPERTURE_PANNA.has(coveringId)
-    ? `con la panna colorata${tinta} e ciuffi in tinta`
-    : `con panna colorata${tinta} intorno e ciuffi in tinta`;
-}
-
 /* ===== decorazioni: una o più, ognuna col suo colore ===== */
 
 /**
@@ -79,7 +58,7 @@ function decorazioniScelte(config) {
   const ids = [];
   for (const id of lista) {
     // 'nessuna' vuol dire "niente decorazioni": non è una decorazione da elencare
-    if (!id || id === 'nessuna' || ids.includes(id)) continue;
+    if (!id || id === 'nessuna' || DECORAZIONI_RIMOSSE.has(id) || ids.includes(id)) continue;
     ids.push(id);
   }
   return { ids, colori };
@@ -111,8 +90,6 @@ const COLORI_ACCORDO = {
 const GENERE_DECORAZIONE = {
   perline: 'fp',
   colorate: 'fp',
-  'panna-deco': 'fs',
-  'panna-colorata': 'fs',
   'granella-nocciola': 'fs',
   'granella-pistacchio': 'fs',
   'frutta-fresca': 'fs',
@@ -136,12 +113,10 @@ function elencoItaliano(voci) {
 /**
  * Riga di riepilogo delle decorazioni: le elenca tutte, ognuna col suo colore.
  * Es. "decorata con fiocchi colorati rossi e macarons verdi".
- * La panna non entra qui: ha una riga tutta sua (`descriviPannaDeco`), che
- * racconta anche dove va la panna spatolata.
  */
 function descriviDecorazioni(decorazioni, colori) {
   const voci = decorazioni
-    .filter((d) => !DECORAZIONI_PANNA.has(d.id) && !DECORAZIONI_SU_DISPONIBILITA.has(d.id))
+    .filter((d) => !DECORAZIONI_SU_DISPONIBILITA.has(d.id))
     .map((d) => {
       const nome = String(d.name || '').trim().toLowerCase();
       if (!nome) return '';
@@ -218,11 +193,6 @@ export default function CakePreview({ config }) {
     .filter((d) => DECORAZIONI_SU_DISPONIBILITA.has(d.id))
     .map((d) => String(d.name || '').trim())
     .filter(Boolean);
-  // La panna ha una riga sua: dice dove va la panna spatolata, non solo il colore.
-  const righePanna = decorazioni
-    .map((d) => descriviPannaDeco(d.id, accordaColore(decorationColorMap[d.id], 'fs'), covering?.id))
-    .filter(Boolean);
-
   // Stile della scritta: gli id arrivano dalla tabella `scritte`, ma accettiamo
   // anche i vecchi (caveat/fraunces/inter) degli ordini e delle bozze salvate.
   const msgFont = messageFontStyle(messageFont);
@@ -252,8 +222,7 @@ export default function CakePreview({ config }) {
       <div className="cake-card-body">
         {/* Renderer 3D reale (caricato in lazy).
             Decorazioni e colori viaggiano in coppia: `decorations` è la lista
-            degli id scelti, nell'ordine (i ciuffi di panna arrivano solo da
-            'panna-deco' e 'panna-colorata'), `decorationColors` dice con che
+            degli id scelti, nell'ordine; `decorationColors` dice con che
             colore per quelle che lo prevedono. Il nome del colore si passa così
             com'è scelto ("Azzurra"): la torta 3D lo traduce da sé, e regge anche
             un HEX o il valore mancante. */}
@@ -315,13 +284,6 @@ export default function CakePreview({ config }) {
             <em>{rigaDecorazioni}</em>
           </p>
         )}
-
-
-        {righePanna.map((riga) => (
-          <p className="cake-card-base" key={riga}>
-            <em>{riga}</em>
-          </p>
-        ))}
 
         {b && (
           <p className="cake-card-base">

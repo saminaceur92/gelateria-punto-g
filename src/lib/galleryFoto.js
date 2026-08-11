@@ -6,21 +6,25 @@ import galleryImages from '../data/galleryImages';
  * Foto della gallery caricabili dalla dashboard.
  *
  * Le foto vivono su Supabase Storage (bucket `gallery`, pubblico in lettura) e
- * la tabella `gallery_foto` dice quali sono online e in che ordine. Le 50 foto
- * storiche restano nel sito (public/gallery/, elenco in src/data/galleryImages.js):
- * non si perdono e continuano a funzionare anche prima della migrazione.
+ * la tabella `gallery_foto` dice quali sono online e in che ordine. La migrazione
+ * importa qui anche le 50 foto storiche di public/gallery/, così dalla dashboard
+ * si possono ordinare ed eliminare esattamente come quelle appena caricate.
  *
- * Serve la migrazione migrations/2026-08-10-batch-agosto.sql.
+ * Servono la migrazione 2026-08-10-batch-agosto.sql e, per importare le foto
+ * storiche, 2026-08-11-gallery-ordine-e-panna-standard.sql.
  */
 
 export const BUCKET = 'gallery';
 export const MAX_MB = 8;
+// Riga tecnica, inattiva e quindi invisibile in dashboard/sito. Distingue una
+// gallery volutamente svuotata da una tabella ancora in attesa dell'import.
+const GALLERY_READY_ID = '00000000-0000-0000-0000-000000000001';
 // Lato lungo massimo: i titolari caricheranno foto dal telefono (3-8 MB l'una) e
 // una gallery da 50 foto a piena risoluzione renderebbe il sito lentissimo.
 const LATO_MAX = 1600;
 const QUALITA = 0.82;
 
-/** Foto storiche incluse nel sito: sempre presenti, non cancellabili da dashboard. */
+/** Fallback storico usato soltanto se la tabella non è ancora stata creata. */
 export const fotoStatiche = () => (galleryImages || []).map((src) => ({ url: src, statica: true }));
 
 /** La tabella non c'è ancora: va eseguita la migrazione. */
@@ -44,13 +48,26 @@ export async function fetchGalleryFoto() {
 }
 
 /**
- * Elenco completo mostrato al pubblico: prima le foto caricate dai titolari
- * (sono le più nuove e quelle che vogliono mettere in mostra), poi le storiche.
+ * Elenco completo mostrato al pubblico, già nell'ordine scelto in dashboard.
  */
 export async function fetchGalleryCompleta() {
-  const { data } = await fetchGalleryFoto();
+  if (!supabase) return fotoStatiche();
+  const { data, error } = await fetchGalleryFoto();
+  // Prima della migrazione (o se Supabase non risponde) si continua a mostrare
+  // la gallery inclusa nel sito.
+  if (error) return fotoStatiche();
   const caricate = (data || []).map((f) => ({ url: f.url, titolo: f.titolo || '', id: f.id }));
-  return [...caricate, ...fotoStatiche()];
+  if (caricate.length) return caricate;
+
+  // Nessuna foto attiva: il marcatore dice se l'amministratore le ha eliminate
+  // davvero tutte. Senza marcatore siamo ancora prima dell'import e usiamo il
+  // fallback storico, evitando una gallery vuota durante il passaggio.
+  const { data: pronta, error: errorePronta } = await supabase
+    .from('gallery_foto')
+    .select('id')
+    .eq('id', GALLERY_READY_ID)
+    .maybeSingle();
+  return !errorePronta && pronta ? [] : fotoStatiche();
 }
 
 export function validaFoto(file) {
@@ -112,14 +129,43 @@ export async function caricaFoto({ file, titolo = '', email }) {
   }
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  // Le nuove foto finiscono in fondo all'ordine scelto in dashboard. I file si
+  // caricano in sequenza, quindi anche una selezione multipla mantiene l'ordine
+  // con cui il browser li consegna.
+  const { data: ultima } = await supabase
+    .from('gallery_foto')
+    .select('ordine')
+    .order('ordine', { ascending: false })
+    .limit(1);
+  const ordine = (Number(ultima?.[0]?.ordine) || 0) + 10;
   const { data, error } = await supabase
     .from('gallery_foto')
-    .insert({ url: pub?.publicUrl || null, path, titolo, aggiunto_da: email || null })
+    .insert({ url: pub?.publicUrl || null, path, titolo, ordine, aggiunto_da: email || null })
     .select()
     .single();
   if (error) return { error: error.message };
   logAction('Gallery: foto aggiunta', file.name);
   return { data, error: null };
+}
+
+/** Salva l'ordine completo scelto nella dashboard con una sola richiesta. */
+export async function salvaOrdineFoto(fotoOrdinate) {
+  if (!supabase) return { error: 'Supabase non configurato' };
+  const righe = (fotoOrdinate || []).map((f, i) => ({
+    id: f.id,
+    url: f.url,
+    path: f.path || null,
+    titolo: f.titolo || '',
+    ordine: (i + 1) * 10,
+    attivo: f.attivo !== false,
+    creato_il: f.creato_il,
+    aggiunto_da: f.aggiunto_da || null,
+  }));
+  if (!righe.length) return { error: null };
+  const { error } = await supabase.from('gallery_foto').upsert(righe, { onConflict: 'id' });
+  if (error) return { error: error.message };
+  logAction('Gallery: ordine modificato', `${righe.length} foto`);
+  return { error: null };
 }
 
 /** Toglie la foto dal sito e cancella il file: è definitivo. */

@@ -29,7 +29,7 @@ export default function Galleria() {
     document.title = 'Le nostre creazioni · Gelateria Punto Gi';
     let vivo = true;
     fetchGalleryCompleta().then((lista) => {
-      if (vivo && lista?.length) setFoto(lista);
+      if (vivo) setFoto(lista || []);
     });
     return () => { vivo = false; };
   }, []);

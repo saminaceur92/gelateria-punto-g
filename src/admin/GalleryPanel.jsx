@@ -6,16 +6,13 @@ import {
   daConfigurare,
   eliminaFoto,
   fetchGalleryFoto,
-  fotoStatiche,
+  salvaOrdineFoto,
   validaFoto,
 } from '../lib/galleryFoto';
 
 /**
- * Scheda "Foto della gallery": carica ed elimina le foto che si vedono sul sito
- * (fascia scorrevole in home e pagina /galleria).
- *
- * Le 50 foto storiche incluse nel sito restano sempre lì e non si possono
- * cancellare da qui: si vedono in fondo, come promemoria di cosa c'è già online.
+ * Scheda "Foto della gallery": carica, ordina ed elimina tutte le foto che si
+ * vedono sul sito (fascia scorrevole in home e pagina /galleria).
  */
 const peso = (b) => (!b ? '' : b > 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
 
@@ -28,9 +25,8 @@ export default function GalleryPanel() {
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [drag, setDrag] = useState(false);
-  const [mostraStoriche, setMostraStoriche] = useState(false);
+  const [dragFoto, setDragFoto] = useState('');
   const inputRef = useRef(null);
-  const statiche = fotoStatiche();
 
   const ricarica = useCallback(async () => {
     const { data, error } = await fetchGalleryFoto();
@@ -75,6 +71,50 @@ export default function GalleryPanel() {
     setBusy(false);
   }
 
+  async function salvaPosizioni(prossime) {
+    if (busy || !prossime.length) return;
+    const precedenti = foto;
+    setFoto(prossime);
+    setBusy(true);
+    setErr('');
+    setMsg('');
+    const { error } = await salvaOrdineFoto(prossime);
+    if (error) {
+      setFoto(precedenti);
+      setErr(error);
+    } else {
+      setMsg('Ordine delle foto salvato.');
+    }
+    setBusy(false);
+  }
+
+  function sposta(id, delta) {
+    const da = foto.findIndex((f) => f.id === id);
+    const a = da + delta;
+    if (da < 0 || a < 0 || a >= foto.length) return;
+    const prossime = [...foto];
+    [prossime[da], prossime[a]] = [prossime[a], prossime[da]];
+    salvaPosizioni(prossime);
+  }
+
+  function rilasciaSu(idDestinazione) {
+    if (!dragFoto || dragFoto === idDestinazione) {
+      setDragFoto('');
+      return;
+    }
+    const prossime = [...foto];
+    const da = prossime.findIndex((f) => f.id === dragFoto);
+    const a = prossime.findIndex((f) => f.id === idDestinazione);
+    if (da < 0 || a < 0) {
+      setDragFoto('');
+      return;
+    }
+    const [mossa] = prossime.splice(da, 1);
+    prossime.splice(a, 0, mossa);
+    setDragFoto('');
+    salvaPosizioni(prossime);
+  }
+
   const nonConfigurato = daConfigurare(errLoad);
 
   return (
@@ -88,6 +128,7 @@ export default function GalleryPanel() {
               “Le nostre creazioni”. Quelle che carichi qui vanno online <strong>subito</strong>, senza
               aspettare nessuno. JPG, PNG o WebP, massimo {MAX_MB} MB l'una: le rimpiccioliamo noi
               prima di caricarle, così il sito resta veloce anche con foto scattate col telefono.
+              Puoi cambiare l'ordine trascinando le foto oppure usando le frecce.
             </p>
           </div>
         </header>
@@ -127,42 +168,49 @@ export default function GalleryPanel() {
 
         {foto.length > 0 && (
           <>
-            <h4 className="adm-sub">Foto caricate da voi ({foto.length})</h4>
+            <h4 className="adm-sub">Foto online ({foto.length})</h4>
             <div className="gal-grid">
-              {foto.map((f) => (
-                <figure key={f.id} className="gal-item">
+              {foto.map((f, i) => (
+                <figure
+                  key={f.id}
+                  className={`gal-item ${dragFoto === f.id ? 'gal-item-drag' : ''}`}
+                  draggable={!busy}
+                  onDragStart={(e) => {
+                    setDragFoto(f.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    rilasciaSu(f.id);
+                  }}
+                  onDragEnd={() => setDragFoto('')}
+                >
                   <img src={f.url} alt={f.titolo || ''} loading="lazy" />
                   <figcaption>
+                    <span className="gal-pos" title="Posizione nella gallery">{i + 1}</span>
                     <span className="adm-muted">{peso(f.dimensione)}</span>
-                    <button type="button" className="adm-btn adm-btn-del" disabled={busy} onClick={() => elimina(f)} title="Elimina la foto">
-                      🗑
-                    </button>
+                    <span className="gal-actions">
+                      <button type="button" className="adm-btn gal-move" disabled={busy || i === 0} onClick={() => sposta(f.id, -1)} title="Sposta prima">
+                        ←
+                      </button>
+                      <button type="button" className="adm-btn gal-move" disabled={busy || i === foto.length - 1} onClick={() => sposta(f.id, 1)} title="Sposta dopo">
+                        →
+                      </button>
+                      <button type="button" className="adm-btn adm-btn-del" disabled={busy} onClick={() => elimina(f)} title="Elimina la foto">
+                        🗑
+                      </button>
+                    </span>
                   </figcaption>
                 </figure>
               ))}
             </div>
           </>
         )}
-
-        <div className="doc-versioni">
-          <button type="button" className="adm-link" onClick={() => setMostraStoriche((v) => !v)}>
-            {mostraStoriche ? 'Nascondi' : 'Mostra'} le foto già incluse nel sito ({statiche.length})
-          </button>
-          {mostraStoriche && (
-            <>
-              <p className="adm-muted doc-hint">
-                Queste sono le foto messe dagli sviluppatori: restano sempre online e non si eliminano da qui.
-              </p>
-              <div className="gal-grid">
-                {statiche.map((f) => (
-                  <figure key={f.url} className="gal-item gal-item-fissa">
-                    <img src={f.url} alt="" loading="lazy" />
-                  </figure>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
       </section>
     </div>
   );
