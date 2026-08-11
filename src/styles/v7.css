@@ -1,0 +1,116 @@
+/* ===========================================================
+   Punto Gi! — /v7 "Classica+"
+   RIFINITURA della home attuale: stessa identità (crema,
+   Fraunces, azzurro, blob), solo migliorie sensate applicate
+   come strato di override scopato sotto .v7. La v1 su "/"
+   resta byte-per-byte intatta.
+   =========================================================== */
+
+/* 1 · Titolo hero: via il gradient-text (tell segnalato dal detector),
+   stesso azzurro pieno del brand. */
+.v7 .hero h1 .accent {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--violet-deep);
+  -webkit-text-fill-color: var(--violet-deep);
+}
+
+/* 2 · Nav: niente animazione di padding (layout thrash segnalato);
+   restano le transizioni compositabili. */
+.v7 .nav {
+  transition: background 0.4s ease, backdrop-filter 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* 3 · Superfici del browser a tema (la v1 usava i default).
+   NB: niente border-radius sul focus — i browser moderni seguono già il
+   raggio dell'elemento, e un valore fisso deformava le pillole (review). */
+.v7 :focus-visible {
+  outline: 3px solid var(--violet-deep);
+  outline-offset: 2px;
+}
+.v7 * { scrollbar-width: thin; scrollbar-color: var(--violet-deep) transparent; }
+.v7 *::-webkit-scrollbar { height: 8px; width: 8px; }
+.v7 *::-webkit-scrollbar-thumb { background: var(--violet-deep); border-radius: 99px; }
+.v7 *::-webkit-scrollbar-track { background: rgba(44, 118, 153, 0.14); border-radius: 99px; }
+.v7 { caret-color: var(--violet-deep); }
+.v7 ::selection { background: var(--violet-deep); color: var(--cream); }
+
+/* La scrollbar del DOCUMENTO: si tematizza da html, via classe messa
+   da HomeV7 su documentElement (e tolta all'uscita). */
+html.v7-root { scrollbar-width: thin; scrollbar-color: #2c7699 transparent; }
+html.v7-root::-webkit-scrollbar { width: 10px; }
+html.v7-root::-webkit-scrollbar-thumb { background: #2c7699; border-radius: 99px; }
+html.v7-root::-webkit-scrollbar-track { background: rgba(44, 118, 153, 0.12); }
+
+/* 4 · Contrasto: il testo secondario dei numeri hero era al limite */
+.v7 .stat span { color: #6b6156; }
+
+/* 5 · Tocco: le linguette del menù raggiungono i 44px */
+.v7 .menu-tab { min-height: 44px; }
+
+/* 6 · Mobile: hero più compatto (niente 100vh vuoto), CTA a tutta
+   larghezza, numeri più ordinati */
+@media (max-width: 920px) {
+  .v7 .hero { min-height: auto; padding: 6.5rem 0 3.5rem; }
+  .v7 .scroll-cue { display: none; }
+}
+@media (max-width: 560px) {
+  .v7 .hero-meta { flex-direction: column; align-items: stretch; }
+  .v7 .hero-meta .btn { justify-content: center; }
+  /* clearance a destra: il FAB WhatsApp non deve coprire i numeri (review);
+     misure tarate per tenere due stat per riga */
+  .v7 .hero-stats { gap: 1.4rem 2rem; margin-top: 2.4rem; padding-right: 64px; }
+  .v7 .hero-stats .stat { min-width: 104px; }
+  /* il kicker lungo non deve spezzarsi male */
+  .v7 .hero .eyebrow { font-size: 0.68rem; letter-spacing: 0.16em; }
+}
+@media (max-height: 700px) {
+  .v7 .scroll-cue { display: none; }
+}
+
+/* 7 · La barra delle versioni (solo su /v7, nel linguaggio della v1) */
+.v7-versioni {
+  background: var(--cream-warm);
+  border-top: 1px dashed rgba(42, 26, 62, 0.15);
+  padding: 1.4rem var(--pad-x);
+}
+.v7-versioni-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem 1rem;
+}
+.v7-versioni-inner .lbl {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-right: 0.4rem;
+}
+.v7-versioni-inner a {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1.5px solid rgba(42, 26, 62, 0.14);
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.v7-versioni-inner a:hover { border-color: var(--violet-deep); color: var(--violet-deep); }
+.v7-versioni-inner a.current { background: var(--violet-deep); color: var(--cream); border-color: var(--violet-deep); }
+
+/* 8 · Riduci-animazioni: copertura totale anche per le animazioni CSS
+   della v1 (blob, marquee) */
+@media (prefers-reduced-motion: reduce) {
+  .v7 *, .v7 *::before, .v7 *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}

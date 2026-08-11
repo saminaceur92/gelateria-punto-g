@@ -1,0 +1,858 @@
+/* ===========================================================
+   Punto Gi! — /v8 "Il Negozio"
+   La homepage come ricostruzione fedele del NEGOZIO VERO
+   (dalle foto fornite): parete tortora con lettere 3D
+   "GELATO MAKES YOU HAPPY", banco a pozzetti coperti con
+   coperchi d'acciaio, fronte in legno rustico col medaglione
+   del logo, pannelli azzurrini a pois panna, pavimento in
+   marmo chiaro, zoccolo moro. Scopato sotto .v8.
+   =========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500..800&family=Nunito+Sans:ital,opsz,wght@0,6..12,300..900;1,6..12,400&display=swap');
+
+.v8 {
+  /* Palette misurata dalle foto del negozio */
+  --v8-parete: #6b6058;       /* tortora della parete del motto */
+  --v8-parete-cupa: #574e47;
+  --v8-marmo: #ece7dc;        /* pavimento */
+  --v8-piano: #f8f6f1;        /* piani bianchi */
+  --v8-pois: #cfe4e0;         /* pannello azzurrino a pois */
+  --v8-pois-cerchio: #f2ede1; /* i pois panna */
+  --v8-legno: #b98d57;        /* fronte in legno rustico */
+  --v8-legno-scuro: #8a6437;
+  --v8-acciaio: #cfd6da;      /* coperchi dei pozzetti */
+  --v8-acciaio-scuro: #9aa6ad;
+  --v8-moro: #3a2f26;         /* zoccolo e testi */
+  --v8-moro-soft: #6e625a;
+  --v8-azzurro: #2c7699;      /* azioni (brand) */
+  --v8-azzurro-cupo: #235f7d;
+  --v8-oro: #c9a35c;          /* la bilancia d'ottone */
+  --v8-filetto: rgba(58, 47, 38, 0.14);
+
+  --v8-tondo: 'Baloo 2', 'Trebuchet MS', sans-serif;
+  --v8-colatura: #b5d8e6;     /* l'azzurrino delle colature sulla scritta */
+  --v8-body: 'Nunito Sans', 'Segoe UI', sans-serif;
+  --v8-script: 'Caveat', cursive;
+
+  --v8-s2: 8px;
+  --v8-s3: 16px;
+  --v8-s4: 24px;
+  --v8-s5: 40px;
+  --v8-s6: 64px;
+
+  --v8-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  font-family: var(--v8-body);
+  color: var(--v8-moro);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: clip;
+  caret-color: var(--v8-azzurro);
+  /* pavimento in marmo chiaro con venature discrete */
+  background:
+    linear-gradient(117deg, transparent 46%, rgba(58, 47, 38, 0.045) 46.5%, transparent 48%),
+    linear-gradient(63deg, transparent 70%, rgba(58, 47, 38, 0.035) 70.5%, transparent 72.5%),
+    linear-gradient(171deg, transparent 24%, rgba(255, 255, 255, 0.5) 24.5%, transparent 26%),
+    var(--v8-marmo);
+  background-size: 640px 640px, 480px 480px, 560px 560px, auto;
+}
+
+.v8 ::selection { background: var(--v8-azzurro); color: #fff; }
+.v8 :focus-visible { outline: 3px solid var(--v8-azzurro); outline-offset: 2px; border-radius: 8px; }
+.v8 * { scrollbar-width: thin; scrollbar-color: var(--v8-azzurro) transparent; }
+.v8 *::-webkit-scrollbar { height: 8px; width: 8px; }
+.v8 *::-webkit-scrollbar-thumb { background: var(--v8-azzurro); border-radius: 99px; }
+.v8 *::-webkit-scrollbar-track { background: rgba(154, 166, 173, 0.3); border-radius: 99px; }
+
+.v8 h1, .v8 h2, .v8 h3 {
+  font-family: var(--v8-tondo);
+  font-weight: 400;
+  line-height: 1.12;
+  color: inherit;
+  text-wrap: balance;
+  word-break: normal;
+}
+.v8 p { color: inherit; max-width: 62ch; }
+
+.v8-wrap { max-width: 1160px; margin: 0 auto; padding-inline: clamp(1rem, 3.5vw, 2.5rem); }
+.v8-script { font-family: var(--v8-script); font-size: 1.8rem; color: var(--v8-azzurro); line-height: 1.1; }
+.v8-nota {
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--v8-moro-soft);
+}
+
+/* Le lettere 3D della parete: composte strette come sul muro vero */
+.v8 .v8-lettere3d {
+  color: #fff;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
+  text-shadow:
+    0 1px 0 #d9d4cc,
+    0 2px 0 #c8c2b9,
+    0 3px 0 #b5aea4,
+    0 5px 10px rgba(30, 24, 18, 0.45);
+}
+
+/* La riga "GELATO" con le colature azzurrine che gocciolano dalle lettere,
+   come sulla scritta vera (post IG giugno 2024); più grande della seconda
+   riga, come sul muro */
+.v8-drip-line { position: relative; display: inline-block; font-size: 1.32em; line-height: 1.05; }
+.v8-drip-line .drips {
+  position: absolute;
+  top: 0.14em; /* a filo del cap-height: il gelato cola SULLE lettere */
+  left: -1.5%;
+  width: 103%;
+  height: 0.56em;
+  pointer-events: none;
+  color: var(--v8-colatura);
+  filter: drop-shadow(0 2px 3px rgba(30, 24, 18, 0.3));
+}
+
+/* ---------- Nav ---------- */
+
+.v8-nav {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--v8-piano);
+  border-bottom: 4px solid var(--v8-legno);
+  transition: box-shadow 0.3s var(--v8-ease);
+}
+.v8-nav.scrolled { box-shadow: 0 14px 36px -18px rgba(58, 47, 38, 0.4); }
+.v8-nav-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--v8-s3); min-height: 74px; }
+.v8-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.v8-brand img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2px solid var(--v8-legno);
+  background: #fff;
+  padding: 3px;
+  object-fit: contain;
+}
+.v8-brand .nome { font-family: var(--v8-tondo); font-size: 1.3rem; }
+.v8-brand .punto { color: var(--v8-legno-scuro); }
+.v8-brand small { display: block; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--v8-moro-soft); }
+.v8-nav-links { display: flex; gap: clamp(0.7rem, 1.8vw, 1.5rem); list-style: none; margin: 0; padding: 0; }
+.v8-nav-links a {
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--v8-moro);
+  padding: 8px 2px;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+}
+.v8-nav-links a:hover { border-bottom-color: var(--v8-legno); color: var(--v8-azzurro); }
+.v8-nav-cta { display: flex; align-items: center; gap: var(--v8-s2); }
+.v8-nav-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--v8-moro);
+  border-radius: 12px;
+  color: var(--v8-moro);
+}
+.v8-mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--v8-parete-cupa);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v8-s3);
+  text-align: center;
+}
+.v8-mobile-menu a { font-family: var(--v8-tondo); font-size: clamp(1.6rem, 7vw, 2.4rem); text-decoration: none; }
+.v8-mobile-menu a:hover { color: var(--v8-pois); }
+.v8-mobile-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  color: #fff;
+}
+.v8-mobile-menu :focus-visible { outline-color: #fff; }
+
+.v8-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 13px 26px;
+  border-radius: 999px;
+  font-family: var(--v8-tondo);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: background 0.2s var(--v8-ease), color 0.2s var(--v8-ease), transform 0.2s var(--v8-ease);
+}
+.v8-btn:active { transform: translateY(1px); }
+.v8-btn-azzurro { background: var(--v8-azzurro); color: #fff; }
+.v8-btn-azzurro:hover { background: var(--v8-azzurro-cupo); }
+.v8-btn-legno { background: var(--v8-legno); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+.v8-btn-legno:hover { background: #a87c48; }
+.v8-btn-vuoto { background: transparent; color: var(--v8-moro); border-color: var(--v8-moro); }
+.v8-btn-vuoto:hover { background: var(--v8-moro); color: var(--v8-piano); }
+
+/* ---------- Hero: la parete e il banco ---------- */
+
+.v8-hero { padding-bottom: var(--v8-s5); }
+
+/* La parete del motto */
+.v8-parete {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 30%),
+    var(--v8-parete);
+  color: #fff;
+  text-align: center;
+  padding: clamp(2.2rem, 6vw, 4.5rem) clamp(1rem, 3.5vw, 2.5rem) clamp(4.2rem, 8vw, 6.5rem);
+  position: relative;
+}
+.v8-parete::after {
+  /* i faretti del soffitto */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 260px 150px at 20% 0%, rgba(255, 251, 240, 0.12), transparent 70%),
+    radial-gradient(ellipse 260px 150px at 50% 0%, rgba(255, 251, 240, 0.14), transparent 70%),
+    radial-gradient(ellipse 260px 150px at 80% 0%, rgba(255, 251, 240, 0.12), transparent 70%);
+  pointer-events: none;
+}
+.v8-parete h1 {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(2rem, 5.6vw, 4.2rem);
+  line-height: 1.15;
+}
+.v8-parete .payoff {
+  position: relative;
+  z-index: 1;
+  margin: var(--v8-s3) auto 0;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: #e6e0d8;
+  max-width: 56ch;
+}
+.v8-parete .payoff strong { color: #fff; }
+.v8-parete .v8-script { color: var(--v8-pois); font-size: clamp(1.5rem, 3vw, 2rem); }
+
+/* Il banco a pozzetti, sovrapposto alla parete */
+.v8-banco {
+  position: relative;
+  z-index: 2;
+  margin-top: clamp(-3.4rem, -5vw, -2.4rem);
+}
+.v8-banco-piano {
+  background: linear-gradient(180deg, #ffffff 0%, var(--v8-piano) 100%);
+  border-radius: 18px 18px 0 0;
+  border: 2px solid #e3ded3;
+  border-bottom: 0;
+  padding: clamp(1rem, 2.6vw, 1.8rem) clamp(0.8rem, 2vw, 1.6rem) clamp(0.7rem, 1.8vw, 1.2rem);
+  box-shadow: 0 -14px 34px -22px rgba(58, 47, 38, 0.35);
+}
+.v8-pozzetti {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: clamp(0.6rem, 1.6vw, 1.2rem);
+  justify-items: center;
+}
+.v8-pozzetto {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.v8-pozzetto .vano {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #8f9aa1 0%, #6f7a81 68%, #5d666c 100%);
+  box-shadow: inset 0 4px 9px rgba(20, 25, 28, 0.55);
+  display: grid;
+  place-items: center;
+}
+.v8-pozzetto .gelato {
+  width: 74%;
+  height: 74%;
+  border-radius: 50%;
+  box-shadow: inset 0 5px 8px rgba(255, 255, 255, 0.35), inset 0 -7px 10px rgba(30, 20, 12, 0.3);
+}
+.v8-pozzetto .coperchio {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  /* coperchio PIATTO come nelle foto: anelli concentrici spazzolati, non sfera */
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.35) 0%, transparent 40%),
+    radial-gradient(circle at 50% 48%,
+      #eef2f4 0 24%,
+      #dde3e6 25% 40%,
+      #d0d8db 41% 56%,
+      #c3ccd0 57% 74%,
+      #b4bfc4 75% 100%);
+  border: 2px solid #8d99a0;
+  box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.75), inset 0 -1px 2px rgba(90, 102, 109, 0.35), 0 4px 10px -5px rgba(58, 47, 38, 0.45);
+  display: grid;
+  place-items: center;
+}
+.v8-pozzetto .coperchio::after {
+  /* il pomello */
+  content: '';
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #b9c3c8 70%);
+  border: 1.5px solid #8d99a0;
+  box-shadow: 0 2px 4px -2px rgba(58, 47, 38, 0.6);
+}
+.v8-pozzetto .nome-chip {
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  transform: translateX(-50%);
+  z-index: 3;
+  background: var(--v8-piano);
+  border: 1.5px solid var(--v8-moro);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-family: var(--v8-tondo);
+  font-size: 0.66rem;
+  color: var(--v8-moro);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 10px -5px rgba(58, 47, 38, 0.5);
+  opacity: 0;
+  transition: opacity 0.25s var(--v8-ease);
+  pointer-events: none;
+}
+.v8-pozzetto.aperto .nome-chip { opacity: 1; }
+.v8-pozzetto:hover .coperchio { box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.7), 0 5px 12px -5px rgba(58, 47, 38, 0.5), 0 0 0 3px var(--v8-azzurro); }
+
+/* Il fronte del banco: legno + medaglione | pois */
+.v8-banco-fronte {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  min-height: 150px;
+  border-radius: 0;
+  overflow: hidden;
+  border: 2px solid #e3ded3;
+  border-top: 0;
+  border-bottom: 0;
+}
+.v8-fronte-legno {
+  position: relative;
+  /* rovere a doghe ORIZZONTALI con venatura lunga, come la foto 1 del banco */
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='340' height='340'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='0.11 0.011' numOctaves='4' seed='6'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.22 0 0 0 0 0.1 0 0 0 0.2 0'/></filter><rect width='100%25' height='100%25' filter='url(%23w)'/></svg>"),
+    repeating-linear-gradient(179deg, rgba(58, 47, 38, 0.18) 0 2px, transparent 2px 36px, rgba(58, 47, 38, 0.1) 36px 38px, transparent 38px 83px),
+    linear-gradient(184deg, #c49763 0%, var(--v8-legno) 45%, #a87c48 100%);
+  background-size: 340px 340px, auto, auto;
+  display: grid;
+  place-items: center;
+}
+.v8-medaglione {
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: #f6f2ea;
+  border: 3px solid #e3ded3;
+  box-shadow: 0 8px 20px -10px rgba(58, 47, 38, 0.55), inset 0 1px 0 #fff;
+  display: grid;
+  place-items: center;
+}
+.v8-medaglione img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  /* inciso nel disco, come il tondo vero sul legno */
+  filter: grayscale(1) brightness(0.5) sepia(0.5) opacity(0.85);
+}
+.v8-fronte-pois {
+  /* pois UNIFORMI a passo regolare (quinconce), come nelle foto */
+  background:
+    radial-gradient(circle 30px at 34px 34px, var(--v8-pois-cerchio) 29px, transparent 30px),
+    radial-gradient(circle 30px at 92px 92px, var(--v8-pois-cerchio) 29px, transparent 30px),
+    var(--v8-pois);
+  background-size: 116px 116px;
+}
+.v8-zoccolo {
+  height: 18px;
+  background: linear-gradient(180deg, #4a3d31, var(--v8-moro));
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 16px 30px -18px rgba(30, 24, 18, 0.6);
+}
+.v8-banco-nota {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--v8-s2) var(--v8-s3);
+  margin-top: var(--v8-s3);
+}
+.v8-hero-ctas { display: flex; flex-wrap: wrap; gap: var(--v8-s3); margin-top: var(--v8-s4); justify-content: center; }
+
+/* ---------- Sezioni ---------- */
+
+.v8-section { padding-block: var(--v8-s5); }
+.v8-card {
+  background: var(--v8-piano);
+  border: 2px solid #e3ded3;
+  border-radius: 20px;
+  box-shadow: 0 20px 46px -26px rgba(58, 47, 38, 0.4);
+  padding: clamp(1.4rem, 3.5vw, 2.8rem);
+}
+.v8-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--v8-s2) var(--v8-s4);
+  border-bottom: 4px solid var(--v8-legno);
+  padding-bottom: var(--v8-s3);
+  margin-bottom: var(--v8-s4);
+}
+.v8-head h2 { font-size: clamp(1.7rem, 4vw, 2.6rem); }
+.v8-head h2 .em { color: var(--v8-azzurro); }
+
+/* Menu */
+.v8-tabs { display: flex; gap: var(--v8-s2); flex-wrap: wrap; margin-bottom: var(--v8-s4); }
+.v8-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 2px solid var(--v8-acciaio-scuro);
+  background: linear-gradient(180deg, #fff, #eef1f2);
+  color: var(--v8-moro);
+  font-family: var(--v8-tondo);
+  font-size: 0.88rem;
+  transition: border-color 0.2s var(--v8-ease), background 0.2s var(--v8-ease), color 0.2s var(--v8-ease);
+}
+.v8-tab:hover { border-color: var(--v8-azzurro); }
+.v8-tab.active { background: var(--v8-azzurro); border-color: var(--v8-azzurro-cupo); color: #fff; }
+.v8-tab .count { font-size: 0.7rem; border: 1.5px solid currentColor; border-radius: 999px; padding: 0 7px; }
+.v8-cat-desc { color: var(--v8-moro-soft); margin-bottom: var(--v8-s4); font-style: italic; }
+.v8-gusti { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); column-gap: var(--v8-s5); row-gap: 4px; }
+.v8-gusto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border-bottom: 1.5px dashed var(--v8-filetto);
+  transition: background 0.15s var(--v8-ease);
+}
+.v8-gusto:hover { background: #f1ece1; }
+.v8-gusto .tondino {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid var(--v8-acciaio-scuro);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  flex: none;
+}
+.v8-gusto .nome { font-weight: 800; font-size: 0.98rem; }
+.v8-gusto .fill { flex: 1; }
+.v8-gusto .diet {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--v8-azzurro-cupo);
+  border: 1.5px solid var(--v8-azzurro-cupo);
+  border-radius: 999px;
+  padding: 2px 7px;
+  flex: none;
+}
+.v8-gusto.firma { background: var(--v8-azzurro); color: #fff; border-bottom-color: transparent; }
+.v8-gusto.firma .diet { color: #fff; border-color: rgba(255, 255, 255, 0.8); }
+.v8-gusto .firma-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--v8-oro);
+  color: var(--v8-moro);
+  border-radius: 999px;
+  padding: 2px 8px;
+  flex: none;
+}
+.v8-menu-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--v8-s3);
+  border-top: 4px solid var(--v8-legno);
+  margin-top: var(--v8-s4);
+  padding-top: var(--v8-s3);
+}
+.v8-legenda { font-size: 0.78rem; font-weight: 700; color: var(--v8-moro-soft); }
+.v8-allergeni-link {
+  font-family: var(--v8-tondo);
+  font-size: 0.9rem;
+  color: var(--v8-azzurro);
+  text-decoration: none;
+  border-bottom: 2.5px solid var(--v8-legno);
+  padding-bottom: 2px;
+}
+.v8-allergeni-link:hover { color: var(--v8-azzurro-cupo); }
+
+/* I pois che diventano numeri */
+.v8-pois-band {
+  /* stesso pois regolare del banco */
+  background:
+    radial-gradient(circle 34px at 40px 40px, var(--v8-pois-cerchio) 33px, transparent 34px),
+    radial-gradient(circle 34px at 108px 108px, var(--v8-pois-cerchio) 33px, transparent 34px),
+    var(--v8-pois);
+  background-size: 136px 136px;
+  border-radius: 24px;
+  border: 2px solid #b9d3ce;
+  padding: clamp(1.6rem, 4vw, 3rem);
+  box-shadow: 0 20px 46px -26px rgba(58, 47, 38, 0.35);
+}
+.v8-pois-band h2 { text-align: center; font-size: clamp(1.7rem, 4vw, 2.5rem); color: var(--v8-moro); }
+.v8-pois-band .sotto { text-align: center; color: #4f5e59; font-weight: 700; margin: 8px auto 0; }
+.v8-cerchi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: clamp(1rem, 2.6vw, 2rem);
+  margin-top: var(--v8-s5);
+  justify-items: center;
+}
+.v8-cerchio {
+  width: min(200px, 100%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--v8-pois-cerchio);
+  border: 3px solid #fff;
+  box-shadow: 0 14px 30px -18px rgba(58, 47, 38, 0.45), inset 0 2px 0 #fff;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 14px;
+}
+.v8-cerchio strong {
+  font-family: var(--v8-tondo);
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+  color: var(--v8-azzurro);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.v8-cerchio span { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; color: var(--v8-moro-soft); max-width: 16ch; }
+
+/* Storia: il pannello di legno col medaglione */
+.v8-storia {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 2px solid var(--v8-legno-scuro);
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='340' height='340'><filter id='w2'><feTurbulence type='fractalNoise' baseFrequency='0.11 0.011' numOctaves='4' seed='8'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.22 0 0 0 0 0.1 0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23w2)'/></svg>"),
+    repeating-linear-gradient(179deg, rgba(58, 47, 38, 0.16) 0 2px, transparent 2px 36px, rgba(58, 47, 38, 0.09) 36px 38px, transparent 38px 83px),
+    linear-gradient(184deg, #c49763 0%, var(--v8-legno) 45%, #a87c48 100%);
+  background-size: 340px 340px, auto, auto;
+  box-shadow: 0 20px 46px -26px rgba(58, 47, 38, 0.5);
+  padding: clamp(1.4rem, 3.5vw, 2.8rem);
+  color: #fff;
+}
+.v8-storia-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
+.v8-storia .v8-card-int {
+  background: var(--v8-piano);
+  color: var(--v8-moro);
+  border-radius: 16px;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  box-shadow: 0 14px 30px -18px rgba(30, 24, 18, 0.5);
+}
+.v8-storia .v8-card-int h2 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); }
+.v8-storia .v8-card-int h2 .em { color: var(--v8-azzurro); }
+.v8-storia .v8-card-int > p { color: var(--v8-moro-soft); margin-top: var(--v8-s3); font-size: 1.02rem; }
+.v8-storia-foto { position: relative; margin: 0; padding-bottom: var(--v8-s5); }
+.v8-storia-foto img {
+  width: 86%;
+  aspect-ratio: 5 / 4;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 4px solid var(--v8-piano);
+  box-shadow: 0 18px 40px -22px rgba(30, 24, 18, 0.6);
+  display: block;
+}
+.v8-storia-foto .seconda { position: absolute; right: 0; bottom: 0; width: 54%; transform: rotate(2.5deg); }
+.v8-passi { margin-top: var(--v8-s4); border-top: 3px solid var(--v8-legno); }
+.v8-passo { display: flex; gap: var(--v8-s3); align-items: center; padding-block: 11px; border-bottom: 1.5px dashed var(--v8-filetto); }
+.v8-passo .medaglietta {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #fff, #e8e2d5 70%);
+  border: 2px solid var(--v8-legno);
+  color: var(--v8-azzurro);
+}
+.v8-passo h3 { font-size: 1rem; }
+.v8-passo p { font-size: 0.88rem; color: var(--v8-moro-soft); }
+
+/* Servizi: le righe del banco, come voci sul listino appeso */
+.v8-servizio {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 240px) 1fr auto;
+  align-items: center;
+  gap: var(--v8-s4);
+  padding-block: var(--v8-s3);
+  border-bottom: 1.5px dashed var(--v8-filetto);
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+  transition: background 0.2s var(--v8-ease);
+}
+.v8-servizio:last-child { border-bottom: 0; }
+.v8-servizio:hover { background: #f1ece1; }
+.v8-servizio .medaglietta {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #fff, #e8e2d5 70%);
+  border: 2px solid var(--v8-legno);
+  color: var(--v8-azzurro);
+}
+.v8-servizio h3 { font-size: 1.05rem; }
+.v8-servizio p { font-size: 0.9rem; color: var(--v8-moro-soft); max-width: 52ch; }
+.v8-servizio .go {
+  color: var(--v8-azzurro);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--v8-azzurro);
+  border-radius: 50%;
+  transition: background 0.2s var(--v8-ease), color 0.2s var(--v8-ease);
+}
+.v8-servizio:hover .go { background: var(--v8-azzurro); color: #fff; }
+button.v8-servizio { width: 100%; font: inherit; cursor: pointer; text-align: left; border-bottom: 1.5px dashed var(--v8-filetto); background: transparent; }
+@media (max-width: 900px) {
+  .v8-servizio { grid-template-columns: 48px 1fr auto; }
+  .v8-servizio p { grid-column: 2 / -1; }
+}
+@media (max-width: 560px) {
+  .v8-servizio { grid-template-columns: 1fr; gap: var(--v8-s2); }
+  .v8-servizio .go { display: none; }
+}
+
+/* Torta: la teca di vetro */
+.v8-torta-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
+.v8-torta-copy > p { color: var(--v8-moro-soft); font-size: 1.02rem; margin-top: var(--v8-s3); }
+.v8-torta-specs { list-style: none; margin: var(--v8-s4) 0 0; padding: 0; }
+.v8-torta-specs li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1.5px dashed var(--v8-filetto); font-weight: 800; font-size: 0.92rem; }
+.v8-torta-specs li::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--v8-oro); flex: none; }
+.v8-torta-ctas { display: flex; flex-wrap: wrap; gap: var(--v8-s3); margin-top: var(--v8-s4); }
+.v8-teca { margin: 0; text-align: center; }
+.v8-teca .vetro {
+  position: relative;
+  background: linear-gradient(168deg, rgba(255, 255, 255, 0.9) 0%, rgba(244, 247, 248, 0.6) 30%, #f2f4f5 100%);
+  border: 2.5px solid #bcc7cc;
+  border-radius: 14px;
+  padding: var(--v8-s4);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.8), 0 18px 40px -22px rgba(58, 47, 38, 0.45);
+  overflow: hidden;
+}
+.v8-teca .vetro::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: 6%;
+  width: 22%;
+  height: 150%;
+  background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.4) 45%, transparent 90%);
+  transform: rotate(14deg);
+  pointer-events: none;
+}
+.v8-teca figcaption { margin-top: var(--v8-s3); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v8-moro-soft); }
+
+/* Gallery */
+.v8-galleria { display: flex; gap: var(--v8-s4); overflow-x: auto; scroll-snap-type: x proximity; padding: var(--v8-s3) var(--v8-s2) var(--v8-s4); }
+.v8-scatto {
+  flex: none;
+  width: min(270px, 70vw);
+  scroll-snap-align: center;
+  margin: 0;
+  background: var(--v8-piano);
+  border: 2px solid #e3ded3;
+  border-radius: 16px;
+  padding: 8px 8px 10px;
+  box-shadow: 0 14px 30px -18px rgba(58, 47, 38, 0.45);
+}
+.v8-scatto img { width: 100%; aspect-ratio: 4 / 3.4; object-fit: cover; border-radius: 10px; display: block; }
+.v8-scatto figcaption { padding-top: 8px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--v8-moro-soft); text-align: center; }
+
+/* Dove: di nuovo la parete */
+.v8-dove-parete {
+  background: var(--v8-parete);
+  border-radius: 24px;
+  color: #fff;
+  padding: clamp(1.6rem, 4vw, 3rem);
+  box-shadow: 0 20px 46px -26px rgba(30, 24, 18, 0.55);
+}
+.v8-dove-parete .v8-lettere3d { font-family: var(--v8-tondo); font-size: clamp(1.5rem, 3.6vw, 2.4rem); text-align: center; display: block; }
+.v8-dove-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 5fr); gap: clamp(1.5rem, 3.5vw, 3rem); align-items: start; margin-top: var(--v8-s5); }
+.v8-dove-col h3 {
+  font-size: 0.98rem;
+  border-bottom: 3px solid var(--v8-legno);
+  padding-bottom: 8px;
+  margin-bottom: var(--v8-s3);
+  color: #fff;
+}
+.v8-recapito { display: flex; gap: 12px; align-items: flex-start; padding-block: 9px; border-bottom: 1.5px dashed rgba(255, 255, 255, 0.25); }
+.v8-recapito:last-child { border-bottom: 0; }
+.v8-recapito .ic { color: var(--v8-pois); flex: none; margin-top: 2px; }
+.v8-recapito a { color: #fff; font-weight: 800; text-decoration: none; }
+.v8-recapito a:hover { color: var(--v8-pois); text-decoration: underline; }
+.v8-recapito .tipo { display: block; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: #cfc8bf; }
+.v8-orari { width: 100%; border-collapse: collapse; }
+.v8-orari td { padding: 8px 4px; border-bottom: 1.5px dashed rgba(255, 255, 255, 0.25); font-size: 0.94rem; color: #f0ebe3; }
+.v8-orari td:last-child { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.v8-orari tr.today td { background: var(--v8-azzurro); color: #fff; }
+.v8-orari tr.today td:first-child { border-radius: 10px 0 0 10px; padding-left: 10px; }
+.v8-orari tr.today td:last-child { border-radius: 0 10px 10px 0; padding-right: 10px; }
+.v8-oggi { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.14em; border: 1.5px solid #fff; color: #fff; border-radius: 999px; padding: 1px 7px; margin-left: 8px; vertical-align: 2px; }
+.v8-mappa { border: 4px solid var(--v8-piano); border-radius: 14px; overflow: hidden; box-shadow: 0 16px 36px -20px rgba(30, 24, 18, 0.6); }
+.v8-mappa iframe { width: 100%; height: 230px; border: 0; display: block; filter: saturate(0.9); }
+.v8-qr { display: flex; align-items: center; gap: var(--v8-s3); margin-top: var(--v8-s3); border: 1.5px dashed rgba(255, 255, 255, 0.35); border-radius: 14px; padding: var(--v8-s3); background: rgba(255, 255, 255, 0.06); }
+.v8-qr svg { background: #fff; border-radius: 8px; }
+.v8-qr p { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #e6e0d8; line-height: 1.7; }
+.v8-dove-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--v8-s3);
+  border-top: 3px solid var(--v8-legno);
+  margin-top: var(--v8-s5);
+  padding-top: var(--v8-s4);
+}
+.v8-dove-cta .v8-script { color: var(--v8-pois); }
+.v8-dove-parete :focus-visible { outline-color: #fff; }
+
+/* Footer */
+.v8-footer { margin-top: var(--v8-s6); background: var(--v8-moro); color: #e8e0d5; padding: var(--v8-s5) 0; border-top: 4px solid var(--v8-legno); }
+.v8-footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--v8-s3) var(--v8-s4); }
+.v8-footer p { font-size: 0.85rem; color: #cbc0b1; }
+.v8-versions { display: flex; flex-wrap: wrap; gap: var(--v8-s2) var(--v8-s3); list-style: none; margin: 0; padding: 0; }
+.v8-versions a {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #cbc0b1;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 2px;
+}
+.v8-versions a:hover { color: #fff; border-bottom-color: var(--v8-legno); }
+.v8-versions a.current { color: var(--v8-oro); border-bottom-color: var(--v8-legno); }
+.v8-socials { display: flex; gap: var(--v8-s2); }
+.v8-socials a {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(232, 224, 213, 0.5);
+  border-radius: 50%;
+  color: #e8e0d5;
+  transition: background 0.2s var(--v8-ease), color 0.2s var(--v8-ease);
+}
+.v8-socials a:hover { background: #e8e0d5; color: var(--v8-moro); }
+.v8-footer :focus-visible { outline-color: #e8e0d5; }
+
+.v8-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 70;
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  background: var(--v8-azzurro);
+  color: #fff;
+  border-radius: 50%;
+  border: 2px solid var(--v8-azzurro-cupo);
+  box-shadow: 0 14px 30px -12px rgba(30, 24, 18, 0.55);
+  transition: transform 0.2s var(--v8-ease), background 0.2s var(--v8-ease);
+}
+.v8-fab:hover { transform: translateY(-3px) rotate(-6deg); background: var(--v8-azzurro-cupo); }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1024px) {
+  .v8-nav-links { display: none; }
+  .v8-nav-toggle { display: grid; }
+  .v8-dove-grid { grid-template-columns: 1fr 1fr; }
+  .v8-dove-col:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .v8-storia-grid { grid-template-columns: 1fr; }
+  .v8-torta-grid { grid-template-columns: 1fr; }
+  .v8-dove-grid { grid-template-columns: 1fr; }
+  .v8-pozzetti { grid-template-columns: repeat(4, 1fr); }
+  .v8-banco-fronte { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  /* ritmo hero più stretto: banco + didascalia + bordo CTA nel primo schermo */
+  .v8-parete { padding: 1.5rem 1rem 3.2rem; }
+  .v8-parete .payoff { font-size: 0.95rem; }
+  .v8-drip-line .drips { height: 0.48em; top: 0.1em; }
+  .v8-parete .v8-script { font-size: 1.3rem; }
+  .v8-banco { margin-top: -2.2rem; }
+  .v8-banco-piano { padding: 0.8rem 0.6rem 0.6rem; }
+  .v8-banco-nota { margin-top: 10px; padding-right: 74px; }
+  .v8-banco-nota .v8-nota { font-size: 0.68rem; }
+  .v8-hero-ctas { margin-top: var(--v8-s3); }
+  .v8-hero-ctas .v8-btn { width: 100%; min-height: 48px; }
+  .v8-torta-ctas .v8-btn { width: 100%; }
+  .v8-nav-cta .v8-btn { display: none; }
+  .v8-gusti { grid-template-columns: 1fr; }
+  .v8-pozzetti { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .v8-pozzetto { width: 74px; height: 74px; }
+  .v8-pozzetto .nome-chip { font-size: 0.58rem; max-width: 86px; }
+  .v8-fronte-legno { min-height: 104px; }
+  .v8-banco-fronte { min-height: 110px; }
+  .v8-medaglione { width: 84px; height: 84px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v8 *, .v8 *::before, .v8 *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}

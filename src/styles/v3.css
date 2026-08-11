@@ -1,0 +1,782 @@
+/* ===========================================================
+   Punto Gi! — /v3 "La Sagra"
+   La homepage come manifesto tipografico di festa di paese
+   emiliana: caratteri legno, due inchiostri (azzurro + legno)
+   su carta manifesto, bandierine, fregi, manicule, vignette.
+   Tutto scopato sotto .v3.
+   =========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Oswald:wght@300..700&family=Bitter:ital,wght@0,300..800;1,400&display=swap');
+
+.v3 {
+  /* Palette: due inchiostri sui colori del negozio */
+  --v3-carta: #faf3e3;        /* carta manifesto */
+  --v3-carta-scura: #f0e6cf;  /* carta invecchiata / zebra */
+  --v3-muro: #d8eaf3;         /* muro dietro il manifesto (azzurrino) */
+  --v3-azzurro: #2c7699;      /* inchiostro 1 */
+  --v3-azzurro-cupo: #235f7d;
+  --v3-legno: #c0894c;        /* inchiostro 2: solo campiture/grafica */
+  --v3-legno-ink: #96683a;    /* inchiostro 2 leggibile per testo */
+  --v3-moro: #32281f;         /* testo */
+  --v3-moro-soft: #6b5c4c;
+  --v3-filetto: rgba(50, 40, 31, 0.22);
+  --v3-filetto-forte: rgba(50, 40, 31, 0.8);
+
+  --v3-slab: 'Alfa Slab One', 'Georgia', serif;
+  --v3-cond: 'Oswald', 'Arial Narrow', sans-serif;
+  --v3-body: 'Bitter', Georgia, serif;
+  --v3-script: 'Caveat', cursive;
+
+  --v3-s1: 4px;
+  --v3-s2: 8px;
+  --v3-s3: 16px;
+  --v3-s4: 24px;
+  --v3-s5: 40px;
+  --v3-s6: 64px;
+
+  --v3-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  font-family: var(--v3-body);
+  background: var(--v3-muro);
+  color: var(--v3-moro);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: clip;
+  caret-color: var(--v3-azzurro);
+}
+
+.v3 ::selection { background: var(--v3-azzurro); color: var(--v3-carta); }
+.v3 :focus-visible {
+  outline: 3px solid var(--v3-azzurro);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.v3 * { scrollbar-width: thin; scrollbar-color: var(--v3-azzurro) transparent; }
+.v3 *::-webkit-scrollbar { height: 8px; width: 8px; }
+.v3 *::-webkit-scrollbar-thumb { background: var(--v3-azzurro); border-radius: 99px; }
+.v3 *::-webkit-scrollbar-track { background: rgba(44, 118, 153, 0.15); border-radius: 99px; }
+
+.v3 h1, .v3 h2, .v3 h3 {
+  font-family: var(--v3-slab);
+  font-weight: 400;
+  line-height: 1.05;
+  color: inherit;
+  letter-spacing: 0;
+  text-wrap: balance;
+  word-break: normal;
+}
+.v3 p { color: inherit; max-width: 62ch; }
+.v3 a { text-underline-offset: 3px; }
+
+/* ---------- Nav (listello sopra il manifesto) ---------- */
+
+.v3-nav {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--v3-azzurro-cupo);
+  color: var(--v3-carta);
+  transition: box-shadow 0.3s var(--v3-ease);
+}
+.v3-nav.scrolled { box-shadow: 0 12px 34px -16px rgba(20, 40, 55, 0.6); }
+.v3-nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 3vw, 2rem);
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v3-s3);
+}
+.v3-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--v3-slab);
+  font-size: 1.05rem;
+  text-decoration: none;
+}
+.v3-brand img {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fff;
+  padding: 3px;
+  object-fit: contain;
+}
+.v3-brand .punto { color: var(--v3-legno); }
+.v3-nav-links { display: flex; gap: clamp(0.7rem, 1.8vw, 1.4rem); list-style: none; margin: 0; padding: 0; }
+.v3-nav-links a {
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 6px 2px;
+  border-bottom: 2px solid transparent;
+}
+.v3-nav-links a:hover { border-bottom-color: var(--v3-legno); }
+.v3-nav-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--v3-carta);
+  border-radius: 4px;
+  color: var(--v3-carta);
+}
+.v3-mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--v3-azzurro-cupo);
+  color: var(--v3-carta);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v3-s3);
+  text-align: center;
+}
+.v3-mobile-menu a {
+  font-family: var(--v3-slab);
+  font-size: clamp(1.5rem, 6.5vw, 2.2rem);
+  text-decoration: none;
+  line-height: 1.15;
+}
+.v3-mobile-menu a:hover { color: var(--v3-legno); }
+.v3-mobile-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--v3-carta);
+  border-radius: 4px;
+  color: var(--v3-carta);
+}
+
+/* ---------- Il manifesto ---------- */
+
+.v3-wall { padding: clamp(1rem, 3vw, 2.5rem) clamp(0.6rem, 2.5vw, 2rem) var(--v3-s6); }
+
+.v3-poster {
+  max-width: 980px;
+  margin: 0 auto;
+  background: var(--v3-carta);
+  box-shadow: 0 30px 70px -30px rgba(20, 40, 55, 0.45);
+  border: 1.5px solid var(--v3-filetto);
+  padding: clamp(0.6rem, 2vw, 1.2rem);
+}
+.v3-frame {
+  border: 3px solid var(--v3-moro);
+  box-shadow: inset 0 0 0 2px var(--v3-carta), inset 0 0 0 3.5px var(--v3-moro);
+  padding: clamp(1.2rem, 4vw, 3rem) clamp(1rem, 4vw, 3.5rem);
+  text-align: center;
+}
+
+/* Bandierine */
+.v3-bunting { display: block; width: 100%; height: auto; margin-bottom: var(--v3-s3); }
+
+/* Voci tipografiche */
+.v3-kick {
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: var(--v3-azzurro);
+}
+.v3-line-cond {
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.v3-hero-title { margin-top: var(--v3-s3); }
+.v3-hero-title .r1 {
+  display: block;
+  font-family: var(--v3-slab);
+  font-size: clamp(2.2rem, 6.5vw, 4.6rem);
+  color: var(--v3-moro);
+}
+.v3-hero-title .r2 {
+  display: block;
+  font-family: var(--v3-cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: clamp(1rem, 2.6vw, 1.6rem);
+  color: var(--v3-legno-ink);
+  margin: 0.4em 0 0.15em;
+}
+.v3-hero-title .r3 {
+  display: block;
+  font-family: var(--v3-slab);
+  font-size: clamp(2.8rem, 9vw, 6rem);
+  color: var(--v3-azzurro);
+  line-height: 0.95;
+}
+
+.v3-dateline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: var(--v3-s4);
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.95rem;
+  color: var(--v3-moro);
+}
+.v3-dateline .manicula { color: var(--v3-legno-ink); }
+
+.v3-hero-note {
+  font-size: 1.08rem;
+  color: var(--v3-moro-soft);
+  max-width: 56ch;
+  margin: var(--v3-s4) auto 0;
+}
+.v3-hero-note strong { color: var(--v3-azzurro); }
+
+/* Vignetta ovale */
+.v3-oval {
+  width: min(340px, 78%);
+  margin: var(--v3-s5) auto 0;
+  position: relative;
+}
+.v3-oval img {
+  width: 100%;
+  aspect-ratio: 4 / 4.4;
+  object-fit: cover;
+  border-radius: 50% / 42%;
+  border: 3px solid var(--v3-moro);
+  box-shadow: 0 0 0 2px var(--v3-carta), 0 0 0 3.5px var(--v3-moro);
+  display: block;
+}
+.v3-oval figcaption {
+  margin-top: var(--v3-s3);
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--v3-moro-soft);
+}
+.v3-oval .ribbon {
+  position: absolute;
+  top: 12px;
+  right: -14px;
+  transform: rotate(8deg);
+  background: var(--v3-legno);
+  color: var(--v3-moro);
+  font-family: var(--v3-cond);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 7px 14px;
+  box-shadow: 0 4px 12px -6px rgba(50, 40, 31, 0.5);
+}
+
+/* CTA poster */
+.v3-ctas {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--v3-s3);
+  margin-top: var(--v3-s5);
+}
+.v3-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 14px 28px;
+  font-family: var(--v3-cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: 3px solid var(--v3-moro);
+  box-shadow: inset 0 0 0 2px var(--v3-carta), inset 0 0 0 3.5px var(--v3-moro);
+  transition: background 0.2s var(--v3-ease), color 0.2s var(--v3-ease);
+}
+.v3-btn-primary { background: var(--v3-azzurro); color: var(--v3-carta); }
+.v3-btn-primary:hover { background: var(--v3-azzurro-cupo); }
+.v3-btn-ghost { background: transparent; color: var(--v3-moro); }
+.v3-btn-ghost:hover { background: var(--v3-moro); color: var(--v3-carta); }
+.v3-btn-legno { background: var(--v3-legno); color: var(--v3-moro); }
+.v3-btn-legno:hover { background: #cf9a5e; }
+
+/* Fregio divisore */
+.v3-fregio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v3-s3);
+  margin: var(--v3-s6) auto var(--v3-s5);
+  color: var(--v3-legno-ink);
+}
+.v3-fregio::before,
+.v3-fregio::after {
+  content: '';
+  height: 3px;
+  flex: 1;
+  max-width: 220px;
+  background:
+    linear-gradient(var(--v3-moro), var(--v3-moro)) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--v3-moro), var(--v3-moro)) 0 100% / 100% 1px no-repeat;
+}
+
+.v3-sec-title { font-size: clamp(1.7rem, 4.4vw, 2.8rem); color: var(--v3-moro); }
+.v3-sec-title .blu { color: var(--v3-azzurro); }
+.v3-sec-sub {
+  margin: 10px auto 0;
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--v3-moro-soft);
+}
+
+/* ---------- Programma dei gusti ---------- */
+
+.v3-programma {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--v3-s4);
+  margin-top: var(--v3-s5);
+  text-align: center;
+}
+.v3-cat {
+  border: 2px solid var(--v3-moro);
+  box-shadow: inset 0 0 0 1.5px var(--v3-carta), inset 0 0 0 2.5px var(--v3-moro);
+  padding: var(--v3-s4) var(--v3-s3);
+  background: var(--v3-carta);
+}
+.v3-cat h3 {
+  font-family: var(--v3-cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 1rem;
+  color: var(--v3-azzurro);
+}
+.v3-cat .desc {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--v3-moro-soft);
+  margin: 6px auto var(--v3-s3);
+}
+.v3-voce {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.98rem;
+  border-bottom: 1px dotted var(--v3-filetto);
+}
+.v3-voce:last-child { border-bottom: 0; }
+.v3-voce .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(50, 40, 31, 0.4);
+  flex: none;
+}
+.v3-voce .diet {
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: #7d5730;
+  border: 1.5px solid #7d5730;
+  padding: 1px 5px;
+  flex: none;
+}
+.v3-voce.firma {
+  background: var(--v3-azzurro);
+  color: var(--v3-carta);
+  border-bottom: 0;
+  margin: 4px -8px;
+  padding-inline: 8px;
+}
+.v3-voce.firma .diet { color: var(--v3-carta); border-color: var(--v3-carta); }
+.v3-menu-nota {
+  margin-top: var(--v3-s4);
+  font-style: italic;
+  color: var(--v3-moro-soft);
+  font-size: 0.95rem;
+}
+.v3-menu-nota a { color: var(--v3-azzurro); font-weight: 700; }
+
+/* ---------- Straordinarie cifre ---------- */
+
+/* Cifre come righe di locandina, non griglia di metriche */
+.v3-cifre { margin-top: var(--v3-s5); max-width: 620px; margin-inline: auto; }
+.v3-cifra-riga {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-bottom: 1px dotted var(--v3-filetto);
+  margin: 0;
+}
+.v3-cifra-riga:last-child { border-bottom: 0; }
+.v3-cifra-riga strong {
+  font-family: var(--v3-slab);
+  font-weight: 400;
+  font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+  color: var(--v3-legno-ink);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.v3-cifra-riga > span {
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.85rem;
+  color: var(--v3-moro);
+}
+
+/* ---------- Storia ---------- */
+
+.v3-storia-foto {
+  display: flex;
+  justify-content: center;
+  gap: var(--v3-s4);
+  margin-top: var(--v3-s5);
+  flex-wrap: wrap;
+}
+.v3-vignetta {
+  width: min(300px, 90%);
+  border: 3px solid var(--v3-moro);
+  box-shadow: 0 0 0 2px var(--v3-carta), 0 0 0 3.5px var(--v3-moro), 0 16px 34px -18px rgba(50, 40, 31, 0.5);
+  background: var(--v3-carta);
+  padding: 8px 8px 10px;
+  margin: 0;
+}
+.v3-vignetta:nth-child(odd) { transform: rotate(-1.6deg); }
+.v3-vignetta:nth-child(even) { transform: rotate(1.4deg); }
+.v3-vignetta img { width: 100%; aspect-ratio: 4 / 3.1; object-fit: cover; display: block; filter: brightness(1.1) contrast(1.02); }
+.v3-vignetta figcaption {
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.66rem;
+  color: var(--v3-moro-soft);
+  padding-top: 8px;
+}
+.v3-storia-testo { margin: var(--v3-s5) auto 0; max-width: 58ch; font-size: 1.08rem; }
+.v3-script { font-family: var(--v3-script); font-size: 1.8rem; color: var(--v3-azzurro); line-height: 1.1; }
+
+/* ---------- Servizi (righe manifesto con manicule) ---------- */
+
+.v3-servizi { margin-top: var(--v3-s5); }
+.v3-servizio {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: var(--v3-s3) var(--v3-s2);
+  border-bottom: 1px solid var(--v3-filetto);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s var(--v3-ease);
+}
+.v3-servizio:hover { background: var(--v3-carta-scura); }
+.v3-servizio:last-child { border-bottom: 0; }
+.v3-servizio .manicula { color: var(--v3-legno-ink); align-self: center; }
+.v3-servizio h3 {
+  font-family: var(--v3-cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 1.05rem;
+  color: var(--v3-azzurro);
+}
+.v3-servizio p { font-size: 0.95rem; color: var(--v3-moro-soft); }
+button.v3-servizio { width: 100%; font: inherit; text-align: center; }
+
+/* ---------- Torta ---------- */
+
+.v3-torta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--v3-s5);
+  margin-top: var(--v3-s5);
+  align-items: center;
+  text-align: left;
+}
+.v3-torta-copy p { font-size: 1.05rem; }
+.v3-torta-specs {
+  list-style: none;
+  padding: 0;
+  margin: var(--v3-s4) 0 0;
+}
+.v3-torta-specs li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--v3-filetto);
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+.v3-torta-specs .manicula { color: var(--v3-legno-ink); }
+.v3-torta-frame {
+  border: 3px solid var(--v3-moro);
+  box-shadow: inset 0 0 0 2px var(--v3-carta), inset 0 0 0 3.5px var(--v3-moro);
+  padding: var(--v3-s4);
+  background: var(--v3-carta);
+  margin: 0;
+}
+.v3-torta-frame figcaption {
+  margin-top: var(--v3-s2);
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  color: var(--v3-moro-soft);
+  text-align: center;
+}
+.v3-torta-ctas { display: flex; flex-wrap: wrap; gap: var(--v3-s3); margin-top: var(--v3-s4); }
+
+/* ---------- Vedute (gallery) ---------- */
+
+.v3-vedute {
+  display: flex;
+  gap: var(--v3-s4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding: var(--v3-s4) var(--v3-s2);
+  margin-top: var(--v3-s4);
+}
+.v3-veduta {
+  flex: none;
+  width: min(260px, 70vw);
+  scroll-snap-align: center;
+  margin: 0;
+  border: 2.5px solid var(--v3-moro);
+  box-shadow: 0 0 0 2px var(--v3-carta), 0 0 0 3px var(--v3-moro);
+  background: var(--v3-carta);
+  padding: 7px 7px 9px;
+}
+.v3-veduta:nth-child(odd) { transform: rotate(-1deg); }
+.v3-veduta:nth-child(even) { transform: rotate(1deg); }
+.v3-veduta img { width: 100%; aspect-ratio: 4 / 3.3; object-fit: cover; display: block; }
+.v3-veduta figcaption {
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  color: var(--v3-moro-soft);
+  padding-top: 7px;
+}
+
+/* ---------- Dove & quando ---------- */
+
+.v3-dove-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--v3-s5);
+  margin-top: var(--v3-s5);
+  text-align: left;
+  align-items: start;
+}
+.v3-dove-col h3 {
+  font-family: var(--v3-cond);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.95rem;
+  color: var(--v3-azzurro);
+  border-bottom: 2px solid var(--v3-moro);
+  padding-bottom: 8px;
+  margin-bottom: var(--v3-s3);
+}
+.v3-recapito { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px dotted var(--v3-filetto); }
+.v3-recapito:last-child { border-bottom: 0; }
+.v3-recapito .manicula { color: var(--v3-legno-ink); flex: none; }
+.v3-recapito a { color: var(--v3-moro); font-weight: 600; text-decoration: none; }
+.v3-recapito a:hover { color: var(--v3-azzurro); text-decoration: underline; }
+.v3-recapito .tipo {
+  display: block;
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--v3-moro-soft);
+}
+.v3-orari { width: 100%; border-collapse: collapse; }
+.v3-orari td { padding: 7px 4px; border-bottom: 1px dotted var(--v3-filetto); font-size: 0.95rem; }
+.v3-orari td:last-child {
+  text-align: right;
+  font-family: var(--v3-cond);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.v3-orari tr.today td { background: var(--v3-azzurro); color: var(--v3-carta); font-weight: 700; }
+.v3-orari tr.today td:first-child { padding-left: 10px; }
+.v3-orari tr.today td:last-child { padding-right: 10px; }
+.v3-oggi {
+  font-family: var(--v3-cond);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  border: 1.5px solid var(--v3-legno);
+  color: var(--v3-legno);
+  padding: 1px 6px;
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+.v3-mappa {
+  border: 3px solid var(--v3-moro);
+  box-shadow: inset 0 0 0 2px var(--v3-carta), inset 0 0 0 3.5px var(--v3-moro);
+  overflow: hidden;
+  background: var(--v3-carta);
+}
+.v3-mappa iframe { width: 100%; height: 250px; border: 0; display: block; filter: saturate(0.85); }
+.v3-qr {
+  display: flex;
+  align-items: center;
+  gap: var(--v3-s3);
+  margin-top: var(--v3-s3);
+  border: 1.5px solid var(--v3-filetto);
+  padding: var(--v3-s3);
+}
+.v3-qr p {
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--v3-moro-soft);
+  line-height: 1.6;
+}
+
+/* ---------- Chiusa del manifesto ---------- */
+
+.v3-chiusa {
+  margin-top: var(--v3-s6);
+  border-top: 3px double var(--v3-moro);
+  padding-top: var(--v3-s4);
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--v3-moro-soft);
+}
+.v3-chiusa .v3-script { font-size: 1.6rem; }
+
+/* ---------- Sotto il manifesto ---------- */
+
+.v3-footer {
+  background: var(--v3-azzurro-cupo);
+  color: var(--v3-carta);
+  padding: var(--v3-s5) clamp(1rem, 3vw, 2rem);
+}
+.v3-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--v3-s3) var(--v3-s4);
+}
+.v3-footer-inner p { font-size: 0.85rem; color: #cfe2ec; }
+.v3-versions { display: flex; flex-wrap: wrap; gap: var(--v3-s2) var(--v3-s3); list-style: none; margin: 0; padding: 0; }
+.v3-versions a {
+  font-family: var(--v3-cond);
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #cfe2ec;
+  text-decoration: none;
+  border-bottom: 1.5px solid transparent;
+  padding-bottom: 2px;
+}
+.v3-versions a:hover { color: #fff; border-bottom-color: var(--v3-legno); }
+.v3-versions a.current { color: var(--v3-legno); border-bottom-color: var(--v3-legno); }
+.v3-socials { display: flex; gap: var(--v3-s2); }
+.v3-socials a {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgba(250, 243, 227, 0.55);
+  color: var(--v3-carta);
+  transition: background 0.2s var(--v3-ease), color 0.2s var(--v3-ease);
+}
+.v3-socials a:hover { background: var(--v3-carta); color: var(--v3-azzurro-cupo); }
+
+.v3-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 70;
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  background: var(--v3-legno);
+  color: var(--v3-moro);
+  border: 3px solid var(--v3-moro);
+  box-shadow: 0 14px 30px -12px rgba(50, 40, 31, 0.55);
+  border-radius: 50%;
+  transition: transform 0.2s var(--v3-ease), background 0.2s var(--v3-ease);
+}
+.v3-fab:hover { transform: translateY(-3px) rotate(-6deg); background: #cf9a5e; }
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .v3-nav-links { display: none; }
+  .v3-nav-toggle { display: grid; }
+  .v3-torta-grid { grid-template-columns: 1fr; text-align: center; }
+  .v3-torta-specs li { justify-content: center; }
+  .v3-torta-ctas { justify-content: center; }
+  .v3-dove-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .v3-frame { padding: var(--v3-s4) var(--v3-s3); }
+  .v3-manicula-fine { display: none; }
+  .v3-ctas .v3-btn { width: 100%; }
+  .v3-torta-ctas .v3-btn { width: 100%; }
+  .v3-oval .ribbon { right: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3 *, .v3 *::before, .v3 *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
