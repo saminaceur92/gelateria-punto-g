@@ -127,7 +127,7 @@ export const cakeFillings = [
 
 // Copertura / glassa esterna
 export const cakeCoverings = [
-  { id: 'panna', name: 'Panna montata spatolata INTORNO', desc: 'Soffice, classica', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
+  { id: 'panna', name: 'Panna montata INTORNO', desc: 'Ciuffi di panna tutt’intorno alla torta', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sopra', name: 'Panna montata SOLO SOPRA', desc: 'Filo di panna solo sopra alla torta, con intorno un nastro trasparente non edibile', priceDelta: 0, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sotto-sopra', name: 'Panna montata SOTTO E SOPRA', desc: 'Filo di panna sul bordo inferiore e superiore della torta', priceDelta: 1, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'cioccolato-cop', name: 'Copertura morbida al cioccolato', desc: 'Copertura morbida al cioccolato al latte', priceDelta: 2, color: '#6b4226', allergeni: ['latte', 'soia', 'frutta a guscio'] },
@@ -181,6 +181,7 @@ export const cakeDecorations = [
   { id: 'fiori-eleganti', name: 'Fiori eleganti', desc: 'In zucchero duro, in colori diversi', emoji: '🌸', priceDelta: 5, allergeni: [], colorChoice: false, colors: [] },
   { id: 'fiori-ostia', name: 'Fiori ostia colorati', desc: 'Delicati fiori in ostia, in colori diversi', emoji: '🌼', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
   { id: 'cioccolato-deco', name: 'Decorazioni cioccolato', desc: 'Decorazioni in cioccolato bianco, latte e fondente', emoji: '🍫', priceDelta: 2, allergeni: ['latte', 'frutta a guscio', 'soia'], colorChoice: false, colors: [] },
+  { id: 'drip', name: 'Drip cake', desc: 'Colature di glassa che scendono dal bordo', emoji: '🍫', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
   { id: 'frutta-fresca', name: 'Frutta fresca', desc: 'Ribes, more, lamponi…', emoji: '🫐', priceDelta: 4, allergeni: [], colorChoice: false, colors: [], vegan: true },
   { id: 'panna-deco', name: 'Panna montata', desc: 'Panna montata spatolata intorno e decorazione con ciuffi', emoji: '🍦', priceDelta: 2, allergeni: ['latte'], colorChoice: false, colors: [] },
   { id: 'panna-colorata', name: 'Panna montata colorata', desc: 'Colore a scelta tra rosa, rossa, azzurra, blu, verde, nera, gialla e arcobaleno', emoji: '🎨', priceDelta: 2, allergeni: ['latte'], colorChoice: true, colors: COLORI_PANNA },

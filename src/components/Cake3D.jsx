@@ -1351,20 +1351,23 @@ const CREAM_WRAP_BANDS = new Set(['panna-sotto-sopra']);
  */
 const CREAM_DECORATIONS = new Set(['panna-deco', 'panna-colorata']);
 
+/** Decorazione "drip cake": le colature che scendono dal bordo. */
+const DRIP_ID = 'drip';
+
 /* ============================ colature copertura ============================ */
 
 function Drips({ shape, R, topEdgeY, color, maxLen }) {
   // Colature di glassa che scendono dal bordo della calotta sui lati.
-  // Solo tonda: i punti circolari non seguirebbero il bordo di cuore/box.
-  if (shape !== 'tonda') return null;
-  const n = 16;
-  const drips = ringPts(n, R * 0.99);
+  // Seguono il contorno VERO della torta (perimeterPts conosce quadrata,
+  // rettangolare e cuore): prima erano su un cerchio, quindi si potevano fare
+  // solo sulle tonde e sulle altre forme non comparivano affatto.
+  const n = shape === 'tonda' ? 16 : shape === 'cuore' ? 18 : 20;
+  const drips = decoSpots(shape, R, n, 0.99);
   return (
     <group>
-      {drips.map(([x, z, i]) => {
+      {drips.map(({ x, z, i, ang }) => {
         const seed = (i * 53) % 100;
         const len = maxLen * (0.4 + (seed / 100) * 0.6);
-        const ang = Math.atan2(z, x);
         return (
           <group key={`drip${i}`} position={[x, topEdgeY + 0.02, z]} rotation={[0, -ang + Math.PI / 2, 0]}>
             {/* rigonfiamento sul bordo: schiacciato, così legge come glassa che
@@ -1604,6 +1607,9 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const colorKey = decoIds.map((id) => decoColors[id] || '').join('|');
   const creamIds = decoIds.filter((id) => CREAM_DECORATIONS.has(id));
   const pieceIds = decoIds.filter((id) => PIECE_DECORATIONS.has(id));
+  // "Drip cake": le colature lungo il bordo. Prima venivano da sole con ogni
+  // copertura lucida; è uno stile preciso, quindi ora si sceglie.
+  const hasDrip = decoIds.includes(DRIP_ID);
 
   // ---- PANNA: quanto veste la torta e di che colore è ----
   const coverIsCream = !!useCover && CREAM_COVERINGS.has(covering?.id);
@@ -1800,6 +1806,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // contorno, non una spolverata su tutta la torta. Se sul bordo ci sono già i
   // pezzi (macarons, frutta…) la fascia si sposta appena più dentro, così i due
   // anelli convivono senza pestarsi invece di sovrapporsi.
+  // Quanti ciuffi lungo il bordo: il perimetro di un quadrato è più lungo di
+  // quello di un cerchio dello stesso raggio, quindi ne servono di più o
+  // resterebbero distanziati.
+  const ciuffiSopra = shape === 'tonda' ? 14 : shape === 'cuore' ? 16 : 18;
+  const ciuffiFianco = shape === 'tonda' ? 18 : shape === 'cuore' ? 20 : 22;
+
   const contornoOccupato = showRosetteRing || pezziSopra.length > 0;
   const granellaCoverage =
     (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * (contornoOccupato ? 0.82 : 1);
@@ -1882,18 +1894,10 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
               vertexColors={capRainbow}
             />
           </LayerMesh>
-          {/* Colature solo per glasse lucide (ganache, cioccolato, pistacchio…).
-              Partono dal bordo della CALOTTA, non da dentro la torta: se no
-              sembrano spilli piantati invece di glassa che cola. */}
-          {glossyCover && (
-            <Drips
-              shape={shape}
-              R={capR}
-              topEdgeY={capBottom + 0.02}
-              color={coverColor}
-              maxLen={Math.min(0.38, bodyH * 0.42)}
-            />
-          )}
+          {/* Le colature NON sono più automatiche: prima ogni copertura lucida
+              le portava con sé, ma è uno stile preciso (la "drip cake") e chi
+              vuole una copertura liscia se le ritrovava per forza. Ora sono una
+              decorazione a sé — vedi più sotto. */}
         </>
       )}
 
@@ -1902,6 +1906,57 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         <LayerMesh geometry={geos.creamCap} y={capY}>
           <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
         </LayerMesh>
+      )}
+
+      {/* ---- Drip cake: colature dal bordo, ora che è una decorazione a sé ----
+              Il colore è quello della copertura scelta; senza copertura si usa
+              il cioccolato, che è il caso classico della drip cake. ---- */}
+      {hasDrip && (
+        <Drips
+          shape={shape}
+          R={capR}
+          topEdgeY={(useCover ? capBottom : bodyTop) + 0.02}
+          color={useCover ? coverColor : '#5a3520'}
+          maxLen={Math.min(0.38, bodyH * 0.42)}
+        />
+      )}
+
+      {/* ---- Panna montata a CIUFFI portata dalla copertura ----
+              Le loro torte non hanno la panna spianata col coltello: hanno i
+              ciuffetti fatti col sac-à-poche. "Intorno" = ruche verticali su
+              tutto il fianco più una corona sopra; "sotto e sopra" = una corona
+              di ciuffi sul bordo alto e una alla base. ---- */}
+      {coverIsCream && covering?.id === 'panna' && (
+        <>
+          {/* Ruche verticali: una sola colonna di panna per posto, non tre
+              palline staccate — è così che viene fuori dal sac-à-poche, un
+              cordone continuo dal basso verso l'alto. */}
+          {perimeterPts(shape, wrapR, 1.0, ciuffiFianco).map(([x, z, i]) => (
+            <mesh
+              key={`ruche${i}`}
+              castShadow
+              position={[x, stackBottom + bodyH * 0.5, z]}
+              scale={[0.062, bodyH * 0.47, 0.05]}
+            >
+              <capsuleGeometry args={[1, 1.5, 4, 10]} />
+              <meshPhysicalMaterial {...softMat(dollopColor(i))} />
+            </mesh>
+          ))}
+          {perimeterPts(shape, wrapR, 0.93, ciuffiSopra).map(([x, z, i]) => (
+            <Dollop key={`cor${i}`} position={[x, surfaceY - 0.01, z]} color={dollopColor(i)} s={0.85} rotation={i} />
+          ))}
+        </>
+      )}
+
+      {coverIsCream && covering?.id === 'panna-sotto-sopra' && (
+        <>
+          {perimeterPts(shape, wrapR, 0.93, ciuffiSopra).map(([x, z, i]) => (
+            <Dollop key={`alto${i}`} position={[x, surfaceY - 0.01, z]} color={dollopColor(i)} s={0.8} rotation={i} />
+          ))}
+          {perimeterPts(shape, wrapR, 1.0, ciuffiSopra).map(([x, z, i]) => (
+            <Dollop key={`basso${i}`} position={[x, stackBottom + 0.06, z]} color={dollopColor(i)} s={0.7} rotation={i + 5} />
+          ))}
+        </>
       )}
 
       {/* ---- Ciuffi di panna lungo il bordo: SOLO se la decorazione è di panna ---- */}
