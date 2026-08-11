@@ -315,3 +315,88 @@
 }
 /* Le foto già incluse nel sito non si eliminano: niente barra sotto. */
 .gal-item-fissa { opacity: 0.85; }
+
+/* ── Codice personale: finestrella di conferma ────────────────────── */
+.codice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(28, 22, 16, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.codice-box {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.6rem 1.4rem 1.2rem;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+.codice-box h3 { margin: 0 0 0.4rem; }
+.codice-box p { margin: 0 0 1rem; font-size: 0.88rem; line-height: 1.5; }
+.codice-box input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1.4rem;
+  text-align: center;
+  letter-spacing: 0.4em;
+  border-radius: 10px;
+  border: 1.5px solid rgba(50, 40, 31, 0.2);
+}
+.codice-chiudi { position: absolute; top: 0.6rem; right: 0.6rem; display: flex; }
+.codice-err { color: #a33; font-size: 0.85rem; margin: 0.6rem 0 0; }
+.codice-azioni { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+.codice-riga { display: flex; gap: 0.5rem; max-width: 360px; }
+.codice-riga input { flex: 1; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1.5px solid rgba(50, 40, 31, 0.2); }
+
+/* ── Elenco delle persone e dello storico ─────────────────────────── */
+.codici-lista { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.codici-lista li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.8rem;
+  background: #fff;
+  border: 1px solid rgba(50, 40, 31, 0.12);
+  border-radius: 10px;
+}
+.codici-nome { font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; }
+.codici-lista li .adm-muted { margin-left: auto; font-size: 0.78rem; }
+.codici-badge {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(44, 118, 153, 0.14);
+  color: #2c7699;
+  font-weight: 700;
+}
+.codici-badge-ko { background: rgba(170, 50, 50, 0.14); color: #a33; }
+.codici-nuovo-riga { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+.codici-nuovo-riga .adm-field { flex: 1 1 150px; }
+
+.attivita-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.attivita-lista li {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: 0.85rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed rgba(50, 40, 31, 0.12);
+}
+.attivita-quando { font-variant-numeric: tabular-nums; color: #7a7166; font-size: 0.78rem; min-width: 8.5rem; }
+
+/* Casella del codice nella schermata d'ingresso */
+.adm-pin {
+  text-align: center;
+  font-size: 1.6rem;
+  letter-spacing: 0.5em;
+  padding-left: 0.5em; /* compensa lo spazio dopo l'ultima cifra */
+}

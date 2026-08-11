@@ -3,72 +3,106 @@ import { AuthProvider, useAuth } from './auth';
 import Dashboard from './Dashboard';
 import './admin.css';
 
+/**
+ * Accesso al gestionale col CODICE personale.
+ *
+ * Il codice non si verifica qui: si manda alla funzione `staff-login`, che sta
+ * sui server di Supabase, e quella risponde aprendo la sessione. Nel browser
+ * non c'è niente da aggirare, e nemmeno l'elenco dei codici.
+ *
+ * È rimasto anche l'ingresso con email e password, ma nascosto: serve solo
+ * come porta di servizio finché la funzione non è stata pubblicata (o se un
+ * giorno dovesse smettere di rispondere). Toglierlo del tutto rischierebbe di
+ * chiudere fuori tutti quanti.
+ */
 function Login() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState('in'); // 'in' = accedi, 'up' = crea account
+  const { signIn, entraColCodice } = useAuth();
+  const [pin, setPin] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [conEmail, setConEmail] = useState(false);
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const submit = async (e) => {
+  const submitCodice = async (e) => {
     e.preventDefault();
     setBusy(true);
     setError('');
-    setInfo('');
-    const fn = mode === 'up' ? signUp : signIn;
-    const { data, error } = await fn(email.trim(), password);
+    const { error } = await entraColCodice(pin.trim());
     setBusy(false);
-    if (error) {
-      setError(error.message);
-    } else if (mode === 'up' && !data.session) {
-      // Email di conferma attiva: avvisa (consigliato disattivarla, vedi guida)
-      setInfo('Account creato. Se richiesto, conferma la mail; poi accedi.');
-      setMode('in');
-    }
-    // Se c'è la sessione, il Gate passa automaticamente alla dashboard.
+    if (error) setError(error);
+    // Se la sessione si apre, il Gate passa da solo alla dashboard.
+  };
+
+  const submitEmail = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    const { error } = await signIn(email.trim(), password);
+    setBusy(false);
+    if (error) setError(error.message);
   };
 
   return (
     <div className="adm-login">
       <div className="adm-login-card">
         <div className="adm-login-brand"><strong>Punto Gi</strong><span>Area gestione</span></div>
-        <form onSubmit={submit}>
-          <h2>{mode === 'up' ? 'Crea account' : 'Accedi'}</h2>
-          <p className="adm-muted">
-            {mode === 'up' ? 'Scegli una password per il tuo account proprietario.' : 'Entra con email e password.'}
-          </p>
-          <input
-            type="email"
-            required
-            placeholder="latua@email.com"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            type="password"
-            required
-            minLength={6}
-            placeholder="Password"
-            autoComplete={mode === 'up' ? 'new-password' : 'current-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {error && <div className="adm-error">⚠️ {error}</div>}
-          {info && <div className="adm-info">✅ {info}</div>}
-          <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
-            {busy ? 'Attendi…' : mode === 'up' ? 'Crea account' : 'Entra'}
-          </button>
-          <button
-            type="button"
-            className="adm-link"
-            onClick={() => { setMode(mode === 'up' ? 'in' : 'up'); setError(''); setInfo(''); }}
-          >
-            {mode === 'up' ? 'Hai già un account? Accedi' : 'Prima volta? Crea il tuo account'}
-          </button>
-        </form>
+
+        {!conEmail ? (
+          <form onSubmit={submitCodice}>
+            <h2>Il tuo codice</h2>
+            <p className="adm-muted">
+              Ognuno ha il suo: è quello che firma anche gli ordini che prendi al banco.
+            </p>
+            <input
+              type="password"
+              inputMode="numeric"
+              required
+              minLength={4}
+              placeholder="••••"
+              autoComplete="off"
+              className="adm-pin"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+            />
+            {error && <div className="adm-error">⚠️ {error}</div>}
+            <button type="submit" className="adm-btn adm-btn-primary" disabled={busy || pin.trim().length < 4}>
+              {busy ? 'Attendi…' : 'Entra'}
+            </button>
+            <button type="button" className="adm-link" onClick={() => { setConEmail(true); setError(''); }}>
+              Entra con email e password
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={submitEmail}>
+            <h2>Accedi</h2>
+            <p className="adm-muted">Ingresso di servizio, con email e password.</p>
+            <input
+              type="email"
+              required
+              placeholder="latua@email.com"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              type="password"
+              required
+              minLength={6}
+              placeholder="Password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {error && <div className="adm-error">⚠️ {error}</div>}
+            <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
+              {busy ? 'Attendi…' : 'Entra'}
+            </button>
+            <button type="button" className="adm-link" onClick={() => { setConEmail(false); setError(''); }}>
+              Torna al codice
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

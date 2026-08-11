@@ -67,9 +67,32 @@ export function AuthProvider({ children }) {
     profile,
     isOwner: profile?.role === 'owner',
     isStaff: profile?.role === 'owner' || profile?.role === 'staff',
-    // Login classico con email + password
+    // Ingresso col CODICE personale: il codice va alla funzione `staff-login`
+    // (sui server di Supabase), che lo verifica e risponde con un lasciapassare
+    // usa e getta. Da lì in poi la sessione è una sessione Supabase normale,
+    // quindi i permessi sulle tabelle restano quelli di prima.
+    entraColCodice: async (pin) => {
+      if (!supabase) return { error: 'Configurazione mancante.' };
+      const { data, error } = await supabase.functions.invoke('staff-login', { body: { pin } });
+      if (error) {
+        // Il messaggio del server (es. "Codice non riconosciuto") arriva nel
+        // corpo della risposta: senza questo si vedrebbe solo "Edge Function
+        // returned a non-2xx status code", che non dice niente a nessuno.
+        let msg = 'Non riesco a verificare il codice.';
+        try { msg = (await error.context?.json())?.error || msg; } catch { /* no-op */ }
+        return { error: msg };
+      }
+      if (!data?.token_hash) return { error: data?.error || 'Codice non riconosciuto.' };
+      const { error: e2 } = await supabase.auth.verifyOtp({
+        token_hash: data.token_hash,
+        type: 'magiclink',
+      });
+      if (e2) return { error: e2.message };
+      logAction('Accesso col codice', data.nome || null);
+      return { error: null };
+    },
+    // Ingresso di servizio con email + password (vedi Admin.jsx).
     signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
-    signUp: (email, password) => supabase.auth.signUp({ email, password }),
     signOut: () => supabase.auth.signOut(),
   };
 

@@ -420,7 +420,7 @@ function makeInitialConfig(cake, initial = {}) {
   return base;
 }
 
-export default function CakeConfigurator({ open, onClose, staff = false, initial }) {
+export default function CakeConfigurator({ open, onClose, staff = false, initial, operatore = null }) {
   const cake = useCakeData();
   const {
     cakeShapes,
@@ -996,7 +996,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Se il caricamento su Storage non è riuscito, per lo staff si ripiega
       // sull'immagine grezza (che qui ci sta: non passa dai metadata Stripe).
       const { error } = await supabase.from('ordini').insert({
-        ...insertBase, totale, immagine: immagineUrl || immagine,
+        // creato_da: chi ha preso l'ordine al banco. Il nome arriva dal codice
+        // personale, verificato dal database prima di aprire il configuratore.
+        ...insertBase, totale, immagine: immagineUrl || immagine, creato_da: operatore || null,
       });
       if (error) {
         console.warn('[ordine] non salvato:', error.message);

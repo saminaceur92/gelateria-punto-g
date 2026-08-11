@@ -6,6 +6,8 @@ import OrdersPanel from './OrdersPanel';
 import StaffPanel from './StaffPanel';
 import DocumentiPanel from './DocumentiPanel';
 import GalleryPanel from './GalleryPanel';
+import ChiediCodice from './ChiediCodice';
+import CodiciPanel from './CodiciPanel';
 import PromemoriaPanel from './PromemoriaPanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
@@ -35,6 +37,9 @@ export default function Dashboard() {
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
+  // Chi sta prendendo l'ordine al banco (nome, dal codice personale).
+  const [chiediCodice, setChiediCodice] = useState(false);
+  const [operatore, setOperatore] = useState(null);
   const [ordersKey, setOrdersKey] = useState(0);
   const [newCount, setNewCount] = useState(0); // ordini arrivati mentre NON sei su "Ordini"
   const activeRef = useRef(active);
@@ -321,6 +326,13 @@ export default function Dashboard() {
         custom: true,
       },
       {
+        // Codici personali dello staff + storico di chi ha fatto cosa.
+        // Il pannello si sblocca solo con un codice da amministratore.
+        key: 'codici',
+        label: '🔑 Codici e attività',
+        custom: true,
+      },
+      {
         key: 'codici_sconto',
         label: '🏷️ Codici sconto',
         props: {
@@ -428,7 +440,7 @@ export default function Dashboard() {
       </header>
 
       <nav className="adm-nav">
-        <button className="adm-tab adm-new-cake" onClick={() => setCfgOpen(true)}>
+        <button className="adm-tab adm-new-cake" onClick={() => setChiediCodice(true)}>
           🎂 Nuova torta
         </button>
         <button
@@ -466,6 +478,8 @@ export default function Dashboard() {
           <DocumentiPanel />
         ) : active === 'gallery' ? (
           <GalleryPanel />
+        ) : active === 'codici' ? (
+          <CodiciPanel />
         ) : active === 'promemoria' ? (
           <PromemoriaPanel />
         ) : (
@@ -473,12 +487,30 @@ export default function Dashboard() {
         )}
       </main>
 
+      {/* Prima di prendere un ordine al banco si mette il proprio codice: così
+          sull'ordine resta scritto chi l'ha fatto. */}
+      {chiediCodice && (
+        <ChiediCodice
+          azione="Ordine creato in gelateria"
+          dettaglio={null}
+          descrizione="Stai per prendere un ordine al banco. Metti il tuo codice: resterà scritto sull'ordine."
+          onFatto={(chi) => {
+            setChiediCodice(false);
+            setOperatore(chi.nome);
+            setCfgOpen(true);
+          }}
+          onAnnulla={() => setChiediCodice(false)}
+        />
+      )}
+
       <CakeDataProvider>
         <CakeConfigurator
           open={cfgOpen}
           staff
+          operatore={operatore}
           onClose={() => {
             setCfgOpen(false);
+            setOperatore(null);
             setActive('ordini');
             setOrdersKey((k) => k + 1);
           }}
