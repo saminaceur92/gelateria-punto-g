@@ -29,6 +29,7 @@ create table if not exists public.codici_sconto (
   scadenza   date,                              -- vuoto = non scade mai
   usi_max    int,                               -- vuoto = utilizzi illimitati
   usi        int not null default 0,            -- quante volte è stato usato davvero
+  ordine     int not null default 100,          -- ordine nella scheda del gestionale
   minimo     numeric not null default 0,        -- spesa minima perché valga
   creato_il  timestamptz not null default now()
 );
