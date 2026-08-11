@@ -1497,28 +1497,52 @@ p {
   .galleria-griglia { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Riquadro Instagram in fondo alla pagina galleria */
+/* Scheda profilo Instagram, in cima alla pagina galleria */
 .galleria-ig {
-  margin-top: clamp(2.5rem, 6vw, 4rem);
-  padding: clamp(1.4rem, 3vw, 2.2rem);
+  margin-top: 2rem;
+  padding: clamp(1.2rem, 2.6vw, 1.8rem);
   border-radius: var(--radius);
   background: var(--cream-warm);
   border: 1px solid rgba(44, 118, 153, 0.18);
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  flex-wrap: wrap;
 }
-.galleria-ig h3 { margin: 0.6rem 0 0.4rem; font-family: var(--font-display); }
-.galleria-ig p { margin: 0 auto 1.2rem; max-width: 46ch; color: var(--grey); font-size: 0.92rem; }
-.galleria-ig-strip {
+.galleria-ig-profilo {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex: 0 0 auto;
+}
+.galleria-ig-foto {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: 50%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 0.5rem;
-  max-width: 560px;
-  margin: 0 auto 1.4rem;
+  place-items: center;
+  overflow: hidden;
+  background: var(--cream);
+  /* Anello sfumato, come la cornice delle storie di Instagram */
+  box-shadow: 0 0 0 3px var(--cream-warm), 0 0 0 5px var(--violet-deep);
 }
-.galleria-ig-strip img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 10px;
-  display: block;
+/* Foto vera del profilo: riempie il tondo. Se manca e si ripiega sul logo,
+   quello va contenuto e un po' distanziato dal bordo, altrimenti si taglia. */
+.galleria-ig-foto img { width: 100%; height: 100%; object-fit: cover; }
+.galleria-ig-foto img.e-logo { object-fit: contain; padding: 6px; }
+.galleria-ig-testi { display: flex; flex-direction: column; line-height: 1.3; }
+.galleria-ig-testi strong { font-family: var(--font-display); font-size: 1.1rem; }
+.galleria-ig-handle { color: var(--violet-deep); font-weight: 600; font-size: 0.9rem; }
+.galleria-ig-bio { color: var(--grey); font-size: 0.82rem; }
+.galleria-ig p {
+  margin: 0;
+  flex: 1 1 240px;
+  color: var(--grey);
+  font-size: 0.9rem;
+  max-width: 42ch;
+}
+@media (max-width: 700px) {
+  .galleria-ig { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
+  .galleria-ig .btn { width: 100%; justify-content: center; }
 }

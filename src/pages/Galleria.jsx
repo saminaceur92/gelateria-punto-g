@@ -48,6 +48,41 @@ export default function Galleria() {
           Tocca una foto per vederla in grande e ingrandirla.
         </p>
 
+        {/* Scheda profilo Instagram, in cima: e' li' che si va a cercare il
+            profilo, non dopo cinquanta foto. La foto tonda e' il logo: quella
+            vera del profilo Instagram non si puo' prendere da fuori (l'indirizzo
+            cambia e Instagram lo blocca), va caricata come file. */}
+        <section className="galleria-ig">
+          <a className="galleria-ig-profilo" href={IG_URL} target="_blank" rel="noopener noreferrer">
+            <span className="galleria-ig-foto">
+              {/* Foto del profilo: basta salvare l'immagine come
+                  public/instagram-profilo.jpg e compare qui, senza toccare il
+                  codice. Finché non c'è, si vede il logo. */}
+              <img
+                src="/instagram-profilo.jpg"
+                alt=""
+                className="ig-avatar"
+                onError={(e) => {
+                  e.currentTarget.src = '/logo.png';
+                  e.currentTarget.classList.add('e-logo');
+                }}
+              />
+            </span>
+            <span className="galleria-ig-testi">
+              <strong>Gelateria Punto Gi</strong>
+              <span className="galleria-ig-handle">@gelateriapuntogicarpi</span>
+              <span className="galleria-ig-bio">Gelateria artigianale · Carpi (MO)</span>
+            </span>
+          </a>
+          <p>
+            Le novità, i gusti del mese e le torte appena uscite dal laboratorio le pubblichiamo lì,
+            praticamente ogni giorno.
+          </p>
+          <a className="btn btn-primary" href={IG_URL} target="_blank" rel="noopener noreferrer">
+            <Instagram size={18} /> Seguici su Instagram
+          </a>
+        </section>
+
         <div className="galleria-griglia">
           {foto.map((f, i) => (
             <button
@@ -67,22 +102,6 @@ export default function Galleria() {
           ))}
         </div>
 
-        <section className="galleria-ig">
-          <Instagram size={30} style={{ color: 'var(--violet-deep)', margin: '0 auto' }} />
-          <h3>Seguici su Instagram</h3>
-          <p>
-            Le novità, i gusti del mese e le torte appena uscite dal laboratorio le pubblichiamo lì,
-            praticamente ogni giorno.
-          </p>
-          <div className="galleria-ig-strip" aria-hidden="true">
-            {foto.slice(0, 6).map((f, i) => (
-              <img key={`ig-${i}`} src={f.url} alt="" loading="lazy" />
-            ))}
-          </div>
-          <a className="btn btn-primary" href={IG_URL} target="_blank" rel="noopener noreferrer">
-            <Instagram size={18} /> @gelateriapuntogicarpi
-          </a>
-        </section>
       </main>
 
       {aperta !== null && (
