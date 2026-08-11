@@ -808,16 +808,26 @@ const CREAM_DROP_GEO = creamRope({
 });
 
 /**
- * Ciuffo di meringa: sale rastremando e si chiude a punta, con le piccole
- * ondine della sac-à-poche. Raggio 0.5, altezza 1.
+ * Spumino basso e tondeggiante, a più giri di sac-à-poche. Il profilo resta
+ * largo quasi fino a metà altezza e si chiude con una punta morbida: nella
+ * scala finale risulta molto più largo che alto, come una piccola meringa.
  */
 const MERINGUE_GEO = (() => {
   const prof = [
-    [0.0, 0.0], [0.44, 0.02], [0.5, 0.1], [0.455, 0.19], [0.475, 0.26],
-    [0.415, 0.36], [0.435, 0.43], [0.36, 0.55], [0.375, 0.62], [0.28, 0.74],
-    [0.285, 0.79], [0.15, 0.91], [0.0, 1.0],
+    [0.0, 0.0], [0.42, 0.01], [0.57, 0.07], [0.59, 0.15],
+    [0.54, 0.22], [0.43, 0.27], [0.52, 0.3], [0.54, 0.37],
+    [0.47, 0.43], [0.37, 0.47], [0.45, 0.51], [0.44, 0.58],
+    [0.34, 0.64], [0.27, 0.67], [0.32, 0.71], [0.27, 0.78],
+    [0.17, 0.84], [0.08, 0.9], [0.02, 0.96], [0.0, 1.0],
   ];
-  const g = new THREE.LatheGeometry(prof.map(([r, h]) => new THREE.Vector2(r, h)), 20);
+  const g = new THREE.LatheGeometry(prof.map(([r, h]) => new THREE.Vector2(r, h)), 24);
+  // L'ultimo ricciolo non sale perfettamente verticale: una piega minima,
+  // ruotata poi in modo diverso per ogni pezzo, toglie l'effetto stampino.
+  const pos = g.getAttribute('position');
+  for (let i = 0; i < pos.count; i++) {
+    const h = pos.getY(i);
+    if (h > 0.58) pos.setX(i, pos.getX(i) + Math.pow((h - 0.58) / 0.42, 2) * 0.09);
+  }
   g.computeVertexNormals();
   return g;
 })();
@@ -886,7 +896,7 @@ function Macarons({ spots, y, color }) {
   );
 }
 
-/* ---- SPUMINI: piccoli ciuffi di meringa a punta (rosa o blu) ---- */
+/* ---- SPUMINI: piccole meringhe basse e tonde (rosa o blu) ---- */
 
 const SPUMINI_COLORS = ['#f7bfd3', '#a6cbf0'];
 
@@ -894,18 +904,18 @@ function Spumini({ spots, y, color }) {
   const items = useMemo(() => {
     const pal = decoPalette(SPUMINI_COLORS, color);
     return spots.map(({ x, z, i }) => {
-      const s = 0.2 + rnd(i, 5) * 0.045;
+      const s = 0.22 + rnd(i, 5) * 0.035;
       return {
-        position: [x, y - 0.012, z],
+        position: [x, y - 0.006, z],
         rotation: [0, rnd(i, 6) * 6.28, 0],
-        scale: [s, s * 1.15, s],
+        scale: [s, s * 0.62, s],
         color: pal[i % pal.length],
       };
     });
   }, [spots, y, color]);
   return (
     <Pieces items={items} geometry={MERINGUE_GEO}>
-      <meshPhysicalMaterial roughness={0.65} sheen={0.8} sheenRoughness={0.75} envMapIntensity={0.4} />
+      <meshPhysicalMaterial roughness={0.78} sheen={0.55} sheenRoughness={0.82} envMapIntensity={0.32} />
     </Pieces>
   );
 }
@@ -1518,9 +1528,6 @@ const CREAM_COVERINGS = new Set([
 /** Copertura che avvolge tutto il fianco della torta. */
 const CREAM_WRAP_FULL = new Set(['panna', 'panna-spatolata']);
 
-/** Copertura a due fasce: un filo di panna in alto e uno in basso. */
-const CREAM_WRAP_BANDS = new Set(['panna-sotto-sopra']);
-
 /**
  * Decorazioni di panna montata: sono le UNICHE che mettono i ciuffi (Dollop),
  * e portano con sé la panna spatolata intorno se la copertura non è di panna.
@@ -1874,7 +1881,9 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // scelta non è già di panna: in quel caso comanda la copertura.
   const creamDecoWrap = creamIds.length > 0 && !coverIsCream;
   const wrapFull = (coverIsCream && CREAM_WRAP_FULL.has(covering.id)) || creamDecoWrap;
-  const wrapBands = coverIsCream && CREAM_WRAP_BANDS.has(covering.id);
+  // "Sotto e sopra" è composta soltanto dalle due ghirlande a ciuffi: serve
+  // qui per sapere quanto sporge il bordo, ma non genera fasce lisce sul fianco.
+  const pannaSottoSopra = coverIsCream && covering?.id === 'panna-sotto-sopra';
   // panna aggiunta dalla decorazione su una torta senza copertura: ci vuole
   // anche la superficie superiore, altrimenti resterebbe il gusto scoperto
   const extraCreamCap = creamDecoWrap && !useCover;
@@ -1943,7 +1952,6 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // guscio di panna intorno alla torta: un filo più largo dei gusti, così li copre
   const bodyH = layers * bandH;
   const wrapR = R * 1.05;
-  const bandT = Math.min(0.17, bodyH * 0.34);
   // Raggio della calotta di copertura. Deve essere un po' PIÙ LARGO del corpo:
   // sia la calotta sia i dischi di gelato hanno il bordo volutamente irregolare
   // (±1%), e con raggi uguali capitava che la calotta rientrasse sotto il bordo
@@ -1965,14 +1973,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
       fill: fillingColor ? makeLayerGeo(shape, R * 1.015, 0.06, 8.2) : null,
       // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
       shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
-      // fascia di panna sul bordo alto e su quello basso ("SOTTO E SOPRA")
-      band: wrapBands ? rainbow(makeLayerGeo(shape, wrapR, bandT, 4.4)) : null,
       // calotta di panna aggiunta dalla decorazione su una torta senza copertura
       creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, wrapR * 0.998, capH * 1.6, 5.5)) : null,
     };
   }, [
     shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
-    wrapFull, wrapBands, extraCreamCap, wrapR, capR, bodyH, bandT, creamRainbow,
+    wrapFull, extraCreamCap, wrapR, capR, bodyH, creamRainbow,
   ]);
 
   // ---- Piatto (vassoio) ORO, con forma dedicata ----
@@ -2054,7 +2060,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // pur non essendo un guscio intero.
   const pannaACiuffi = coverIsCream && covering?.id === 'panna';
   const fiancoR =
-    wrapFull || wrapBands ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
+    wrapFull || pannaSottoSopra ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
   // I ciuffi di panna hanno la loro ghirlanda dedicata; qui passano soltanto le
   // decorazioni solide. In questo modo panna + pezzi non genera una seconda
   // fila, ma un unico bordo con i pezzi posati sui ciuffi.
@@ -2135,18 +2141,6 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         <LayerMesh geometry={geos.shell} y={stackBottom + bodyH / 2}>
           <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
         </LayerMesh>
-      )}
-
-      {/* ---- PANNA SOTTO E SOPRA: due fasce, i gusti restano a vista in mezzo ---- */}
-      {geos.band && (
-        <>
-          <LayerMesh geometry={geos.band} y={bodyTop - bandT / 2}>
-            <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
-          </LayerMesh>
-          <LayerMesh geometry={geos.band} y={stackBottom + bandT / 2}>
-            <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
-          </LayerMesh>
-        </>
       )}
 
       {/* ---- Copertura: calotta sottile sul disco superiore (niente cupola) ---- */}
