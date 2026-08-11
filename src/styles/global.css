@@ -1098,6 +1098,11 @@ p {
   .gallery-scroll:hover .gallery-track { animation-play-state: paused; }
 }
 
+/* Fuori schermo il nastro si ferma: muovere una striscia larga migliaia di
+   pixel mentre l'utente sta leggendo un'altra sezione fa solo scattare lo
+   scorrimento. La classe la mette/toglie Gallery.jsx guardando se è in vista. */
+.gallery-scroll:not(.in-vista) .gallery-track { animation-play-state: paused; }
+
 .gallery-shot {
   flex: 0 0 auto;
   height: clamp(230px, 34vw, 360px);

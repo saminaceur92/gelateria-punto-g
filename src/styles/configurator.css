@@ -1827,22 +1827,9 @@
 
 /* ═══════════════════════════════════════════════════════════════════
    Riepilogo che si popola mentre si sceglie (agosto 2026)
-   Schermi grandi: in fondo alla colonna di sinistra, sotto la torta.
-   Telefono: barretta in fondo che si apre (vedi configurator-mobile.css).
+   Solo su telefono: barretta in fondo che si apre (vedi configurator-mobile.css).
+   Su schermi grandi non serve: la card dell'anteprima racconta già la torta.
    ═══════════════════════════════════════════════════════════════════ */
-.riepilogo-colonna {
-  margin-top: 1.2rem;
-  padding-top: 1rem;
-  border-top: 1px dashed rgba(44, 118, 153, 0.25);
-  text-align: left;
-  width: 100%;
-}
-.riepilogo-colonna h4 {
-  margin: 0 0 0.6rem;
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  color: var(--violet-deep);
-}
 .riepilogo-vuoto {
   margin: 0;
   font-size: 0.8rem;

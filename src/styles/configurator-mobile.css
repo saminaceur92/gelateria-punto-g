@@ -213,8 +213,6 @@
    si accende la barretta e si spegne la copia della colonna.
    ═══════════════════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
-  .riepilogo-colonna { display: none; }
-
   /* La barra dei pulsanti passa a due righe: sopra il riepilogo, sotto i
      pulsanti di sempre (che restano su una riga sola, come prima). */
   .cfg-footer { flex-wrap: wrap; }

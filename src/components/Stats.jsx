@@ -38,7 +38,7 @@ function Counter({ to, duration = 2 }) {
 // Numeri veri dati dai titolari: niente "+" davanti, si leggono come dati precisi.
 // I 115.564 salgono più piano degli altri: sono sei cifre, altrimenti scorrono nervose.
 const stats = [
-  { icon: <IceCream2 size={22} />, to: 12500, suffix: 'kg', label: 'di gelato prodotto ogni anno' },
+  { icon: <IceCream2 size={22} />, to: 12378, suffix: 'kg', label: 'di gelato prodotto ogni anno' },
   { icon: <Cake size={22} />, to: 2354, label: 'torte create ogni anno' },
   { icon: <Cookie size={22} />, to: 6874, label: 'pasticcini creati ogni anno' },
   { icon: <Smile size={22} />, to: 115564, duration: 2.6, label: 'clienti felici ogni anno' },

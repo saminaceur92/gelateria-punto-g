@@ -1115,15 +1115,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               )}
             </div>
 
-            {/* Riepilogo che si popola mentre si sceglie. Qui è nella colonna di
-                sinistra (schermi grandi); su telefono questa copia è nascosta e
-                al suo posto c'è la barretta in fondo. */}
-            {!sent && (
-              <div className="riepilogo-colonna">
-                <h4>La tua torta</h4>
-                <RiepilogoVivo config={config} steps={steps} step={step} />
-              </div>
-            )}
+            {/* NB: su schermi grandi il riepilogo NON si ripete qui: la card
+                sopra racconta già la torta ("farcito con…", "coperto da…").
+                Su telefono la card è compattata e quelle righe spariscono,
+                quindi lì il riepilogo c'è, nella barretta in fondo. */}
           </aside>
 
           <StepsCtx.Provider value={steps}>
@@ -1449,7 +1444,9 @@ function StepFlavors({ config, add, removeAt }) {
       <StepHeader
         stepKey="flavors"
         title="Scegli i gusti degli strati"
-        lead={`Consigliati ${GUSTI_CONSIGLIATI} gusti${max > GUSTI_CONSIGLIATI ? `, fino a un massimo di ${max}` : ` (il massimo per questa torta)`}. L'ordine è quello degli strati, dal basso verso l'alto — e lo stesso gusto si può ripetere.`}
+        // Il massimo non si scrive: non è un traguardo da raggiungere. Quando è
+        // pieno lo dice la card, che smette di rispondere e spiega perché.
+        lead={`Consigliati ${GUSTI_CONSIGLIATI} gusti. L'ordine è quello degli strati, dal basso verso l'alto — e lo stesso gusto si può ripetere.`}
       />
 
       {/* Strati scelti, in ordine: è anche il posto da cui si tolgono, visto che
@@ -2025,7 +2022,7 @@ function StepMessage({ config, set, staff }) {
               onClick={() => set({ occasion: config.occasion === o ? '' : o })}
             >
               {/* "Nessuna" non è un'occasione triste: le diamo comunque un cuore. */}
-              {o === 'Nessuna' ? '🤍 Nessuna' : o}
+              {o === 'Nessuna' ? '💙 Nessuna' : o}
             </button>
           ))}
         </div>
@@ -2194,7 +2191,7 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
           onChange={(e) => set({ notes: e.target.value })}
         />
         <div className="cfg-avviso cfg-avviso-dolce" role="note">
-          <span className="cfg-avviso-ico" aria-hidden="true">💛</span>
+          <span className="cfg-avviso-ico" aria-hidden="true">💙</span>
           <div>
             <p>
               Faremo di tutto per assecondare le tue richieste. L'ordine potrà subire modifiche

@@ -2018,11 +2018,30 @@ function Scene({ spin = true, ...props }) {
 
 export default function Cake3D(props) {
   const [spin, setSpin] = useState(true);
+  const stage = useRef(null);
+  // La torta 3D si ridisegna 60 volte al secondo. Sulla home ce n'è una anche
+  // nella sezione "Crea la tua torta": senza questo controllo continuerebbe a
+  // lavorare pure quando è lontanissima dallo schermo, e il sito scatta mentre
+  // si scorre. Con `frameloop="never"` il disegno si ferma (resta l'ultimo
+  // fotogramma, che nessuno sta guardando) e riparte appena torna in vista.
+  const [inVista, setInVista] = useState(true);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      ([e]) => setInVista(e.isIntersecting),
+      { rootMargin: '200px' } // riparte un attimo prima di entrare in scena
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <div className="cake3d-stage">
+    <div className="cake3d-stage" ref={stage}>
       <Canvas
         shadows
         dpr={[1, 2]}
+        frameloop={inVista ? 'always' : 'never'}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
         camera={{ position: [0, 2.7, 5.0], fov: 30 }}
       >
