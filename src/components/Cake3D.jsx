@@ -631,7 +631,28 @@ function Pieces({ items, geometry, order = 'XYZ', children }) {
  * per far "guardare fuori" i pezzi che hanno un davanti (macarons, fiocchi).
  */
 function decoSpots(shape, R, n, inset = 0.8) {
-  return perimeterPts(shape, R, inset, n).map(([x, z, i]) => ({ x, z, i, ang: Math.atan2(z, x) }));
+  const pts = perimeterPts(shape, R, inset, n);
+  return pts.map(([x, z, i], k) => {
+    // Verso "fuori" preso dal BORDO, non dal centro della torta.
+    // Sul tondo è lo stesso; sul quadrato no: un pezzo appoggiato all'angolo
+    // guarderebbe in diagonale mentre i suoi vicini guardano dritti, e si vede
+    // subito — sembra storto. Qui il verso lo dà il lato su cui sta appoggiato.
+    const p = pts[(k - 1 + pts.length) % pts.length];
+    const q = pts[(k + 1) % pts.length];
+    const tx = q[0] - p[0];
+    const tz = q[1] - p[1];
+    let ang;
+    if (Math.hypot(tx, tz) < 1e-6) {
+      ang = Math.atan2(z, x);
+    } else {
+      // normale = tangente ruotata di 90°, girata verso l'esterno
+      let nx = tz;
+      let nz = -tx;
+      if (nx * x + nz * z < 0) { nx = -nx; nz = -nz; }
+      ang = Math.atan2(nz, nx);
+    }
+    return { x, z, i, ang };
+  });
 }
 
 /** Caso finto ma stabile: stessa torta → stessa disposizione a ogni render. */
@@ -756,11 +777,11 @@ function Marshmallow({ spots, y, color }) {
       const r = 0.098 + rnd(i, 7) * 0.018;
       const h = 0.17 + rnd(i, 8) * 0.035;
       const c = pal[i % pal.length];
-      // qualcuno in piedi, qualcuno coricato: sembrano appoggiati a mano
-      const coricato = rnd(i, 9) > 0.6;
-      return coricato
-        ? { position: [x, y + r, z], rotation: [Math.PI / 2, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c }
-        : { position: [x, y + h / 2, z], rotation: [0, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c };
+      // Tutti in piedi, come si appoggiano davvero su una torta. Prima qualcuno
+      // era coricato e qualcuno no, e da fuori sembrava solo disordine.
+      // L'unica variazione è la rotazione su sé stessi, che non si nota come
+      // "storto" ma toglie l'effetto stampino.
+      return { position: [x, y + h / 2, z], rotation: [0, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c };
     });
   }, [spots, y, color]);
   return (
@@ -945,19 +966,23 @@ function Fiocchi({ spots, y, drop = 0.5, color }) {
       // è di raso: largo e piatto, non un cordoncino — altrimenti a questa
       // distanza il fiocco non si legge.
       for (const sgn of [-1, 1]) {
+        // Le due asole salgono verso l'ALTO allargandosi, come in un fiocco
+        // annodato davvero: prima erano inclinate in giù e sembravano due ali
+        // afflosciate. Sono anche un po' più alzate rispetto al nodo.
         asole.push({
-          position: [px + ux * sgn * 0.125, y + 0.026, pz + uz * sgn * 0.125],
-          rotation: [0, ry, sgn * 0.5],
-          scale: [0.15, 0.088, 0.034],
+          position: [px + ux * sgn * 0.135, y + 0.062, pz + uz * sgn * 0.135],
+          rotation: [0, ry, -sgn * 0.72],
+          scale: [0.17, 0.1, 0.036],
           color: c,
         });
-        // nastro che SCENDE lungo il fianco: un po' divaricato e di lunghezza
-        // diversa da un fiocco all'altro, così sembra annodato a mano
+        // I due nastri scendono DIVARICANDOSI verso l'esterno (prima si
+        // chiudevano verso il centro, e sembravano incollati fra loro).
+        // Lunghezza diversa da un fiocco all'altro: sembra annodato a mano.
         const len = drop * (0.55 + ((i * 7) % 5) * 0.06);
         code.push({
-          position: [px + ux * sgn * 0.062, y - len / 2 - 0.04, pz + uz * sgn * 0.062],
-          rotation: [0, ry, sgn * 0.13],
-          scale: [0.055, len, 0.014],
+          position: [px + ux * sgn * 0.055, y - len / 2 - 0.05, pz + uz * sgn * 0.055],
+          rotation: [0, ry, -sgn * 0.32],
+          scale: [0.058, len, 0.014],
           color: c,
         });
       }

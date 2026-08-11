@@ -177,7 +177,7 @@ export const cakeDecorations = [
   { id: 'cioccolato-fondente-deco', name: 'Decorazioni cioccolato fondente', desc: 'Allegri e golosi', emoji: '🍫', priceDelta: 2, allergeni: [], colorChoice: false, colors: [], vegan: true },
   { id: 'macarons', name: 'Macarons', desc: 'Colorati assortiti', emoji: '🧁', priceDelta: 2, allergeni: ['uova', 'frutta a guscio', 'latte'], colorChoice: false, colors: [] },
   { id: 'spumini', name: 'Spumini', desc: 'Rosa o blu', emoji: '☁️', priceDelta: 1, allergeni: ['uova'], colorChoice: true, colors: COLORI_SPUMINI },
-  { id: 'marshmallow', name: 'Marshmellow', desc: 'Morbidi e colorati', emoji: '🍡', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
+  { id: 'marshmallow', name: 'Marshmallow', desc: 'Morbidi e colorati', emoji: '🍡', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
   { id: 'fiori-eleganti', name: 'Fiori eleganti', desc: 'In zucchero duro, in colori diversi', emoji: '🌸', priceDelta: 5, allergeni: [], colorChoice: false, colors: [] },
   { id: 'fiori-ostia', name: 'Fiori ostia colorati', desc: 'Delicati fiori in ostia, in colori diversi', emoji: '🌼', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
   { id: 'cioccolato-deco', name: 'Decorazioni cioccolato', desc: 'Decorazioni in cioccolato bianco, latte e fondente', emoji: '🍫', priceDelta: 2, allergeni: ['latte', 'frutta a guscio', 'soia'], colorChoice: false, colors: [] },
