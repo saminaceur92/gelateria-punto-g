@@ -198,7 +198,9 @@ export async function fetchCakeOptions() {
       cakeBases: basi.map((b) => ({ id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: b.allergeni != null ? splitLower(b.allergeni) : (BASE_ALLERG[b.id] || []), ...dieta(b, fbCake.cakeBases) })),
       cakeCrumbles,
       cakeFillings: farc.map((f) => ({ id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []), ...dieta(f, fbCake.cakeFillings) })),
-      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []), ...dieta(c, fbCake.cakeCoverings) })),
+      // `foto` è la foto di esempio caricata dalla dashboard: nel configuratore
+      // apre l'immagine "a scopo illustrativo" della copertura.
+      cakeCoverings: cop.map((c) => ({ id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, foto: c.foto || null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []), ...dieta(c, fbCake.cakeCoverings) })),
       // Le colonne `supplemento`, `scelta_colore` e `colori` sono nuove: se non
       // esistono ancora si ottengono 0 / false / lista dal fallback, mai un errore.
       cakeDecorations: dec.map((d) => ({

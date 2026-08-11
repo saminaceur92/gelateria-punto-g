@@ -24,6 +24,8 @@
     { "source": "/allergeni/:path*", "destination": "/allergeni" },
     { "source": "/galleria", "destination": "/index.html" },
     { "source": "/galleria/:path*", "destination": "/index.html" },
+    { "source": "/consegna", "destination": "/index.html" },
+    { "source": "/consegna/:path*", "destination": "/index.html" },
     { "source": "/v2", "destination": "/index.html" },
     { "source": "/v2/:path*", "destination": "/index.html" },
     { "source": "/v3", "destination": "/index.html" },

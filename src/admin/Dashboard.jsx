@@ -178,13 +178,14 @@ export default function Dashboard() {
         props: {
           table: 'coperture',
           title: 'Coperture / glasse',
-          subtitle: 'Coperture legate alla grafica 3D: attiva o disattiva quelle disponibili.',
+          subtitle: 'Coperture legate alla grafica 3D: attiva o disattiva quelle disponibili. La "Foto di esempio" è una vostra foto vera di quella copertura: chi la sceglie nel configuratore può aprirla per capire come viene.',
           locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
+            { key: 'foto', label: 'Foto di esempio (a scopo illustrativo)', type: 'foto', pathKey: 'foto_path' },
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
           newRow: () => ({ id: uuid(), nome: 'Nuova copertura', descrizione: '', supplemento: 0, colore: '#fff8e6', allergeni: '' }),
@@ -198,9 +199,6 @@ export default function Dashboard() {
           title: 'Topping / decorazioni',
           subtitle: 'Topping legati alla grafica 3D: attiva o disattiva quelli disponibili. Il supplemento si somma al prezzo della torta. Se la decorazione esiste in più colori, spunta "Colore a scelta" ed elenca qui i colori: il cliente sceglierà il suo.',
           locked: true,
-          // La panna è presente di serie in due file su ogni torta: non è più
-          // un topping da attivare, modificare o far pagare separatamente.
-          excludeIds: ['panna-deco', 'panna-colorata'],
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },

@@ -870,6 +870,26 @@ p {
 .service-card:hover { transform: translateY(-8px); border-color: transparent; }
 .service-card:hover::after { opacity: 1; }
 
+/* La card è diventata un link/bottone: si eredita il vestito della card e si
+   tolgono i panni da bottone (il font, i bordi, il cursore del testo). */
+.service-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.service-vai {
+  position: absolute;
+  right: 1.4rem;
+  bottom: 1.2rem;
+  color: rgba(255, 249, 237, 0.45);
+  transition: transform 0.4s var(--ease), color 0.4s ease;
+}
+.service-card:hover .service-vai { transform: translateX(4px); color: #fff; }
+
 .service-icon {
   width: 56px;
   height: 56px;
@@ -1467,6 +1487,40 @@ p {
 
 /* ── Pagina /galleria ─────────────────────────────────────────────── */
 .galleria-page { background: var(--cream); min-height: 100vh; }
+
+/* ===========================================================
+   PAGINA /consegna (consegna a domicilio)
+   =========================================================== */
+.consegna-page { background: var(--cream); min-height: 100vh; }
+.consegna-canali {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.2rem;
+  margin-top: 2.4rem;
+}
+.consegna-canale {
+  background: var(--cream-warm);
+  border: 1px solid rgba(50, 40, 31, 0.08);
+  border-radius: var(--radius);
+  padding: 1.8rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  box-shadow: 0 16px 32px -24px rgba(50, 40, 31, 0.4);
+}
+.consegna-canale p { flex: 1; color: var(--ink-soft, rgba(50, 40, 31, 0.8)); }
+.consegna-canale .btn { align-self: flex-start; }
+.consegna-canale-testa { display: flex; align-items: center; gap: 0.6rem; }
+.consegna-canale-testa h2 { font-size: 1.3rem; margin: 0; }
+.consegna-canale-emoji { font-size: 1.6rem; }
+.consegna-note { margin-top: 2.4rem; display: grid; gap: 1rem; max-width: 62ch; }
+.consegna-nota {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  color: var(--ink-soft, rgba(50, 40, 31, 0.85));
+}
+.consegna-nota svg { flex-shrink: 0; margin-top: 0.2rem; color: var(--violet-deep); }
 .galleria-griglia {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

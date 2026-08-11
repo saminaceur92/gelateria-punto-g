@@ -108,6 +108,39 @@ function ridimensiona(file) {
   });
 }
 
+/**
+ * Carica una foto "di servizio" nello storage (stessa qualità/riduzione della
+ * gallery) e restituisce { url, path } senza toccare la tabella della gallery.
+ * Serve alle foto di esempio delle coperture: la riga a cui appartengono sta
+ * in un'altra tabella, qui si gestisce solo il file.
+ */
+export async function caricaFotoFile({ file, cartella = 'esempi' }) {
+  if (!supabase) return { error: 'Supabase non configurato' };
+  const bad = validaFoto(file);
+  if (bad) return { error: bad };
+  const ridotta = await ridimensiona(file);
+  const path = `${cartella}/${stamp()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const up = await supabase.storage.from(BUCKET).upload(path, ridotta, {
+    contentType: ridotta.type || 'image/jpeg',
+    cacheControl: '31536000',
+    upsert: false,
+  });
+  if (up.error) {
+    const msg = /bucket/i.test(up.error.message)
+      ? `${up.error.message} — esegui la migrazione 2026-08-10-batch-agosto.sql su Supabase.`
+      : up.error.message;
+    return { error: msg };
+  }
+  const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { url: pub?.publicUrl || null, path, error: null };
+}
+
+/** Cancella un file di storage caricato con caricaFotoFile (best effort). */
+export async function eliminaFotoFile(path) {
+  if (!supabase || !path) return;
+  await supabase.storage.from(BUCKET).remove([path]);
+}
+
 /** Carica una foto e la pubblica sul sito. */
 export async function caricaFoto({ file, titolo = '', email }) {
   if (!supabase) return { error: 'Supabase non configurato' };

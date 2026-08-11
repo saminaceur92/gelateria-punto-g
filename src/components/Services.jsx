@@ -1,30 +1,42 @@
 import { motion } from 'framer-motion';
-import { Bike, Cake, Snowflake, Sparkles } from 'lucide-react';
+import { Bike, Cake, Snowflake, Sparkles, ArrowRight } from 'lucide-react';
 
+/**
+ * Ogni servizio ora PORTA da qualche parte: la card è un bottone/link, non più
+ * un cartello da leggere e basta.
+ *   Consegna a domicilio  → /consegna (pagina dedicata, con Glovo e Deliveroo)
+ *   Torte su prenotazione → apre il configuratore
+ *   Pasticceria a freddo  → /galleria (le foto vere valgono più del testo)
+ *   Senza lattosio & Vegan→ #menu, i gusti con i loro bollini
+ */
 const services = [
   {
     icon: <Bike size={26} />,
     title: 'Consegna a domicilio',
     text: 'Scegli la comodità: ordini su WhatsApp o sulle piattaforme partner e il gelato arriva da te.',
+    href: '/consegna',
   },
   {
     icon: <Cake size={26} />,
     title: 'Torte su prenotazione',
     text: 'Compleanno, anniversario o pranzo dei parenti: prenota la torta perfetta, anche CROCK.',
+    configuratore: true,
   },
   {
     icon: <Snowflake size={26} />,
     title: 'Pasticceria a freddo',
     text: 'Granite siciliane, pasticcini, semifreddi, ghiaccioli, salame dolce e tante altre leccornie.',
+    href: '/galleria',
   },
   {
     icon: <Sparkles size={26} />,
     title: 'Senza lattosio & Vegan',
     text: 'Intolleranze o scelte di gusto? Tante varianti senza lattosio, senza glutine e 100% vegan.',
+    href: '#menu',
   },
 ];
 
-export default function Services() {
+export default function Services({ onOpenConfigurator }) {
   return (
     <section id="servizi" className="section services">
       <div className="container">
@@ -40,20 +52,41 @@ export default function Services() {
         </div>
 
         <div className="services-grid">
-          {services.map((s, i) => (
-            <motion.div
-              key={i}
-              className="service-card"
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.7, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="service-icon">{s.icon}</div>
-              <h3>{s.title}</h3>
-              <p>{s.text}</p>
-            </motion.div>
-          ))}
+          {services.map((s, i) => {
+            const contenuto = (
+              <>
+                <div className="service-icon">{s.icon}</div>
+                <h3>{s.title}</h3>
+                <p>{s.text}</p>
+                <span className="service-vai" aria-hidden="true">
+                  <ArrowRight size={16} />
+                </span>
+              </>
+            );
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 0.7, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {s.configuratore ? (
+                  <button
+                    type="button"
+                    className="service-card service-link"
+                    onClick={() => onOpenConfigurator && onOpenConfigurator()}
+                  >
+                    {contenuto}
+                  </button>
+                ) : (
+                  <a className="service-card service-link" href={s.href}>
+                    {contenuto}
+                  </a>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { uploadCakePhoto } from '../lib/cakePhoto';
 import CakePreview from './CakePreview';
+import Lightbox from './Lightbox';
 
 // Ordine passi: tipo → n° persone → allergie → forma → base → [crumble] → gusti →
 // inserto (farcitura) → copertura → decorazioni → scritta → dati → riepilogo.
@@ -1590,6 +1591,9 @@ function StepFilling({ config, set }) {
 
 function StepCovering({ config, set }) {
   const { cakeCoverings } = useCakeData();
+  // Foto di esempio aperta a tutto schermo (null = chiusa). È la foto vera
+  // caricata dai titolari nella scheda Coperture della dashboard.
+  const [fotoAperta, setFotoAperta] = useState(null);
   return (
     <>
       <StepHeader
@@ -1600,26 +1604,46 @@ function StepCovering({ config, set }) {
       <div className="opt-grid cols-2">
         {cakeCoverings.map((c) => {
           const blocked = conflictsAllergies(c, config.allergies, config.diets);
+          const scelta = config.coveringId === c.id;
           return (
-            <button
-              key={c.id}
-              className={`opt-card ${config.coveringId === c.id ? 'selected' : ''}`}
-              onClick={() => !blocked && set({ coveringId: c.id })}
-              disabled={blocked}
-              style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-            >
-              <div className="opt-name">
-                {c.color && (
-                  <span className="opt-dot" style={{ background: c.color, border: '1px solid rgba(0,0,0,0.1)' }} />
-                )}
-                {c.name}
-              </div>
-              <div className="opt-desc">{blocked ? `Contiene: ${c.allergeni.join(', ')}` : c.desc}</div>
-              <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'inclusa'}</div>
-            </button>
+            // La card e il collegamento alla foto sono DUE bottoni separati (uno
+            // dentro l'altro non si può): il div tiene loro due il posto di una
+            // cella sola nella griglia.
+            <div key={c.id} className="opt-cella">
+              <button
+                className={`opt-card ${scelta ? 'selected' : ''}`}
+                onClick={() => !blocked && set({ coveringId: c.id })}
+                disabled={blocked}
+                style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+              >
+                <div className="opt-name">
+                  {c.color && (
+                    <span className="opt-dot" style={{ background: c.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                  )}
+                  {c.name}
+                </div>
+                <div className="opt-desc">{blocked ? `Contiene: ${c.allergeni.join(', ')}` : c.desc}</div>
+                <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'inclusa'}</div>
+              </button>
+              {/* Il collegamento compare solo sulla copertura SCELTA, e solo se
+                  in dashboard le hanno caricato la foto. */}
+              {scelta && c.foto && (
+                <button type="button" className="opt-foto-link" onClick={() => setFotoAperta(c)}>
+                  📷 Clicca qui per vedere un&rsquo;immagine a scopo illustrativo della copertura
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
+      {fotoAperta && (
+        <Lightbox
+          foto={[{ url: fotoAperta.foto, titolo: `${fotoAperta.name} — immagine a scopo illustrativo` }]}
+          indice={0}
+          onCambia={() => {}}
+          onChiudi={() => setFotoAperta(null)}
+        />
+      )}
     </>
   );
 }
