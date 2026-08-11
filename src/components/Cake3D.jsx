@@ -808,28 +808,37 @@ const CREAM_DROP_GEO = creamRope({
 });
 
 /**
- * Spumino basso e tondeggiante, a più giri di sac-à-poche. Il profilo resta
- * largo quasi fino a metà altezza e si chiude con una punta morbida: nella
- * scala finale risulta molto più largo che alto, come una piccola meringa.
+ * Spumino fatto come nella realtà: un unico cordone di meringa spremuto a
+ * spirale, largo alla base e sempre più stretto verso la punta. Il vecchio
+ * profilo tornito disegnava cerchi perfettamente sovrapposti e sembrava una
+ * pila di dischi; qui il giro è continuo e quindi molto più naturale.
  */
 const MERINGUE_GEO = (() => {
-  const prof = [
-    [0.0, 0.0], [0.42, 0.01], [0.57, 0.07], [0.59, 0.15],
-    [0.54, 0.22], [0.43, 0.27], [0.52, 0.3], [0.54, 0.37],
-    [0.47, 0.43], [0.37, 0.47], [0.45, 0.51], [0.44, 0.58],
-    [0.34, 0.64], [0.27, 0.67], [0.32, 0.71], [0.27, 0.78],
-    [0.17, 0.84], [0.08, 0.9], [0.02, 0.96], [0.0, 1.0],
-  ];
-  const g = new THREE.LatheGeometry(prof.map(([r, h]) => new THREE.Vector2(r, h)), 24);
-  // L'ultimo ricciolo non sale perfettamente verticale: una piega minima,
-  // ruotata poi in modo diverso per ogni pezzo, toglie l'effetto stampino.
-  const pos = g.getAttribute('position');
-  for (let i = 0; i < pos.count; i++) {
-    const h = pos.getY(i);
-    if (h > 0.58) pos.setX(i, pos.getX(i) + Math.pow((h - 0.58) / 0.42, 2) * 0.09);
+  const punti = [];
+  const giri = 2.45;
+  for (let i = 0; i <= 72; i++) {
+    const t = i / 72;
+    const r = 0.4 * (1 - Math.pow(t, 0.92)) + 0.012;
+    const a = -t * giri * Math.PI * 2;
+    // La base parte abbastanza alta da non affondare nel piano quando il
+    // cordone raggiunge il suo spessore pieno; poi sale lentamente a cono.
+    const y = 0.29 + t * 0.56 + Math.sin(t * Math.PI) * 0.018;
+    punti.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r));
   }
-  g.computeVertexNormals();
-  return g;
+  const curva = new THREE.CatmullRomCurve3(punti, false, 'centripetal');
+  return creamRope({
+    curve: curva,
+    steps: 72,
+    lobes: 8,
+    flute: 0.14,
+    twist: 0.35,
+    onde: 0.018,
+    nOnde: 7,
+    // L'imbocco si chiude come una codina appoggiata; in cima il cordone si
+    // assottiglia molto, senza terminare con uno spillo alto e rigido.
+    taper: (t) =>
+      Math.min(1, t / 0.025) * (0.55 * (1 - 0.78 * Math.pow(t, 2.15)) + 0.02),
+  });
 })();
 
 /** Cilindretto morbido con gli angoli arrotondati (marshmallow). Raggio 0.5, altezza 1. */
@@ -904,18 +913,18 @@ function Spumini({ spots, y, color }) {
   const items = useMemo(() => {
     const pal = decoPalette(SPUMINI_COLORS, color);
     return spots.map(({ x, z, i }) => {
-      const s = 0.22 + rnd(i, 5) * 0.035;
+      const s = 0.185 + rnd(i, 5) * 0.025;
       return {
-        position: [x, y - 0.006, z],
+        position: [x, y - 0.004, z],
         rotation: [0, rnd(i, 6) * 6.28, 0],
-        scale: [s, s * 0.62, s],
+        scale: [s, s * 0.78, s],
         color: pal[i % pal.length],
       };
     });
   }, [spots, y, color]);
   return (
     <Pieces items={items} geometry={MERINGUE_GEO}>
-      <meshPhysicalMaterial roughness={0.78} sheen={0.55} sheenRoughness={0.82} envMapIntensity={0.32} />
+      <meshPhysicalMaterial roughness={0.84} sheen={0.42} sheenRoughness={0.88} envMapIntensity={0.28} />
     </Pieces>
   );
 }
