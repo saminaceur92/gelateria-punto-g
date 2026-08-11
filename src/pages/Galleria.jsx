@@ -69,14 +69,17 @@ export default function Galleria() {
               />
             </span>
             <span className="galleria-ig-testi">
-              <strong>Gelateria Punto Gi</strong>
+              <strong>Gelateria Punto Gi di Carpi</strong>
               <span className="galleria-ig-handle">@gelateriapuntogicarpi</span>
-              <span className="galleria-ig-bio">Gelateria artigianale · Carpi (MO)</span>
+              {/* "oltre 1.200" e non "1.210": un numero esatto scritto nel sito
+                  invecchia in un mese e sembra un sito abbandonato, mentre così
+                  resta vero mentre il profilo cresce. */}
+              <span className="galleria-ig-bio">oltre 1.200 follower</span>
             </span>
           </a>
           <p>
             Le novità, i gusti del mese e le torte appena uscite dal laboratorio le pubblichiamo lì,
-            praticamente ogni giorno.
+            praticamente ogni giorno. <strong>Aperti 7 giorni su 7</strong>, orario continuato.
           </p>
           <a className="btn btn-primary" href={IG_URL} target="_blank" rel="noopener noreferrer">
             <Instagram size={18} /> Seguici su Instagram
