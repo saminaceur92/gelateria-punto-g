@@ -1553,7 +1553,12 @@ const RUCHE_LARGHEZZA = 0.15;
  */
 const ANELLO_CIUFFI = 0.86;
 const CIUFFO_LARGO = 0.175;
-const CIUFFO_DOPPIO = CIUFFO_LARGO * 2;
+// "Doppio" nel senso di ben più grosso del ciuffo normale, non del doppio
+// esatto: a 2× i ciuffi di sopra sembravano enormi accanto alla ghirlanda
+// della base ("sproporzionate", Lucia). 1.5× sopra e la base a 0.22 stanno
+// in proporzione.
+const CIUFFO_DOPPIO = CIUFFO_LARGO * 1.5;
+const CIUFFO_BASE = 0.22;
 
 /**
  * RUCHE su tutto il fianco: cordoni verticali attaccati uno all'altro, dal
@@ -2105,8 +2110,15 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
   const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
 
+  // La torta deve stare TUTTA nell'inquadratura. La camera è fissa e tarata
+  // sulle torte normali: una "Alta" con più gusti sforava di sopra e usciva
+  // decapitata dall'immagine. Oltre una certa altezza l'intera scena si
+  // rimpicciolisce in proporzione — piatto compreso, come allontanare la
+  // macchina fotografica — così le proporzioni restano vere.
+  const fit = Math.min(1, 1.0 / (stackBottom + bodyH));
+
   return (
-    <group>
+    <group scale={fit}>
       {/* ---- Piatto ORO Punto Gi (forma in base alla torta / n° persone) ---- */}
       <mesh geometry={plateGeo} position={[0, platterY, 0]} castShadow receiveShadow>
         <meshPhysicalMaterial {...goldPlate} />
@@ -2206,7 +2218,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           shape={shape}
           R={wrapR}
           y={stackBottom + 0.01}
-          s={0.17}
+          s={CIUFFO_BASE}
           colore={dollopColor}
         />
       )}
