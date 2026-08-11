@@ -127,7 +127,8 @@ export const cakeFillings = [
 
 // Copertura / glassa esterna
 export const cakeCoverings = [
-  { id: 'panna', name: 'Panna montata INTORNO', desc: 'Ciuffi di panna tutt’intorno alla torta', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
+  { id: 'panna', name: 'Panna montata a CIUFFI INTORNO', desc: 'Ciuffi di panna tutt’intorno alla torta e ghirlanda sul bordo', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
+  { id: 'panna-spatolata', name: 'Panna montata SPATOLATA INTORNO', desc: 'Panna liscia, spianata col coltello tutt’intorno alla torta', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sopra', name: 'Panna montata SOLO SOPRA', desc: 'Filo di panna solo sopra alla torta, con intorno un nastro trasparente non edibile', priceDelta: 0, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sotto-sopra', name: 'Panna montata SOTTO E SOPRA', desc: 'Filo di panna sul bordo inferiore e superiore della torta', priceDelta: 1, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'cioccolato-cop', name: 'Copertura morbida al cioccolato', desc: 'Copertura morbida al cioccolato al latte', priceDelta: 2, color: '#6b4226', allergeni: ['latte', 'soia', 'frutta a guscio'] },

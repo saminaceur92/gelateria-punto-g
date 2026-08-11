@@ -7,10 +7,16 @@ import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
 
-// Coperture fatte di panna montata: panna LISCIA, spatolata. I ciuffi non
-// fanno più parte della copertura, sono una decorazione a sé ('panna-deco' e
-// 'panna-colorata'). ('meringa' è una copertura storica, ormai disattivata.)
-const COPERTURE_PANNA = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra', 'meringa']);
+// Coperture fatte di panna montata. Due modi di stenderla, e si scelgono:
+// 'panna' è quella fatta col sac-à-poche (ruche e ciuffi), 'panna-spatolata'
+// quella spianata col coltello. ('meringa' è storica, ormai disattivata.)
+const COPERTURE_PANNA = new Set([
+  'panna',
+  'panna-spatolata',
+  'panna-sopra',
+  'panna-sotto-sopra',
+  'meringa',
+]);
 
 // Decorazioni fatte di panna: sono loro (e solo loro) a portare i ciuffi.
 const DECORAZIONI_PANNA = new Set(['panna-deco', 'panna-colorata']);
@@ -30,9 +36,10 @@ const DECORAZIONI_SU_DISPONIBILITA = new Set([
 // scritto qui — dice dove va la panna e non promette ciuffi — mentre per tutte
 // le altre si usa il nome del listino (che i titolari cambiano dalla dashboard).
 const TESTO_COPERTURA = {
-  panna: 'panna montata intorno, sopra e sui fianchi',
+  panna: 'panna montata a ciuffi, intorno e sopra',
+  'panna-spatolata': 'panna montata spatolata, intorno e sopra',
   'panna-sopra': 'panna montata solo sopra',
-  'panna-sotto-sopra': 'panna montata sotto e sopra',
+  'panna-sotto-sopra': 'panna montata a ciuffi sotto e sopra',
 };
 
 function descriviCopertura(covering) {

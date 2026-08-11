@@ -7,12 +7,12 @@
  * automatica + trascinamento col mouse/dito.
  *
  * Forme supportate: tonda (cilindro), cuore (extrude), quadrata/rettangolare
- * (rounded box). Le coperture di PANNA sono lisce e spatolate e possono
- * avvolgere anche i fianchi ("Panna montata INTORNO"); le altre coperture
- * restano sulla calotta, con le colature. Farcitura come anelli sottili tra gli
+ * (rounded box). Le coperture di PANNA possono avvolgere anche i fianchi, e si
+ * stendono in due modi: col sac-à-poche ("a CIUFFI", ruche verticali e
+ * ghirlanda sul bordo) o spianata col coltello ("SPATOLATA"). Le altre
+ * coperture restano sulla calotta. Farcitura come anelli sottili tra gli
  * strati. Decorazioni 3D (macarons, spumini, fiori, fiocchi…), foto su cialda e
- * candelina. I ciuffi di panna arrivano SOLO dalla decorazione, mai dalla
- * copertura.
+ * candelina.
  *
  * Le decorazioni possono essere PIÙ D'UNA: arrivano come lista di id
  * (`decorations`) più la mappa dei colori (`decorationColors`). I posti sul
@@ -513,6 +513,28 @@ function perimeterPts(shape, R, inset, n) {
   return out;
 }
 
+/**
+ * Quanto è lungo il contorno. Serve per i ciuffi messi in fila attaccati: il
+ * loro numero non si può decidere a occhio per forma, perché dipende anche dal
+ * formato — su una torta da 20 persone il giro è il doppio che su una da 6, e
+ * con un numero fisso i ciuffi si allontanano fino a diventare palline sparse.
+ */
+function perimeterLen(shape, R, inset) {
+  const p = perimeterPts(shape, R, inset, 160);
+  let L = 0;
+  for (let i = 0; i < p.length; i++) {
+    const a = p[i];
+    const b = p[(i + 1) % p.length];
+    L += Math.hypot(b[0] - a[0], b[1] - a[1]);
+  }
+  return L;
+}
+
+/** Quanti ciuffi larghi `passo` stanno attaccati lungo il contorno. */
+function quantiInFila(shape, R, inset, passo) {
+  return Math.max(10, Math.min(96, Math.round(perimeterLen(shape, R, inset) / passo)));
+}
+
 /* ============================ mesh di uno strato ============================ */
 
 function LayerMesh({ geometry, y, children }) {
@@ -571,18 +593,22 @@ function ringPts(n, r, startDeg = 0) {
   return out;
 }
 
+/**
+ * Ciuffetto di panna. Prima era una pallina con sopra un cono: la sagoma
+ * tornava, ma era liscia, e la panna liscia non esiste — quella che si vede
+ * nelle loro torte porta sempre le righe della bocchetta a stella.
+ */
 function Dollop({ position, color, s = 1, rotation = 0 }) {
   return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      <mesh castShadow position={[0, 0.05 * s, 0]}>
-        <sphereGeometry args={[0.085 * s, 18, 14]} />
-        <meshPhysicalMaterial {...softMat(color)} />
-      </mesh>
-      <mesh castShadow position={[0, 0.13 * s, 0]}>
-        <coneGeometry args={[0.055 * s, 0.11 * s, 16]} />
-        <meshPhysicalMaterial {...softMat(color)} />
-      </mesh>
-    </group>
+    <mesh
+      castShadow
+      geometry={CREAM_DROP_GEO}
+      position={[position[0], position[1] - 0.03 * s, position[2]]}
+      rotation={[0, rotation, 0]}
+      scale={[0.21 * s, 0.28 * s, 0.21 * s]}
+    >
+      <meshPhysicalMaterial {...softMat(color)} />
+    </mesh>
   );
 }
 
@@ -665,6 +691,121 @@ function rnd(i, k = 1) {
 }
 
 /* ---- geometrie riusate da più decorazioni (costruite una volta sola) ---- */
+
+/**
+ * IL CORDONE DI PANNA, da cui nasce tutto quello che è "fatto col ciuffo".
+ *
+ * La panna montata non esce liscia dalla tasca: la bocchetta è a stella, e
+ * lascia sul cordone le scanalature per il lungo. È quello — non la forma
+ * generale — che fa riconoscere la panna a colpo d'occhio. Qui si dà un
+ * percorso (`curve`) e un profilo di spessore (`taper`), e si ottiene il
+ * cordone con le sue righe: dritto e alto diventa una ruche sul fianco, corto
+ * e ritorto un ciuffetto, steso e appuntito una conchiglia.
+ *
+ *   lobes  quante scanalature (punte della bocchetta)
+ *   flute  quanto sono profonde: 0 = tondo liscio, 0.5 = stella marcata
+ *   twist  di quanto girano salendo — un filo, se no sembra una trivella
+ *   onde   le ondulazioni della mano che spinge: senza queste il cordone viene
+ *          identico a se stesso da cima a fondo e sembra plastica estrusa
+ */
+function creamRope({ curve, steps = 14, lobes = 6, flute = 0.32, twist = 0, onde = 0, nOnde = 6, taper }) {
+  const around = lobes * 4;
+  const frames = curve.computeFrenetFrames(steps, false);
+  const pos = [];
+  const idx = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const p = curve.getPoint(t);
+    const N = frames.normals[i];
+    const B = frames.binormals[i];
+    const r0 = 0.5 * Math.max(0.03, taper(t)) * (1 + onde * Math.sin(t * Math.PI * 2 * nOnde));
+    for (let j = 0; j < around; j++) {
+      const a = (j / around) * Math.PI * 2;
+      // la scanalatura: raggio pieno sulla cresta, rientrato nella valle
+      const r = r0 * (1 - flute * (0.5 - 0.5 * Math.cos(lobes * (a + twist * t))));
+      const cx = Math.cos(a) * r;
+      const cz = Math.sin(a) * r;
+      pos.push(p.x + N.x * cx + B.x * cz, p.y + N.y * cx + B.y * cz, p.z + N.z * cx + B.z * cz);
+    }
+  }
+  for (let i = 0; i < steps; i++) {
+    for (let j = 0; j < around; j++) {
+      const k = (j + 1) % around;
+      const a0 = i * around + j;
+      const b0 = i * around + k;
+      const a1 = (i + 1) * around + j;
+      const b1 = (i + 1) * around + k;
+      idx.push(a0, b0, a1, b0, b1, a1);
+    }
+  }
+  // tappi alle due estremità: senza, si vede dentro il cordone
+  const last = steps * around;
+  const p0 = curve.getPoint(0);
+  const c0 = pos.length / 3;
+  pos.push(p0.x, p0.y, p0.z);
+  for (let j = 0; j < around; j++) idx.push(c0, (j + 1) % around, j);
+  const p1 = curve.getPoint(1);
+  const c1 = pos.length / 3;
+  pos.push(p1.x, p1.y, p1.z);
+  for (let j = 0; j < around; j++) idx.push(c1, last + j, last + ((j + 1) % around));
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+const rettaSu = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+
+/**
+ * RUCHE: il cordone verticale che riveste il fianco della torta, dal vassoio
+ * fino al bordo di sopra.
+ *
+ * Va costruito su misura per ogni torta, non stirato in altezza: la calotta in
+ * cima dev'essere una semisfera VERA, alta quanto il cordone è largo. Stirando
+ * una geometria unica si schiacciava, e i cordoni finivano con un tettuccio
+ * piatto — sembravano tubi tagliati con la sega, non panna.
+ *
+ * `alt` = altezza in multipli della larghezza. Il pezzo esce largo 1.
+ */
+function rucheGeo(alt) {
+  const cupola = 0.5 / alt; // semisfera in cima: alta quanto il raggio
+  return creamRope({
+    curve: new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, alt, 0)),
+    steps: Math.max(14, Math.min(40, Math.round(alt * 4))),
+    lobes: 6,
+    // Scanalature appena accennate e onde piccolissime. Ogni volta che ho
+    // alzato uno dei due il cordone ha smesso di sembrare panna: con le
+    // scanalature marcate diventava una matita esagonale, con le onde grosse
+    // una pannocchia. Quello che fa la differenza è la fila di ombre fra un
+    // cordone e l'altro, non il rilievo del singolo.
+    flute: 0.11,
+    twist: 0.1,
+    onde: 0.022,
+    nOnde: 4,
+    // taglio netto in basso: finisce dentro il vassoio e non si vede
+    taper: (t) =>
+      t < 1 - cupola
+        ? 0.93 + 0.07 * Math.sin(Math.PI * t)
+        : Math.sqrt(Math.max(0, 1 - Math.pow((t - (1 - cupola)) / cupola, 2))),
+  });
+}
+
+/**
+ * CIUFFETTO: la goccia che esce tenendo ferma la bocchetta e tirando su.
+ * Sale girando e si chiude a punta. Larghezza 1, altezza 1.
+ */
+const CREAM_DROP_GEO = creamRope({
+  curve: rettaSu,
+  steps: 16,
+  lobes: 6,
+  flute: 0.3,
+  twist: 1.15,
+  // la punta resta un po' smussata: a chiuderla del tutto venivano dei
+  // pinoli, e la panna montata in cima si ripiega sempre un pochino
+  taper: (t) => Math.min(1, t / 0.09) * (1 - Math.pow(t, 2.3) * 0.88),
+});
 
 /**
  * Ciuffo di meringa: sale rastremando e si chiude a punta, con le piccole
@@ -1330,17 +1471,24 @@ const GLOSSY_COVERINGS = new Set([
 ]);
 
 /**
- * Coperture di PANNA MONTATA: panna liscia, spatolata, SENZA ciuffi.
- * Come veste la torta:
- *   'panna'             → sopra E FIANCHI (i colori dei gusti spariscono sotto)
- *   'panna-sotto-sopra' → sopra + una fascia in alto e una in basso
+ * Coperture di PANNA MONTATA. Come veste la torta:
+ *   'panna'             → sopra E FIANCHI, fatta col sac-à-poche: ruche
+ *                         verticali su tutto il giro e ghirlanda sul bordo
+ *   'panna-spatolata'   → sopra E FIANCHI, spianata col coltello: liscia
+ *   'panna-sotto-sopra' → sopra + una ghirlanda in alto e una alla base
  *   'panna-sopra'       → solo la superficie superiore
  * ('meringa' non è più in listino: resta com'era, solo sopra.)
  */
-const CREAM_COVERINGS = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra', 'meringa']);
+const CREAM_COVERINGS = new Set([
+  'panna',
+  'panna-spatolata',
+  'panna-sopra',
+  'panna-sotto-sopra',
+  'meringa',
+]);
 
 /** Copertura che avvolge tutto il fianco della torta. */
-const CREAM_WRAP_FULL = new Set(['panna']);
+const CREAM_WRAP_FULL = new Set(['panna', 'panna-spatolata']);
 
 /** Copertura a due fasce: un filo di panna in alto e uno in basso. */
 const CREAM_WRAP_BANDS = new Set(['panna-sotto-sopra']);
@@ -1353,6 +1501,69 @@ const CREAM_DECORATIONS = new Set(['panna-deco', 'panna-colorata']);
 
 /** Decorazione "drip cake": le colature che scendono dal bordo. */
 const DRIP_ID = 'drip';
+
+/* ======================= panna montata col sac-à-poche ======================= */
+
+/**
+ * RUCHE su tutto il fianco: cordoni verticali attaccati uno all'altro, dal
+ * vassoio al bordo di sopra. Quanti ne servono lo dice il giro della torta —
+ * con un numero fisso, sui formati grandi si sarebbero allontanati fino a
+ * sembrare righe sparse invece di un rivestimento.
+ */
+function RucheDiPanna({ shape, R, yBase, h, colore }) {
+  const larghezza = 0.15;
+  const geo = useMemo(() => rucheGeo(h / larghezza), [h]);
+  useEffect(() => () => geo.dispose(), [geo]);
+  const items = useMemo(
+    () =>
+      decoSpots(shape, R, quantiInFila(shape, R, 1, larghezza * 0.88), 1).map(({ x, z, i, ang }) => {
+        // nessuno esce identico all'altro: un filo più grosso, girato di poco.
+        // È la differenza fra la panna e una fila di tubi di plastica
+        const w = larghezza * (0.94 + rnd(i, 21) * 0.13);
+        return {
+          position: [x, yBase, z],
+          rotation: [0, Math.PI / 2 - ang + (rnd(i, 22) - 0.5) * 0.5, 0],
+          // in altezza variano pochissimo: il filo di cime disuguali è quello
+          // che si vede in una torta fatta a mano
+          scale: [w, larghezza * (0.99 + rnd(i, 23) * 0.025), w],
+          color: colore(i),
+        };
+      }),
+    [shape, R, yBase, colore]
+  );
+  return (
+    <Pieces items={items} geometry={geo} order="YXZ">
+      <meshPhysicalMaterial {...softMat('#ffffff')} />
+    </Pieces>
+  );
+}
+
+/**
+ * GHIRLANDA lungo un bordo: ciuffetti in piedi, uno appoggiato all'altro, tutto
+ * il giro. `s` è la larghezza del ciuffo; il passo è appena più stretto, così
+ * si toccano e la fila risulta piena invece che a palline distanziate.
+ */
+function GhirlandaDiPanna({ shape, R, inset = 1, y, s, colore }) {
+  const items = useMemo(
+    () =>
+      decoSpots(shape, R, quantiInFila(shape, R, inset, s * 0.72), inset).map(({ x, z, i }) => {
+        const w = s * (0.92 + rnd(i, 11) * 0.16);
+        // più larghi che alti: tirati su, sembravano meringhe a punta
+        return {
+          position: [x, y, z],
+          rotation: [0, rnd(i, 9) * 6.28, 0],
+          scale: [w, s * (0.82 + rnd(i, 12) * 0.16), w],
+          color: colore(i),
+        };
+      }),
+    [shape, R, inset, y, s, colore]
+  );
+  return (
+    <Pieces items={items} geometry={CREAM_DROP_GEO} order="YXZ">
+      <meshPhysicalMaterial {...softMat('#ffffff')} />
+    </Pieces>
+  );
+}
 
 /* ============================ colature copertura ============================ */
 
@@ -1806,12 +2017,6 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // contorno, non una spolverata su tutta la torta. Se sul bordo ci sono già i
   // pezzi (macarons, frutta…) la fascia si sposta appena più dentro, così i due
   // anelli convivono senza pestarsi invece di sovrapporsi.
-  // Quanti ciuffi lungo il bordo: il perimetro di un quadrato è più lungo di
-  // quello di un cerchio dello stesso raggio, quindi ne servono di più o
-  // resterebbero distanziati.
-  const ciuffiSopra = shape === 'tonda' ? 14 : shape === 'cuore' ? 16 : 18;
-  const ciuffiFianco = shape === 'tonda' ? 18 : shape === 'cuore' ? 20 : 22;
-
   const contornoOccupato = showRosetteRing || pezziSopra.length > 0;
   const granellaCoverage =
     (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * (contornoOccupato ? 0.82 : 1);
@@ -1921,41 +2126,50 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         />
       )}
 
-      {/* ---- Panna montata a CIUFFI portata dalla copertura ----
-              Le loro torte non hanno la panna spianata col coltello: hanno i
-              ciuffetti fatti col sac-à-poche. "Intorno" = ruche verticali su
-              tutto il fianco più una corona sopra; "sotto e sopra" = una corona
-              di ciuffi sul bordo alto e una alla base. ---- */}
+      {/* ---- Panna montata fatta col SAC-À-POCHE ----
+              "Panna INTORNO" = le ruche verticali su tutto il fianco più la
+              ghirlanda sul bordo di sopra. "Sotto e sopra" = due ghirlande, una
+              sul bordo alto e una alla base. Chi la vuole liscia sceglie
+              'panna-spatolata', che si ferma al guscio spianato qui sopra. ---- */}
       {coverIsCream && covering?.id === 'panna' && (
         <>
-          {/* Ruche verticali: una sola colonna di panna per posto, non tre
-              palline staccate — è così che viene fuori dal sac-à-poche, un
-              cordone continuo dal basso verso l'alto. */}
-          {perimeterPts(shape, wrapR, 1.0, ciuffiFianco).map(([x, z, i]) => (
-            <mesh
-              key={`ruche${i}`}
-              castShadow
-              position={[x, stackBottom + bodyH * 0.5, z]}
-              scale={[0.062, bodyH * 0.47, 0.05]}
-            >
-              <capsuleGeometry args={[1, 1.5, 4, 10]} />
-              <meshPhysicalMaterial {...softMat(dollopColor(i))} />
-            </mesh>
-          ))}
-          {perimeterPts(shape, wrapR, 0.93, ciuffiSopra).map(([x, z, i]) => (
-            <Dollop key={`cor${i}`} position={[x, surfaceY - 0.01, z]} color={dollopColor(i)} s={0.85} rotation={i} />
-          ))}
+          {/* le ruche partono da dentro il vassoio: il taglio netto in fondo
+              resta nascosto e la panna sembra scendere fino al piatto */}
+          <RucheDiPanna
+            shape={shape}
+            R={wrapR}
+            yBase={-0.02}
+            h={surfaceY - 0.02}
+            colore={dollopColor}
+          />
+          <GhirlandaDiPanna
+            shape={shape}
+            R={wrapR}
+            inset={0.97}
+            y={surfaceY - 0.05}
+            s={0.19}
+            colore={dollopColor}
+          />
         </>
       )}
 
       {coverIsCream && covering?.id === 'panna-sotto-sopra' && (
         <>
-          {perimeterPts(shape, wrapR, 0.93, ciuffiSopra).map(([x, z, i]) => (
-            <Dollop key={`alto${i}`} position={[x, surfaceY - 0.01, z]} color={dollopColor(i)} s={0.8} rotation={i} />
-          ))}
-          {perimeterPts(shape, wrapR, 1.0, ciuffiSopra).map(([x, z, i]) => (
-            <Dollop key={`basso${i}`} position={[x, stackBottom + 0.06, z]} color={dollopColor(i)} s={0.7} rotation={i + 5} />
-          ))}
+          <GhirlandaDiPanna
+            shape={shape}
+            R={wrapR}
+            inset={0.97}
+            y={surfaceY - 0.05}
+            s={0.19}
+            colore={dollopColor}
+          />
+          <GhirlandaDiPanna
+            shape={shape}
+            R={wrapR}
+            y={stackBottom + 0.01}
+            s={0.17}
+            colore={dollopColor}
+          />
         </>
       )}
 
