@@ -1301,19 +1301,58 @@ function postiPerFiocchi(shape, R, quanti, fuori) {
     if (ok) buoni.push({ s, avanti });
   }
   if (!buoni.length) return [];
-  // Fra i posti buoni se ne prendono `quanti`, distribuiti lungo il giro. E si
-  // spostano in fuori LUNGO LA PROPRIA NORMALE (non ingrandendo la sagoma: su
-  // un cuore ingrandire allontana il bordo di quantità diverse punto per punto).
+  // Il posto scelto si sposta in fuori LUNGO LA PROPRIA NORMALE (non
+  // ingrandendo la sagoma: su un cuore ingrandire allontana il bordo di
+  // quantità diverse punto per punto).
+  const spingi = (b, spinta, k) => ({
+    ...b.s,
+    i: k,
+    x: b.s.x + Math.cos(b.s.ang) * spinta,
+    z: b.s.z + Math.sin(b.s.ang) * spinta,
+  });
+
+  // I fiocchi vanno A COPPIE SPECULARI, non sparsi lungo il giro: tutte le
+  // nostre forme sono simmetriche rispetto al piano x=0 (l'asse del cuore va
+  // dall'incavo alla punta), e una torta col fiocco alto a destra e basso a
+  // sinistra sembra decorata a caso ("fammi i fiocchi simmetrici"). Per ogni
+  // posto buono della metà destra si cerca il suo gemello specchiato fra i
+  // posti buoni di sinistra — il campionamento non è mai speculare esatto,
+  // basta ritrovarlo entro un paio di passi. La coppia condivide indice
+  // (stesso colore) e spinta (stessa sporgenza dal fianco).
+  const passo = perim / N;
+  const tol = passo * 2.5;
+  const coppie = [];
+  for (const cand of buoni) {
+    if (cand.s.x <= tol / 2) continue; // solo metà destra: il gemello sta di là
+    let gemello = null;
+    let dMin = tol;
+    for (const alt of buoni) {
+      const d = Math.hypot(alt.s.x + cand.s.x, alt.s.z - cand.s.z);
+      if (d < dMin) { dMin = d; gemello = alt; }
+    }
+    if (gemello) coppie.push([cand, gemello]);
+  }
+  // In ordine d'angolo attorno al centro (x>0 ⇒ atan2 non ha salti), così la
+  // distribuzione non dipende da dove il campionamento inizia il giro.
+  coppie.sort((p, q) => Math.atan2(p[0].s.z, p[0].s.x) - Math.atan2(q[0].s.z, q[0].s.x));
+
+  const nCoppie = Math.floor(quanti / 2);
+  if (coppie.length && nCoppie > 0) {
+    const scelti = [];
+    for (let k = 0; k < nCoppie; k++) {
+      const [a, b] = coppie[Math.min(coppie.length - 1, Math.floor(((k + 0.5) * coppie.length) / nCoppie))];
+      const spinta = fuori + Math.max(a.avanti, b.avanti) + 0.02;
+      scelti.push(spingi(a, spinta, k), spingi(b, spinta, k));
+    }
+    return scelti;
+  }
+
+  // Ripiego se le coppie non escono (non dovrebbe succedere su nessuna delle
+  // forme in listino): la vecchia distribuzione uniforme lungo il giro.
   const scelti = [];
   for (let k = 0; k < quanti; k++) {
-    const { s, avanti } = buoni[Math.floor((k * buoni.length) / quanti)];
-    const spinta = fuori + avanti + 0.02;
-    scelti.push({
-      ...s,
-      i: k,
-      x: s.x + Math.cos(s.ang) * spinta,
-      z: s.z + Math.sin(s.ang) * spinta,
-    });
+    const b = buoni[Math.floor((k * buoni.length) / quanti)];
+    scelti.push(spingi(b, fuori + b.avanti + 0.02, k));
   }
   return scelti;
 }
