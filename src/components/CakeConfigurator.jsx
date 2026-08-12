@@ -1467,7 +1467,7 @@ function StepShape({ config, set, consigliata }) {
           <h3 className="consigliate-titolo">Se non sai cosa scegliere, ecco le nostre consigliate</h3>
           <p className="consigliate-sotto">
             Torte già pensate da noi: scegli prima se la vuoi gelato o semifreddo, poi toccane una
-            e ti resta solo da decidere scritta, foto e candelina.
+            e ti resta solo da decidere la scritta e la foto, se le desideri!
           </p>
           {/* Prima si sceglie il tipo, poi compaiono le sue torte: tutte e nove
               insieme facevano una pagina lunghissima da scorrere. I due tasti si
