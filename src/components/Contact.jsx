@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Clock, Instagram } from 'lucide-react';
 import { openingHours as fallbackHours } from '../data/hours';
@@ -10,6 +10,73 @@ const reveal = {
   viewport: { once: true, margin: '-50px' },
   transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
 };
+
+/**
+ * Mappa con blocco preventivo dei cookie.
+ * L'iframe parte con `suppressedsrc` invece di `src`: finché l'utente non
+ * acconsente, il browser non contatta Google. iubenda riempie `src` quando il
+ * consenso arriva; noi ce ne accorgiamo con un MutationObserver e togliamo il
+ * segnaposto — così al posto del riquadro vuoto c'è una spiegazione e un tasto.
+ */
+function MappaConConsenso() {
+  const iframeRef = useRef(null);
+  const [attiva, setAttiva] = useState(false);
+
+  useEffect(() => {
+    // Osserviamo il CONTENITORE, non l'iframe: quando arriva il consenso
+    // iubenda rimpiazza il nodo, quindi un observer sull'iframe originale
+    // resterebbe attaccato a un elemento ormai staccato dal documento.
+    const box = iframeRef.current?.parentElement;
+    if (!box) return undefined;
+    const controlla = () => {
+      if (box.querySelector('iframe[src]')) {
+        setAttiva(true);
+        return true;
+      }
+      return false;
+    };
+    if (controlla()) return undefined;
+    const obs = new MutationObserver(controlla);
+    obs.observe(box, { attributes: true, childList: true, subtree: true, attributeFilter: ['src'] });
+    return () => obs.disconnect();
+  }, []);
+
+  const chiediConsenso = () => {
+    const api = window._iub?.cs?.api;
+    if (api?.askConsent) api.askConsent();
+    else api?.openPreferences?.();
+  };
+
+  return (
+    <>
+      <iframe
+        ref={iframeRef}
+        title="Mappa Gelateria Punto Gi! Carpi"
+        suppressedsrc="https://www.google.com/maps?q=Via+Remesina+Interna+46,+Carpi+MO&output=embed"
+        className="_iub_cs_activate"
+        data-iub-purposes="3"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        allowFullScreen
+      />
+      {!attiva && (
+        <div className="map-consent">
+          <MapPin size={26} />
+          <p>
+            La mappa è fornita da Google: per mostrartela ci serve il tuo
+            consenso ai cookie.
+          </p>
+          <button type="button" className="btn btn-accent" onClick={chiediConsenso}>
+            Attiva la mappa
+          </button>
+          <a href="https://goo.gl/maps/s96Pk7NbEPJhneC66" target="_blank" rel="noopener noreferrer">
+            oppure aprila su Google Maps →
+          </a>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function Contact() {
   const [hours, setHours] = useState(fallbackHours);
@@ -97,13 +164,7 @@ export default function Contact() {
           </motion.div>
 
           <motion.div className="contact-map" {...reveal} transition={{ ...reveal.transition, delay: 0.15 }}>
-            <iframe
-              title="Mappa Gelateria Punto Gi Carpi"
-              src="https://www.google.com/maps?q=Via+Remesina+Interna+46,+Carpi+MO&output=embed"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-            />
+            <MappaConConsenso />
           </motion.div>
         </div>
       </div>
