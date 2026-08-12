@@ -60,10 +60,6 @@ Deno.serve(async (req) => {
       return json({ error: eCreate.message }, 500);
     }
 
-    // Il ruolo che la dashboard legge sta in `profiles`: lo teniamo allineato a
-    // quello del codice, così chi è amministratore lo è anche qui.
-    const { data: utente } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
-    void utente; // (elenco non usato: serviva solo a forzare la creazione)
     const { data: sessione, error: eLink } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email,
@@ -72,9 +68,53 @@ Deno.serve(async (req) => {
       return json({ error: eLink?.message || 'Non riesco ad aprire la sessione.' }, 500);
     }
 
+    // Il ruolo che la dashboard legge sta in `profiles`: lo teniamo allineato a
+    // quello del codice, così chi è amministratore lo è anche qui.
+    //
+    // ⚠️ Da qui in poi si controlla tutto, e c'è un motivo preciso: quando
+    // questo pezzo falliva in silenzio, il profilo restava quello creato dal
+    // trigger (`customer`), la sessione si apriva lo stesso e la persona
+    // arrivava in dashboard per trovarsi scritto "non sei abilitato alla
+    // gestione" con un codice giusto. Un errore che si presenta come un
+    // permesso mancante è la cosa più lunga da capire che ci sia: meglio
+    // fallire qui, dicendo cosa è successo.
     const idUtente = sessione.user?.id;
-    if (idUtente) {
-      await admin.from('profiles').upsert({ id: idUtente, email, role: ruolo }, { onConflict: 'id' });
+    if (!idUtente) {
+      return json({ error: 'Sessione aperta ma utente non identificato. Riprova.' }, 500);
+    }
+
+    const { error: eProfilo } = await admin
+      .from('profiles')
+      .upsert({ id: idUtente, email, role: ruolo }, { onConflict: 'id' });
+    if (eProfilo) {
+      return json(
+        {
+          error:
+            'Codice giusto, ma non riesco a registrare i tuoi permessi. ' +
+            'Fallo sapere a chi gestisce il sito: ' + eProfilo.message,
+        },
+        500,
+      );
+    }
+
+    // Ultima rete: rileggiamo il ruolo appena scritto. Se il database avesse
+    // accettato la scrittura ma conservato un valore diverso (è successo: il
+    // vincolo su `profiles.role` non ammetteva tutti i ruoli previsti qui),
+    // è meglio accorgersene adesso che lasciar entrare qualcuno in un limbo.
+    const { data: verifica } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', idUtente)
+      .maybeSingle();
+    if (verifica && verifica.role !== ruolo) {
+      return json(
+        {
+          error:
+            `Permessi non registrati: risulti "${verifica.role}" invece di "${ruolo}". ` +
+            'Fallo sapere a chi gestisce il sito.',
+        },
+        500,
+      );
     }
 
     return json({
