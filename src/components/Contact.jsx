@@ -98,7 +98,7 @@ export default function Contact() {
         <motion.div {...reveal} style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
           <span className="eyebrow">Vieni a trovarci</span>
           <h2 style={{ marginTop: '1.2rem' }}>
-            Un cucchiaio<br />e ci <em style={{ fontStyle: 'italic', color: 'var(--orange)' }}>conosci</em>.
+            Un cucchiaio<br />e ci <em style={{ color: 'var(--orange)' }}>conosci</em>.
           </h2>
         </motion.div>
 

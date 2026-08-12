@@ -130,7 +130,18 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,500&family=Inter:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet" />
+    <!-- Baloo 2 (titoli) e Nunito Sans (testo) sono la coppia della versione V8,
+         scelta dai titolari. Caveat resta per le note scritte a mano.
+
+         ⚠️ Fraunces e Inter NON si possono togliere anche se il sito non li usa
+         più: sono due delle font che il cliente può scegliere per la SCRITTA
+         SULLA TORTA nel configuratore ("Corsivo scolastico" e "Stampatello",
+         vedi src/lib/messageFont.js e src/data/fallback/cakeOptions.js).
+         Toglierle dal caricamento non darebbe nessun errore: l'anteprima della
+         torta ripiegherebbe in silenzio su un font di sistema, e ce ne
+         accorgeremmo da un cliente scontento. Restano, ma solo con i pesi che
+         servono davvero a quell'anteprima invece dei nove di prima. -->
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500..800&family=Nunito+Sans:ital,opsz,wght@0,6..12,300..900;1,6..12,400&family=Caveat:wght@500;700&family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,400&family=Inter:wght@400;600&display=swap" rel="stylesheet" />
 
     <title>Gelateria Punto Gi – Il gelato che ti emoziona | Carpi</title>
   </head>

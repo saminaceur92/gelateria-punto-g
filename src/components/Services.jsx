@@ -47,7 +47,7 @@ export default function Services({ onOpenConfigurator }) {
         <div className="services-header">
           <div>
             <span className="eyebrow">I nostri servizi</span>
-            <h2 style={{ marginTop: '1.2rem' }}>Tutto ciò che<br />puoi <em style={{ fontStyle: 'italic', color: 'var(--orange)' }}>desiderare</em>.</h2>
+            <h2 style={{ marginTop: '1.2rem' }}>Tutto ciò che<br />puoi <em style={{ color: 'var(--orange)' }}>desiderare</em>.</h2>
           </div>
           <p className="lead">
             Dal cono della passeggiata alla torta del giorno speciale,
