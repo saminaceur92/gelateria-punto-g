@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Instagram, Facebook, Camera } from 'lucide-react';
+import { ArrowLeft, Instagram, Facebook, Camera, MessageCircle } from 'lucide-react';
 import galleryImages from '../data/galleryImages';
 import { fetchGalleryCompleta } from '../lib/galleryFoto';
 import Lightbox from '../components/Lightbox';
@@ -18,6 +18,7 @@ const IG_URL = 'https://www.instagram.com/gelateriapuntogicarpi/';
 const FB_URL = 'https://www.facebook.com/gelateriapuntogicarpi';
 const GLOVO_URL = 'https://glovoapp.com/it/it/carpi/stores/gelateria-punto-gi-crp';
 const DELIVEROO_URL = 'https://deliveroo.it/it/menu/Carpi/carpi/gelateria-punto-gi';
+const WA_URL = 'https://api.whatsapp.com/send?phone=393203306009';
 
 const statiche = (galleryImages || []).map((url) => ({ url }));
 
@@ -95,6 +96,11 @@ export default function Galleria() {
               <Facebook size={16} /> Facebook
             </a>
             <span className="canale-sep">Consegna a domicilio:</span>
+            {/* WhatsApp per primo: è l'ordine diretto con la gelateria, quello
+                che per loro conta di più fra i modi di farsi consegnare. */}
+            <a className="canale-chip canale-wa" href={WA_URL} target="_blank" rel="noopener noreferrer">
+              <MessageCircle size={16} /> WhatsApp
+            </a>
             <a className="canale-chip" href={GLOVO_URL} target="_blank" rel="noopener noreferrer">
               🛵 Glovo
             </a>

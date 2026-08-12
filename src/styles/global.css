@@ -1649,6 +1649,15 @@ p {
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 .canale-chip:hover { background: #fff; border-color: var(--violet-deep); }
+/* WhatsApp: nei colori suoi, così si riconosce a colpo d'occhio fra i canali —
+   è quello che la gelateria vuole far usare per primo. */
+.canale-wa {
+  background: #25d366;
+  border-color: #1da851;
+  color: #fff;
+  font-weight: 700;
+}
+.canale-wa:hover { background: #1da851; border-color: #14803c; color: #fff; }
 .canale-sep {
   font-size: 0.78rem;
   letter-spacing: 0.06em;

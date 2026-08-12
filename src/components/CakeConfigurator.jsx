@@ -36,6 +36,15 @@ const STEPS = [
 // Passi effettivi del wizard (STEPS meno quelli non applicabili): reso
 // disponibile agli step figli per la numerazione "Passo N di M".
 const StepsCtx = createContext(STEPS);
+
+/**
+ * Tipi di torta che HANNO GIÀ la loro base nel nome: "Torta gelato con base
+ * Salame al cioccolato" non può avere altro che quella. In questi casi la base
+ * si imposta da sé e il passo non si chiede — farla scegliere quando c'è una
+ * sola risposta possibile è solo un passaggio in più, e permette di ordinare
+ * una torta che si contraddice nel nome.
+ */
+const BASE_OBBLIGATA = { crock: 'glutenfree' };
 // Le torte "Alte" (semifreddo e gelato) consentono 4 gusti; le altre (basse) 2.
 // Non e' un obbligo: si puo' fare una torta a un gusto solo. Il numero
 // consigliato (GUSTI_CONSIGLIATI) e' quello che rende meglio in vetrina.
@@ -572,9 +581,30 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   // Passo "crumble": solo se la base scelta è il crumble croccante e se in
   // dashboard esiste almeno un tipo di crumble attivo.
   const showCrumble = config.baseId === CRUMBLE_BASE_ID && cakeCrumbles.length > 0;
+
+  // Base già decisa dal tipo di torta (vedi BASE_OBBLIGATA). Si salta il passo
+  // solo se quella base è compatibile con le intolleranze dichiarate: se non lo
+  // è, il passo resta e il cliente vede la carta sbarrata col perché — meglio
+  // che imporgli di nascosto un ingrediente che ha detto di non poter mangiare.
+  const baseImposta = BASE_OBBLIGATA[config.type] || '';
+  const baseImpostaOk =
+    !!baseImposta &&
+    !conflictsAllergies(
+      cakeBases.find((b) => b.id === baseImposta),
+      config.allergies,
+      config.diets
+    );
+
+  useEffect(() => {
+    if (baseImpostaOk && config.baseId !== baseImposta) {
+      set({ baseId: baseImposta, crumbleId: '' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseImpostaOk, baseImposta, config.baseId]);
+
   const steps = useMemo(
-    () => STEPS.filter((s) => s !== 'crumble' || showCrumble),
-    [showCrumble]
+    () => STEPS.filter((s) => (s !== 'crumble' || showCrumble) && (s !== 'base' || !baseImpostaOk)),
+    [showCrumble, baseImpostaOk]
   );
 
   // Extra che ha senso proporre: quelli a listino compatibili con le allergie
