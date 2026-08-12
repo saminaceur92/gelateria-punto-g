@@ -1236,6 +1236,14 @@ const NASTRI_PER_DECO = 4;
  */
 const META_FIOCCO = 0.34;
 const TOLL_FIOCCO = 0.08;
+// DAVANTI al piano del fiocco, invece, il bordo non può sporgere quasi niente.
+// È il caso dell'incavo del cuore: il fianco della gobba accanto passa davanti
+// al nastro, il posto passava lo stesso il controllo (sporgeva meno di TOLL) e
+// il fiocco veniva spinto in fuori per compensare — risultato, un fiocco a
+// mezz'aria INCASTRATO fra le due metà del cuore, con le ruche stretto fra due
+// muri di panna. Dietro è diverso: un bordo che si ritira (la curvatura della
+// tonda) il fiocco lo copre da solo, per questo TOLL resta più larga.
+const SPORGE_FIOCCO = 0.025;
 
 /** I posti lungo il bordo dove un fiocco ci sta davvero, in ordine di giro. */
 function postiPerFiocchi(shape, R, quanti, fuori) {
@@ -1243,8 +1251,38 @@ function postiPerFiocchi(shape, R, quanti, fuori) {
   const fitto = decoSpots(shape, R, N, 1);
   const perim = perimeterLen(shape, R, 1) || 1;
   const finestra = Math.max(1, Math.round(META_FIOCCO / (perim / N)));
+
+  // NEI PRESSI dell'incavo il fiocco non ci va, punto. Il posto sulla spalla
+  // del lobo, appena fuori dalla conca, passa i controlli sul piano (la conca
+  // gli resta fuori dalla finestra) ma il nastro finisce lo stesso nel V fra
+  // le due pareti — mezzo affondato nella panna: è il fiocco "incastrato" che
+  // si vedeva sul cuore. Quindi si cercano i tratti CONCAVI del contorno
+  // (dove la curva gira al contrario del giro) e si vietano loro e i loro
+  // dintorni, un fiocco e mezzo di margine per parte. Tonda, quadrata e
+  // rettangolare non hanno tratti concavi: per loro non cambia niente.
+  const vietato = new Array(N).fill(false);
+  const giri = new Array(N);
+  let girata = 0;
+  for (let i = 0; i < N; i++) {
+    const a = fitto[(i - 1 + N) % N];
+    const b = fitto[i];
+    const c = fitto[(i + 1) % N];
+    giri[i] = (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x);
+    girata += giri[i];
+  }
+  const margine = Math.round(finestra * 1.5);
+  // metà del giro medio: i tratti dritti (lati di quadrata e rettangolare)
+  // hanno un giro di fatto nullo e non devono scattare per rumore numerico
+  const soglia = Math.abs(girata / N) * 0.5;
+  for (let i = 0; i < N; i++) {
+    if (Math.abs(giri[i]) > soglia && Math.sign(giri[i]) !== Math.sign(girata)) {
+      for (let j = -margine; j <= margine; j++) vietato[(i + j + N) % N] = true;
+    }
+  }
+
   const buoni = [];
   for (let i = 0; i < N; i++) {
+    if (vietato[i]) continue;
     const s = fitto[i];
     const nx = Math.cos(s.ang);
     const nz = Math.sin(s.ang);
@@ -1257,7 +1295,7 @@ function postiPerFiocchi(shape, R, quanti, fuori) {
     for (let j = -finestra; j <= finestra && ok; j++) {
       const p = fitto[(i + j + N) % N];
       const d = (p.x - s.x) * nx + (p.z - s.z) * nz;
-      if (Math.abs(d) > TOLL_FIOCCO) ok = false;
+      if (Math.abs(d) > TOLL_FIOCCO || d > SPORGE_FIOCCO) ok = false;
       else if (d > avanti) avanti = d;
     }
     if (ok) buoni.push({ s, avanti });
@@ -1485,16 +1523,30 @@ function Granella({
       // Spolverata sui ciuffi: il chicco si alza quanto è alta la panna NEL
       // PUNTO dove sta — il ciuffo è una gobba, pieno al centro della fila e
       // basso ai lati. Prima ogni chicco saliva di una quota a caso, e quelli
-      // ai bordi della fascia restavano campati in aria.
+      // ai bordi della fascia restavano campati in aria. L'ampiezza sta un
+      // filo SOTTO la cima vera dei ciuffi (0.82–0.96): meglio un chicco
+      // mezzo affondato nella panna che uno campato in aria.
       const gobba = sopraCiuffi
-        ? Math.sin(Math.PI * Math.min(1, dentro / larghezza)) * (0.9 + Math.random() * 0.18)
+        ? Math.sin(Math.PI * Math.min(1, dentro / larghezza)) * (0.82 + Math.random() * 0.14)
         : 0;
       const alto = sopraCiuffi ? sopraCiuffi * gobba : 0;
-      const yy = y + 0.008 + Math.random() * 0.035 + pile + alto;
-      dummy.position.set(x, yy, z);
-      dummy.rotation.set(Math.random() * 3.1, Math.random() * 3.1, Math.random() * 3.1);
       const s = sizeMin + Math.random() * Math.max(0, sizeMax - sizeMin);
       const sy = round ? s * flat : s * (0.55 + Math.random() * 0.5) * flat;
+      // Il chicco è APPOGGIATO: il centro sale di poco MENO della sua mezza
+      // altezza, così la base affonda appena nella panna o nel gelato. Prima
+      // saliva di un rialzo fisso a caso (fino a 0.043): sulla granella
+      // minuta non si vede, ma smarties e zuccherini — chicchi grossi —
+      // restavano campati in aria con l'ombra staccata sotto.
+      const yy = y + pile + alto + sy * 0.72 + Math.random() * 0.012;
+      dummy.position.set(x, yy, z);
+      // Le lenticchie (smarties, perline) si POSANO di piatto, al massimo un
+      // po' storte, come cadono davvero su una torta; le scaglie di granella
+      // invece si fermano come capita.
+      if (round) {
+        dummy.rotation.set((Math.random() - 0.5) * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.7);
+      } else {
+        dummy.rotation.set(Math.random() * 3.1, Math.random() * 3.1, Math.random() * 3.1);
+      }
       dummy.scale.set(s, sy, s);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
@@ -2138,7 +2190,9 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // se il fianco è basso si rimpicciolisce tutto invece di sbordare.
   // La banda libera del fianco: da sopra la ghirlanda della base (se c'è) fino
   // al bordo. Su "sotto e sopra" i nastri finivano dentro i ciuffi in basso.
-  const fiancoGiu = stackBottom + (pannaSottoSopra ? CIUFFO_BASE * 0.95 : 0);
+  // La ghirlanda ora sta sul PIATTO (parte da -0.02): la sua cima è circa a
+  // CIUFFO_BASE, che sul formato normale è sopra `stackBottom`.
+  const fiancoGiu = pannaSottoSopra ? Math.max(stackBottom, CIUFFO_BASE) : stackBottom;
   const fiancoAlt = bodyTop - fiancoGiu;
   const nodoY = fiancoGiu + fiancoAlt * 0.62;
   const bowS = Math.min(1, (bodyTop - nodoY) / 0.2);
@@ -2307,7 +2361,11 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         <GhirlandaDiPanna
           shape={shape}
           R={wrapR}
-          y={stackBottom + 0.01}
+          // La ghirlanda della base sta SUL PIATTO, non in cima al disco di
+          // base: a quota `stackBottom` restava sospesa a mezz'aria col vuoto
+          // sotto. Parte da un pelo dentro il vassoio (come le ruche), così i
+          // ciuffi sembrano schiacciati sul piatto e coprono l'attacco.
+          y={-0.02}
           s={CIUFFO_BASE}
           colore={dollopColor}
         />
