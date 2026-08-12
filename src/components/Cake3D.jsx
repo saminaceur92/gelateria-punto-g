@@ -455,7 +455,7 @@ function heartFootprint(R) {
   }
   const s = (2 * R) / Math.max(mxx - mnx, mxz - mnz);
   const cx = (mnx + mxx) / 2, cz = (mnz + mxz) / 2;
-  return poly.map(([x, z]) => [(x - cx) * s, (z - cz) * s]);
+  return poly.map(([x, z]) => [(x - cx), (z - cz)]);
 }
 
 /** Punto dentro poligono (ray casting). */
@@ -621,9 +621,9 @@ function Dollop({ position, color, s = 1, rotation = 0 }) {
     <mesh
       castShadow
       geometry={CREAM_DROP_GEO}
-      position={[position[0], position[1] - 0.03 * s, position[2]]}
+      position={[position[0], position[1] - 0.03, position[2]]}
       rotation={[0, rotation, 0]}
-      scale={[0.21 * s, 0.28 * s, 0.21 * s]}
+      scale={[0.21, 0.28, 0.21]}
     >
       <meshPhysicalMaterial {...softMat(color)} />
     </mesh>
@@ -1122,19 +1122,15 @@ function FruttaFresca({ spots, y }) {
 const FIOCCHI_COLORS = ['#3a3540', '#f4a9c0', '#e0334c', '#e8c069'];
 
 /**
- * Fiocchi di raso. Due modi, a seconda di dove finiscono:
+ * Fiocchi di raso ANNODATI SUL FIANCO della torta, col nastro che scende lungo
+ * il bordo — con o senza panna: è così che si mette un nastro a una torta.
+ * `y` è l'altezza del nodo (poco sotto il bordo superiore), `drop` quanto è
+ * alta la torta, che decide la lunghezza dei nastri.
  *
- *  - SUL FIANCO (torta senza panna sul bordo): annodati intorno, col nastro che
- *    scende lungo il lato, come nelle torte decorate col nastro.
- *  - SULLA PANNA (quando c'è l'anello di ciuffi): appoggiati sopra, altrimenti
- *    finiscono coperti dalla panna. Lì vanno più piccoli e con le asole meno
- *    sollevate: a grandezza piena si alzavano come una corona e sbordavano
- *    fuori dalla torta.
- *
- * `y` è l'altezza del nodo, `drop` decide la lunghezza dei nastri, `s` quanto
- * è grande tutto il fiocco e `alzata` di quanto si aprono le asole verso l'alto.
+ * Sono tutti IDENTICI fra loro: né misure né lunghezze cambiano da un fiocco
+ * all'altro. Vengono da un nastro comprato, non annodati uno per uno.
  */
-function Fiocchi({ spots, y, drop = 0.5, color, s = 1, alzata = 0.72 }) {
+function Fiocchi({ spots, y, drop = 0.5, color }) {
   const { asole, nodi, code } = useMemo(() => {
     const pal = decoPalette(FIOCCHI_COLORS, color);
     const asole = [];
@@ -1148,8 +1144,8 @@ function Fiocchi({ spots, y, drop = 0.5, color, s = 1, alzata = 0.72 }) {
       const nx = Math.cos(ang);     // normale uscente
       const nz = Math.sin(ang);
       // il nodo sporge dal fianco, così il nastro non sprofonda nella torta
-      const px = x + nx * 0.028 * s;
-      const pz = z + nz * 0.028 * s;
+      const px = x + nx * 0.028;
+      const pz = z + nz * 0.028;
       // due asole affiancate lungo il fianco, inclinate verso l'alto. Il nastro
       // è di raso: largo e piatto, non un cordoncino — altrimenti a questa
       // distanza il fiocco non si legge.
@@ -1158,26 +1154,28 @@ function Fiocchi({ spots, y, drop = 0.5, color, s = 1, alzata = 0.72 }) {
         // annodato davvero: prima erano inclinate in giù e sembravano due ali
         // afflosciate. Sono anche un po' più alzate rispetto al nodo.
         asole.push({
-          position: [px + ux * sgn * 0.135 * s, y + 0.062 * s, pz + uz * sgn * 0.135 * s],
-          rotation: [0, ry, -sgn * alzata],
-          scale: [0.17 * s, 0.1 * s, 0.036 * s],
+          position: [px + ux * sgn * 0.135, y + 0.062, pz + uz * sgn * 0.135],
+          rotation: [0, ry, -sgn * 0.72],
+          scale: [0.17, 0.1, 0.036],
           color: c,
         });
         // I due nastri scendono DIVARICANDOSI verso l'esterno (prima si
         // chiudevano verso il centro, e sembravano incollati fra loro).
-        // Lunghezza diversa da un fiocco all'altro: sembra annodato a mano.
-        const len = drop * (0.55 + ((i * 7) % 5) * 0.06);
+        // Tutti della STESSA lunghezza: per un po' variavano da un fiocco
+        // all'altro, per farli sembrare annodati a mano, ma sulla stessa torta
+        // si notava soltanto che erano diversi fra loro.
+        const len = drop * 0.65;
         code.push({
-          position: [px + ux * sgn * 0.055 * s, y - len / 2 - 0.05 * s, pz + uz * sgn * 0.055 * s],
+          position: [px + ux * sgn * 0.055, y - len / 2 - 0.05, pz + uz * sgn * 0.055],
           rotation: [0, ry, -sgn * 0.32],
-          scale: [0.058 * s, len, 0.014 * s],
+          scale: [0.058, len, 0.014],
           color: c,
         });
       }
-      nodi.push({ position: [px, y, pz], scale: [0.052 * s, 0.048 * s, 0.038 * s], color: shade(c, -0.18) });
+      nodi.push({ position: [px, y, pz], scale: [0.052, 0.048, 0.038], color: shade(c, -0.18) });
     }
     return { asole, nodi, code };
-  }, [spots, y, drop, color, s, alzata]);
+  }, [spots, y, drop, color]);
   // raso: molto lucido e liscio
   const nastro = { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1.05 };
   return (
@@ -1298,8 +1296,6 @@ function Decorazioni3D({
   edgeR,
   edgeY,
   drop,
-  bowS = 1,
-  bowAlzata = 0.72,
 }) {
   const shapeF = shape === 'rettangolare' ? 1.15 : shape === 'quadrata' ? 1.05 : 1;
 
@@ -1366,8 +1362,6 @@ function Decorazioni3D({
           spots={gruppiFianco[k] || []}
           y={edgeY ?? y}
           drop={drop}
-          s={bowS}
-          alzata={bowAlzata}
           color={(colors && colors[id]) || ''}
         />
       ))}
