@@ -1118,7 +1118,12 @@ function Fiocchi({ spots, y, drop = 0.5, color, s = 1 }) {
         asole.push({
           position: [px + ux * sgn * 0.135 * s, y + 0.062 * s, pz + uz * sgn * 0.135 * s],
           rotation: [0, ry, -sgn * 0.72],
-          scale: [0.17 * s, 0.1 * s, 0.036 * s],
+          // Lo SPESSORE del nastro (terzo numero) non è un dettaglio: quattro
+          // fiocchi intorno alla torta e due sono sempre di taglio rispetto a
+          // chi guarda. A 0.036 di profilo sparivano, e restava un filo scuro
+          // che sembrava un fiocco rotto a metà. Un nastro un po' corposo si
+          // legge da qualsiasi parte lo si guardi.
+          scale: [0.17 * s, 0.1 * s, 0.085 * s],
           color: c,
         });
         // I due nastri scendono DIVARICANDOSI verso l'esterno (prima si
@@ -1130,7 +1135,7 @@ function Fiocchi({ spots, y, drop = 0.5, color, s = 1 }) {
         code.push({
           position: [px + ux * sgn * 0.055 * s, y - len / 2 - 0.05 * s, pz + uz * sgn * 0.055 * s],
           rotation: [0, ry, -sgn * 0.32],
-          scale: [0.058 * s, len, 0.014 * s],
+          scale: [0.058 * s, len, 0.032 * s],
           color: c,
         });
       }
