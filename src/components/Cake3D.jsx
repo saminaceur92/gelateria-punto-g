@@ -2088,9 +2088,16 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // sporgono di mezzo cordone più in fuori, restavano sepolti dietro la panna.
   // Vale anche per le due fasce di "sotto e sopra", che allargano il fianco
   // pur non essendo un guscio intero.
+  // Il raggio a cui si annodano i fiocchi: devono restare DAVANTI alla panna,
+  // se no ci finiscono dietro e spariscono. Comanda quindi la panna che sporge
+  // di più, qualunque sia — le ruche verticali sul fianco o la ghirlanda alla
+  // base di "sotto e sopra", dove finivano nascosti i nastri.
   const pannaACiuffi = coverIsCream && covering?.id === 'panna';
-  const fiancoR =
-    wrapFull || pannaSottoSopra ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
+  const fiancoR = Math.max(
+    wrapFull || pannaSottoSopra ? wrapR : R,
+    pannaACiuffi ? wrapR + RUCHE_LARGHEZZA * 0.5 : 0,
+    pannaSottoSopra ? wrapR + CIUFFO_BASE * 0.55 : 0
+  );
 
   // ---- L'ANELLO di ciuffi sul bordo di sopra: c'è solo se c'è la panna ----
   // UNA fila sola, sempre la stessa — che arrivi dalla copertura fatta col
