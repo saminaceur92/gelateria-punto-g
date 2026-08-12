@@ -1,17 +1,95 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
+import { caricaFotoFile, eliminaFotoFile } from '../lib/galleryFoto';
 
 /**
  * Editor generico di una tabella di contenuti.
  * props:
  *  - table: nome tabella Supabase
  *  - title, subtitle
- *  - fields: [{ key, label, type: 'text'|'textarea'|'number'|'color'|'select'|'checkbox'|'checkboxes', options?, placeholder? }]
+ *  - fields: [{ key, label, type: 'text'|'textarea'|'number'|'color'|'select'|'checkbox'|'checkboxes'|'foto', options?, placeholder? }]
  *    'checkboxes' = spunte multiple salvate come stringa separata da virgola (options: [{value, label?, emoji?}])
  *    'textarea' = testo lungo (descrizioni): occupa tutta la riga, si può allargare in altezza
+ *    'foto' = foto di esempio: si carica/cambia/toglie e si salva DA SOLA subito
+ *      (il file va nello storage al volo, non può aspettare il bottone Salva).
+ *      `key` è la colonna con l'indirizzo, `pathKey` quella col percorso del file.
  *  - newRow: () => oggetto coi valori di default per una nuova riga
  */
+
+/**
+ * Foto di esempio di una riga (es. la copertura): miniatura + carica/cambia/
+ * togli. Salva direttamente nel database: il file è già caricato nello storage
+ * nel momento in cui lo si sceglie, tenerlo "in sospeso" fino al Salva della
+ * riga lascerebbe file orfani a ogni ripensamento.
+ */
+function FotoField({ row, field, table, onSaved, onError }) {
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
+  const url = row[field.key] || '';
+  const pathKey = field.pathKey || `${field.key}_path`;
+
+  async function scelto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // così la stessa foto si può riscegliere dopo un errore
+    if (!file) return;
+    setBusy(true);
+    onError('');
+    const up = await caricaFotoFile({ file, cartella: `${table}` });
+    if (up.error) { onError(up.error); setBusy(false); return; }
+    const vecchio = row[pathKey];
+    const patch = { [field.key]: up.url, [pathKey]: up.path };
+    const { error } = await supabase.from(table).update(patch).eq('id', row.id);
+    if (error) {
+      onError(error.message);
+      await eliminaFotoFile(up.path); // il file appena messo non serve più
+    } else {
+      if (vecchio) await eliminaFotoFile(vecchio);
+      onSaved(row.id, patch);
+      logAction('Foto di esempio caricata', `${table}: ${row.nome || row.id}`);
+    }
+    setBusy(false);
+  }
+
+  async function togli() {
+    if (!window.confirm('Togliere la foto di esempio?')) return;
+    setBusy(true);
+    onError('');
+    const patch = { [field.key]: null, [pathKey]: null };
+    const { error } = await supabase.from(table).update(patch).eq('id', row.id);
+    if (error) onError(error.message);
+    else {
+      if (row[pathKey]) await eliminaFotoFile(row[pathKey]);
+      onSaved(row.id, patch);
+      logAction('Foto di esempio tolta', `${table}: ${row.nome || row.id}`);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="adm-foto">
+      <span className="adm-flabel">{field.label}</span>
+      <div className="adm-foto-riga">
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer" title="Apri la foto">
+            <img src={url} alt="" className="adm-foto-mini" />
+          </a>
+        ) : (
+          <span className="adm-foto-vuota">nessuna</span>
+        )}
+        <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={scelto} />
+        <button type="button" className="adm-btn" onClick={() => inputRef.current?.click()} disabled={busy}>
+          {busy ? 'Carico…' : url ? 'Cambia' : 'Carica foto'}
+        </button>
+        {url && !busy && (
+          <button type="button" className="adm-btn adm-btn-del" onClick={togli} title="Togli la foto">
+            🗑
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Spunte multiple <-> stringa "A, B, C". Preserva eventuali valori non standard.
 function MultiCheckField({ value, options, onChange }) {
@@ -36,19 +114,25 @@ function MultiCheckField({ value, options, onChange }) {
   );
 }
 
-export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false }) {
+export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [] }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const excludeKey = excludeIds.join('|');
   const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.giorno || r.etichetta || 'voce';
 
-  // La riga si legge male se i campi sono tutti in fila: li dividiamo in tre
-  // fasce — dati, gruppi di spunte (allergeni presenti / tracce), sì/no.
-  const campiNormali = fields.filter((f) => f.type !== 'checkbox' && f.type !== 'checkboxes');
+  // La riga si legge male se i campi sono tutti in fila: li dividiamo in fasce
+  // — dati, foto, gruppi di spunte (allergeni presenti / tracce), sì/no.
+  const campiNormali = fields.filter((f) => !['checkbox', 'checkboxes', 'foto'].includes(f.type));
+  const campiFoto = fields.filter((f) => f.type === 'foto');
   const gruppiSpunte = fields.filter((f) => f.type === 'checkboxes');
   const flag = fields.filter((f) => f.type === 'checkbox');
+  // Le colonne foto si salvano da sole (vedi FotoField): il Salva della riga
+  // non deve toccarle, altrimenti una riga "sporca" rimasta aperta
+  // sovrascriverebbe la foto appena caricata col valore vecchio.
+  const campiDaSalvare = fields.filter((f) => f.type !== 'foto');
 
   async function load() {
     setError('');
@@ -58,13 +142,16 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       setError(/does not exist|schema cache/i.test(error.message)
         ? `Questa scheda non è ancora attiva: la tabella "${table}" va creata su Supabase eseguendo la migrazione SQL della cartella migrations/. (${error.message})`
         : error.message);
-    } else setRows(data || []);
+    } else {
+      const nascosti = new Set(excludeKey.split('|').filter(Boolean));
+      setRows((data || []).filter((r) => !nascosti.has(String(r.id))));
+    }
     setLoaded(true);
   }
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table]);
+  }, [table, excludeKey]);
 
   const edit = (id, key, value) => {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
@@ -75,13 +162,34 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     setBusy(true);
     setError('');
     const patch = {};
-    for (const f of fields) patch[f.key] = row[f.key];
+    for (const f of campiDaSalvare) patch[f.key] = row[f.key];
     const { error } = await supabase.from(table).update(patch).eq('id', row.id);
     if (error) setError(error.message);
     else {
       setDirty((d) => ({ ...d, [row.id]: false }));
       logAction('Contenuto modificato', `${title}: ${rowLabel(row)}`);
     }
+    setBusy(false);
+  }
+
+  // Tutte le righe modificate in un colpo solo: prima c'era soltanto il Salva
+  // per riga, e dopo dieci ritocchi toccava andarli a cercare uno per uno.
+  const daSalvare = rows.filter((r) => dirty[r.id]);
+  async function saveAll() {
+    setBusy(true);
+    setError('');
+    let salvate = 0;
+    for (const row of daSalvare) {
+      const patch = {};
+      for (const f of campiDaSalvare) patch[f.key] = row[f.key];
+      const { error } = await supabase.from(table).update(patch).eq('id', row.id);
+      // Al primo errore ci si ferma: le righe già salvate restano salvate,
+      // quelle dopo restano segnate da salvare — niente si perde in silenzio.
+      if (error) { setError(`${rowLabel(row)}: ${error.message}`); break; }
+      setDirty((d) => ({ ...d, [row.id]: false }));
+      salvate += 1;
+    }
+    if (salvate) logAction('Contenuti modificati', `${title}: ${salvate} voci`);
     setBusy(false);
   }
 
@@ -135,7 +243,14 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
           <h3>{title}</h3>
           {subtitle && <p>{subtitle}</p>}
         </div>
-        <span className="adm-count">{rows.filter((r) => r.attivo).length}/{rows.length} in vetrina</span>
+        <div className="adm-head-destra">
+          {daSalvare.length > 0 && (
+            <button type="button" className="adm-btn adm-btn-save" onClick={saveAll} disabled={busy}>
+              💾 Salva tutto ({daSalvare.length})
+            </button>
+          )}
+          <span className="adm-count">{rows.filter((r) => r.attivo).length}/{rows.length} in vetrina</span>
+        </div>
       </header>
 
       {error && <div className="adm-error">⚠️ {error}</div>}
@@ -182,13 +297,35 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                     />
                   ) : (
                     <input
-                      type={f.type === 'number' ? 'number' : 'text'}
+                      type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
                       value={row[f.key] ?? ''}
                       placeholder={f.placeholder || ''}
-                      onChange={(e) => edit(row.id, f.key, f.type === 'number' ? Number(e.target.value) : e.target.value)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        // Numeri e date possono restare VUOTI e in quel caso vanno
+                        // salvati come "niente", non come 0 o stringa vuota: una
+                        // scadenza vuota vuol dire "non scade", non "1 gennaio".
+                        if (f.type === 'number') return edit(row.id, f.key, v === '' ? null : Number(v));
+                        if (f.type === 'date') return edit(row.id, f.key, v === '' ? null : v);
+                        edit(row.id, f.key, v);
+                      }}
                     />
                   )}
                 </label>
+              ))}
+
+              {/* Foto di esempio: si carica e si salva da sola, subito. */}
+              {campiFoto.map((f) => (
+                <FotoField
+                  key={f.key}
+                  row={row}
+                  field={f}
+                  table={table}
+                  onError={setError}
+                  onSaved={(id, patch) =>
+                    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+                  }
+                />
               ))}
 
               {/* Un riquadro per gruppo di spunte (allergeni presenti / tracce):

@@ -1,5 +1,5 @@
 /* ===========================================================
-   Gelateria Punto Gi! – Design System
+   Gelateria Punto Gi – Design System
    =========================================================== */
 
 :root {
@@ -288,7 +288,10 @@ p {
 
 .nav-links {
   display: flex;
-  gap: 2.2rem;
+  /* Il distacco si stringe con lo schermo: con "Ordina a domicilio" le voci
+     sono tante, e a distacco fisso andavano a capo dentro se stesse
+     ("La nostra / storia"). Ogni voce resta su UNA riga, sempre. */
+  gap: clamp(0.8rem, 2vw, 2rem);
   list-style: none;
 }
 
@@ -298,6 +301,7 @@ p {
   color: var(--ink);
   position: relative;
   padding: 4px 0;
+  white-space: nowrap;
   transition: color 0.3s ease;
 }
 
@@ -331,7 +335,9 @@ p {
   justify-content: center;
 }
 
-@media (max-width: 920px) {
+/* Sotto i 1120px le voci non ci stanno più su una riga nemmeno strette:
+   si passa al menu a panino un po' prima di prima (920px). */
+@media (max-width: 1120px) {
   .nav-links, .nav-cta .btn { display: none; }
   .nav-toggle { display: flex; }
 }
@@ -870,6 +876,32 @@ p {
 .service-card:hover { transform: translateY(-8px); border-color: transparent; }
 .service-card:hover::after { opacity: 1; }
 
+/* La card è diventata un link/bottone: si eredita il vestito della card e si
+   tolgono i panni da bottone (il font, i bordi, il cursore del testo). */
+.service-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+/* Il contenitore dell'animazione è lui la cella della griglia: senza questo la
+   card dentro resta alta quanto il suo testo e le quattro escono disallineate
+   (quella col titolo su due righe più alta delle altre). Così invece la cella
+   si stira con la riga e la card riempie la cella: tutte uguali. */
+.service-cell { display: flex; }
+.service-cell .service-card { flex: 1; }
+.service-vai {
+  position: absolute;
+  right: 1.4rem;
+  bottom: 1.2rem;
+  color: rgba(255, 249, 237, 0.45);
+  transition: transform 0.4s var(--ease), color 0.4s ease;
+}
+.service-card:hover .service-vai { transform: translateX(4px); color: #fff; }
+
 .service-icon {
   width: 56px;
   height: 56px;
@@ -1089,7 +1121,19 @@ p {
   will-change: transform;
 }
 
-.gallery-scroll:hover .gallery-track { animation-play-state: paused; }
+/* La pausa al passaggio del mouse vale SOLO dove c'è un mouse vero.
+   Senza questo filtro, sui telefoni il browser simula il :hover al tocco e lo
+   tiene attaccato finché non si tocca qualcosa fuori dalla fascia: siccome la
+   fascia occupa tutto lo schermo, ogni tocco successivo ricade dentro e il
+   nastro non ripartiva più. */
+@media (hover: hover) and (pointer: fine) {
+  .gallery-scroll:hover .gallery-track { animation-play-state: paused; }
+}
+
+/* Fuori schermo il nastro si ferma: muovere una striscia larga migliaia di
+   pixel mentre l'utente sta leggendo un'altra sezione fa solo scattare lo
+   scorrimento. La classe la mette/toglie Gallery.jsx guardando se è in vista. */
+.gallery-scroll:not(.in-vista) .gallery-track { animation-play-state: paused; }
 
 .gallery-shot {
   flex: 0 0 auto;
@@ -1371,4 +1415,250 @@ p {
 @keyframes pulse {
   0% { transform: scale(0.95); opacity: 0.6; }
   100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Foto ingrandita (Lightbox) e pagina Galleria — agosto 2026
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* La foto della fascia ora è un pulsante: toccandola si apre ingrandita. */
+.gallery-shot-btn {
+  display: block;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 300; /* sopra header (100) e menu mobile (200) */
+  background: rgba(28, 22, 16, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.5rem, 3vw, 2rem);
+}
+.lightbox-figura {
+  margin: 0;
+  max-width: min(1100px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  overflow: hidden;
+}
+.lightbox-figura img {
+  max-width: 100%;
+  max-height: calc(100vh - 8rem);
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  cursor: zoom-in;
+  transition: transform 0.25s ease;
+  touch-action: none; /* il dito serve a spostare la foto zoomata, non a scrollare */
+  user-select: none;
+}
+.lightbox-figura img.zoom { cursor: grab; transition: none; }
+.lightbox-figura figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.78rem;
+}
+.lightbox-zoom-hint { display: inline-flex; align-items: center; gap: 0.35rem; }
+.lightbox-conta { font-variant-numeric: tabular-nums; }
+
+.lightbox-chiudi,
+.lightbox-freccia {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.lightbox-chiudi:hover,
+.lightbox-freccia:hover { background: rgba(255, 255, 255, 0.28); }
+.lightbox-chiudi { top: 1rem; right: 1rem; }
+.lightbox-freccia { top: 50%; transform: translateY(-50%); }
+.lightbox-freccia.sx { left: 0.6rem; }
+.lightbox-freccia.dx { right: 0.6rem; }
+@media (max-width: 600px) {
+  .lightbox-freccia { width: 40px; height: 40px; }
+  .lightbox-figura img { max-height: calc(100vh - 9rem); }
+}
+
+/* ── Pagina /galleria ─────────────────────────────────────────────── */
+.galleria-page { background: var(--cream); min-height: 100vh; }
+
+/* ===========================================================
+   PAGINA /consegna (consegna a domicilio)
+   =========================================================== */
+.consegna-page { background: var(--cream); min-height: 100vh; }
+
+/* WhatsApp prima di tutto: è l'ordine diretto con la gelateria */
+.consegna-wa {
+  margin-top: 2rem;
+  padding: clamp(1.4rem, 3vw, 2.2rem);
+  background: var(--cream-warm);
+  border: 1px solid rgba(50, 40, 31, 0.08);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 32px -24px rgba(50, 40, 31, 0.4);
+  max-width: 720px;
+}
+.consegna-wa h2 { font-size: clamp(1.2rem, 2.6vw, 1.5rem); margin: 0 0 1rem; }
+.consegna-prodotti {
+  list-style: none;
+  margin: 0 0 1.2rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.45rem 1.2rem;
+}
+.consegna-prodotti li { display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+.consegna-sorpresa {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  background: rgba(124, 183, 215, 0.14);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.2rem;
+}
+.consegna-sorpresa svg { flex-shrink: 0; margin-top: 0.15rem; color: var(--violet-deep); }
+
+/* Le piattaforme, in alternativa */
+.consegna-alt { margin-top: 2.2rem; }
+.consegna-alt h2 { font-size: clamp(1.1rem, 2.4vw, 1.35rem); margin: 0 0 0.9rem; }
+.consegna-alt-bottoni { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+
+.consegna-note { margin-top: 2.4rem; display: grid; gap: 1rem; max-width: 62ch; }
+.consegna-nota {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  color: var(--ink-soft, rgba(50, 40, 31, 0.85));
+}
+.consegna-nota svg { flex-shrink: 0; margin-top: 0.2rem; color: var(--violet-deep); }
+.galleria-griglia {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: clamp(0.6rem, 1.4vw, 1rem);
+  margin-top: 2rem;
+}
+.galleria-cella {
+  padding: 0;
+  border: 0;
+  background: var(--cream-warm);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  cursor: zoom-in;
+  box-shadow: 0 12px 26px -18px rgba(50, 40, 31, 0.5);
+}
+.galleria-cella img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .galleria-cella:hover img { transform: scale(1.06); }
+}
+@media (max-width: 600px) {
+  .galleria-griglia { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Scheda profilo Instagram, in cima alla pagina galleria */
+.galleria-ig {
+  margin-top: 2rem;
+  padding: clamp(1.2rem, 2.6vw, 1.8rem);
+  border-radius: var(--radius);
+  background: var(--cream-warm);
+  border: 1px solid rgba(44, 118, 153, 0.18);
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  flex-wrap: wrap;
+}
+.galleria-ig-profilo {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex: 0 0 auto;
+}
+.galleria-ig-foto {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--cream);
+  /* Anello sfumato, come la cornice delle storie di Instagram */
+  box-shadow: 0 0 0 3px var(--cream-warm), 0 0 0 5px var(--violet-deep);
+}
+/* Foto vera del profilo: riempie il tondo. Se manca e si ripiega sul logo,
+   quello va contenuto e un po' distanziato dal bordo, altrimenti si taglia. */
+.galleria-ig-foto img { width: 100%; height: 100%; object-fit: cover; }
+.galleria-ig-foto img.e-logo { object-fit: contain; padding: 6px; }
+.galleria-ig-testi { display: flex; flex-direction: column; line-height: 1.3; }
+.galleria-ig-testi strong { font-family: var(--font-display); font-size: 1.1rem; }
+.galleria-ig-handle { color: var(--violet-deep); font-weight: 600; font-size: 0.9rem; }
+.galleria-ig-bio { color: var(--grey); font-size: 0.82rem; }
+.galleria-ig p {
+  margin: 0;
+  flex: 1 1 240px;
+  color: var(--grey);
+  font-size: 0.9rem;
+  max-width: 42ch;
+}
+/* Seconda riga: gli altri posti dove trovare la gelateria. Va a capo da sola
+   (flex-basis 100%) così resta sotto al blocco profilo su qualsiasi schermo. */
+.galleria-ig-altri {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.7rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(44, 118, 153, 0.18);
+}
+.canale-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: var(--cream);
+  border: 1.5px solid rgba(44, 118, 153, 0.25);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.canale-chip:hover { background: #fff; border-color: var(--violet-deep); }
+.canale-sep {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--grey);
+  margin-left: 0.6rem;
+}
+
+@media (max-width: 700px) {
+  .galleria-ig { flex-direction: column; align-items: flex-start; gap: 0.9rem; }
+  .galleria-ig .btn { width: 100%; justify-content: center; }
+  .canale-sep { margin-left: 0; flex-basis: 100%; }
 }

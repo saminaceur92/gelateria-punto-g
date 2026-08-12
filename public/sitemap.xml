@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Gelateria Punto Gi! — Carpi (MO)
+<!-- Gelateria Punto Gi — Carpi (MO)
      Quando si passa al dominio definitivo, sostituire il dominio in tutti gli indirizzi qui sotto. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
@@ -11,5 +11,10 @@
     <loc>https://www.gelateriapuntogi.it/allergeni</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.gelateriapuntogi.it/galleria</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>

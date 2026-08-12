@@ -650,6 +650,23 @@
 
 .opt-card:hover { border-color: var(--violet); transform: translateY(-2px); }
 
+/* Cella "card + collegamento alla foto di esempio" (coperture): il div tiene
+   il posto di una cella della griglia, la card si allunga a riempirlo. */
+.opt-cella { display: flex; flex-direction: column; gap: 0.35rem; }
+.opt-cella .opt-card { flex: 1; }
+.opt-foto-link {
+  border: 0;
+  background: none;
+  padding: 0.15rem 0.2rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--violet-deep);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.opt-foto-link:hover { color: var(--violet); }
+
 .opt-card.selected {
   border-color: var(--violet-deep);
   background: linear-gradient(135deg, rgba(124, 183, 215,0.08), rgba(44, 118, 153,0.05));
@@ -1745,3 +1762,136 @@
   .cfg-preview-info .price { font-size: 1.8rem; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   Avvisi in evidenza dentro il configuratore (agosto 2026)
+   Tono legno/ambra: nel sito è il colore di "attenzione, leggi bene".
+   Il rosso resta riservato agli errori di invio, per non confondere
+   un avviso di sicurezza alimentare con un guasto.
+   ═══════════════════════════════════════════════════════════════════ */
+.cfg-avviso {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  margin-top: 1.2rem;
+  padding: 0.95rem 1.1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(192, 137, 76, 0.12);
+  border: 1.5px solid rgba(192, 137, 76, 0.5);
+  border-left-width: 5px;
+}
+.cfg-avviso-ico { font-size: 1.15rem; line-height: 1.35; flex: none; }
+.cfg-avviso strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+.cfg-avviso p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+/* Variante gentile: l'avviso sotto le note è una promessa, non un rischio. */
+.cfg-avviso-dolce {
+  background: rgba(124, 183, 215, 0.12);
+  border-color: rgba(124, 183, 215, 0.5);
+}
+
+/* Dichiarazione "Nessuna intolleranza": verde, perché è un via libera e non
+   una delle cose da evitare. */
+.toggle-pill-ok.active {
+  background: #357168;
+  border-color: #357168;
+  color: var(--cream);
+}
+
+/* Strati scelti: lo stesso gusto si può ripetere, quindi le card non bastano
+   più a dire "cosa ho scelto e in che ordine". Da qui si tolgono. */
+.strati-scelti {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+.strato-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1.5px solid var(--violet);
+  color: var(--violet-deep);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.strato-chip:hover { background: rgba(124, 183, 215, 0.14); }
+.strato-num {
+  display: inline-grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--violet-deep);
+  color: var(--cream);
+  font-size: 0.7rem;
+}
+.strato-x { font-size: 1.05rem; line-height: 1; opacity: 0.55; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Riepilogo che si popola mentre si sceglie (agosto 2026)
+   Solo su telefono: barretta in fondo che si apre (vedi configurator-mobile.css).
+   Su schermi grandi non serve: la card dell'anteprima racconta già la torta.
+   ═══════════════════════════════════════════════════════════════════ */
+.riepilogo-vuoto {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--grey);
+  line-height: 1.5;
+}
+.riepilogo-lista { margin: 0; display: grid; gap: 0.4rem; }
+.riepilogo-lista > div {
+  display: grid;
+  grid-template-columns: 6.2rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.riepilogo-lista dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--grey);
+  font-weight: 600;
+}
+.riepilogo-lista dd {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* La barretta e il pannello a scomparsa esistono solo su telefono. */
+.riepilogo-barra, .riepilogo-sheet { display: none; }
+
+/* ── Codice sconto in fondo al riepilogo ──────────────────────────── */
+.sconto-box { margin-top: 1.4rem; }
+.sconto-riga { display: flex; gap: 0.5rem; align-items: stretch; }
+.sconto-riga input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.sconto-riga .cfg-btn { flex: none; }
+.sconto-ok, .sconto-ko {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.sconto-ok { color: #357168; font-weight: 600; }
+.sconto-ko { color: var(--grey); }

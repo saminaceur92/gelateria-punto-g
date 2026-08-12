@@ -1,4 +1,4 @@
-# Gelateria Punto Gi! — Carpi (MO)
+# Gelateria Punto Gi — Carpi (MO)
 # Quando si passa al dominio definitivo, aggiornare la riga Sitemap qui sotto.
 
 User-agent: *

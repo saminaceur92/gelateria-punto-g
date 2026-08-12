@@ -12,7 +12,7 @@ export default function Footer() {
                 <img src="/logo.png" alt="" />
               </span>
               <span>
-                Punto Gi<span style={{ color: 'var(--orange)' }}>!</span>
+                Punto Gi
                 <small>Gelateria · Carpi</small>
               </span>
             </div>
@@ -30,8 +30,9 @@ export default function Footer() {
               <li><a href="#about">Storia</a></li>
               <li><a href="#servizi">Servizi</a></li>
               <li><a href="#menu">Gusti</a></li>
-              <li><a href="#gallery">Gallery</a></li>
+              <li><a href="/galleria">Gallery</a></li>
               <li><a href="#contatti">Contatti</a></li>
+              <li><a href="/consegna">Ordina a domicilio</a></li>
               <li><a href="/allergeni">Allergeni</a></li>
             </ul>
           </div>
@@ -56,7 +57,7 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <span>© {year} Gelateria Punto Gi! · Tutti i diritti riservati</span>
+          <span>© {year} Gelateria Punto Gi · Tutti i diritti riservati</span>
           <span>Fatto con <span className="heart">♥</span> a Carpi</span>
         </div>
       </div>

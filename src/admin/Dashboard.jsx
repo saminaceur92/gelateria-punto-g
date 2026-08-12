@@ -5,6 +5,9 @@ import TableEditor from './TableEditor';
 import OrdersPanel from './OrdersPanel';
 import StaffPanel from './StaffPanel';
 import DocumentiPanel from './DocumentiPanel';
+import GalleryPanel from './GalleryPanel';
+import ChiediCodice from './ChiediCodice';
+import CodiciPanel from './CodiciPanel';
 import PromemoriaPanel from './PromemoriaPanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
@@ -34,6 +37,9 @@ export default function Dashboard() {
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
+  // Chi sta prendendo l'ordine al banco (nome, dal codice personale).
+  const [chiediCodice, setChiediCodice] = useState(false);
+  const [operatore, setOperatore] = useState(null);
   const [ordersKey, setOrdersKey] = useState(0);
   const [newCount, setNewCount] = useState(0); // ordini arrivati mentre NON sei su "Ordini"
   const activeRef = useRef(active);
@@ -70,7 +76,7 @@ export default function Dashboard() {
 
   // Notifica anche nel titolo della scheda del browser (se è in secondo piano)
   useEffect(() => {
-    const base = 'Punto Gi! — Gestione';
+    const base = 'Punto Gi — Gestione';
     document.title = newCount > 0 ? `(${newCount}) ${base}` : base;
   }, [newCount]);
 
@@ -172,13 +178,14 @@ export default function Dashboard() {
         props: {
           table: 'coperture',
           title: 'Coperture / glasse',
-          subtitle: 'Coperture legate alla grafica 3D: attiva o disattiva quelle disponibili.',
+          subtitle: 'Coperture legate alla grafica 3D: attiva o disattiva quelle disponibili. La "Foto di esempio" è una vostra foto vera di quella copertura: chi la sceglie nel configuratore può aprirla per capire come viene.',
           locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
+            { key: 'foto', label: 'Foto di esempio (a scopo illustrativo)', type: 'foto', pathKey: 'foto_path' },
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
           newRow: () => ({ id: uuid(), nome: 'Nuova copertura', descrizione: '', supplemento: 0, colore: '#fff8e6', allergeni: '' }),
@@ -314,6 +321,43 @@ export default function Dashboard() {
         custom: true,
       },
       {
+        // Foto della gallery del sito: caricamento ed eliminazione.
+        key: 'gallery',
+        label: '🖼️ Foto della gallery',
+        custom: true,
+      },
+      {
+        // Codici personali dello staff + storico di chi ha fatto cosa.
+        // Il pannello si sblocca solo con un codice da amministratore.
+        key: 'codici',
+        label: '🔑 Codici e attività',
+        custom: true,
+      },
+      {
+        key: 'codici_sconto',
+        label: '🏷️ Codici sconto',
+        props: {
+          table: 'codici_sconto',
+          title: 'Codici sconto',
+          subtitle: 'I codici che i clienti possono scrivere alla fine dell\'ordine online. "Percentuale" toglie una percentuale dal totale (valore 10 = −10%), "Fisso" toglie tanti euro (valore 5 = −5€). Lascia vuota la scadenza se non deve scadere e gli utilizzi massimi se può essere usato all\'infinito. Il codice si scrive da solo in MAIUSCOLO: il cliente può scriverlo come vuole.',
+          fields: [
+            { key: 'codice', label: 'Codice', type: 'text', placeholder: 'ESTATE10' },
+            { key: 'descrizione', label: 'A cosa serve', type: 'text', placeholder: 'promo estate sui social' },
+            { key: 'tipo', label: 'Tipo', type: 'select', options: [
+              { value: 'percentuale', label: 'Percentuale (−%)' },
+              { value: 'fisso', label: 'Importo fisso (−€)' },
+            ] },
+            { key: 'valore', label: 'Valore', type: 'number' },
+            { key: 'minimo', label: 'Spesa minima €', type: 'number' },
+            { key: 'scadenza', label: 'Scade il', type: 'date' },
+            { key: 'usi_max', label: 'Utilizzi massimi', type: 'number' },
+            { key: 'usi', label: 'Già usato (volte)', type: 'number' },
+            { key: 'attivo', label: 'Attivo', type: 'checkbox' },
+          ],
+          newRow: () => ({ id: uuid(), codice: '', descrizione: '', tipo: 'percentuale', valore: 10, minimo: 0, scadenza: null, usi_max: null, usi: 0, attivo: true }),
+        },
+      },
+      {
         // Le due schede qui sotto stanno accanto a "PDF e QR allergeni" perché
         // è lì che si preme "Genera e pubblica": si scrive il testo e subito
         // dopo si rifà il quaderno, senza girare per il gestionale.
@@ -388,7 +432,7 @@ export default function Dashboard() {
     <div className="adm">
       <header className="adm-top">
         <div className="adm-brand">
-          <strong>Punto Gi!</strong> <span>Gestione contenuti</span>
+          <strong>Punto Gi</strong> <span>Gestione contenuti</span>
         </div>
         <div className="adm-user">
           <span>{user?.email}</span>
@@ -397,7 +441,7 @@ export default function Dashboard() {
       </header>
 
       <nav className="adm-nav">
-        <button className="adm-tab adm-new-cake" onClick={() => setCfgOpen(true)}>
+        <button className="adm-tab adm-new-cake" onClick={() => setChiediCodice(true)}>
           🎂 Nuova torta
         </button>
         <button
@@ -433,6 +477,10 @@ export default function Dashboard() {
           <StaffPanel />
         ) : active === 'documenti' ? (
           <DocumentiPanel />
+        ) : active === 'gallery' ? (
+          <GalleryPanel />
+        ) : active === 'codici' ? (
+          <CodiciPanel />
         ) : active === 'promemoria' ? (
           <PromemoriaPanel />
         ) : (
@@ -440,12 +488,30 @@ export default function Dashboard() {
         )}
       </main>
 
+      {/* Prima di prendere un ordine al banco si mette il proprio codice: così
+          sull'ordine resta scritto chi l'ha fatto. */}
+      {chiediCodice && (
+        <ChiediCodice
+          azione="Ordine creato in gelateria"
+          dettaglio={null}
+          descrizione="Stai per prendere un ordine al banco. Metti il tuo codice: resterà scritto sull'ordine."
+          onFatto={(chi) => {
+            setChiediCodice(false);
+            setOperatore(chi.nome);
+            setCfgOpen(true);
+          }}
+          onAnnulla={() => setChiediCodice(false)}
+        />
+      )}
+
       <CakeDataProvider>
         <CakeConfigurator
           open={cfgOpen}
           staff
+          operatore={operatore}
           onClose={() => {
             setCfgOpen(false);
+            setOperatore(null);
             setActive('ordini');
             setOrdersKey((k) => k + 1);
           }}

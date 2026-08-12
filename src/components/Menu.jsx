@@ -3,20 +3,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { flavorCategories as fallbackCategories } from '../data/flavors';
 import { fetchMenu } from '../data/live';
 
+// Pillola "Tutti i Gusti": raccoglie i gusti da coppetta di tutte le categorie.
+// Restano fuori le basi (Base Bianca, Vegan, Frutta: non si ordinano da sole) e
+// le "Altre Leccornie" (pasticcini, salame dolce, torte…), che gusti non sono.
+const TUTTI = 'tutti';
+const NON_GUSTI = ['base', 'leccornie'];
+
+function conTutti(categorie) {
+  const gusti = categorie.filter((c) => !NON_GUSTI.includes(c.id)).flatMap((c) => c.flavors);
+  if (!gusti.length) return categorie;
+  return [{ id: TUTTI, name: 'Tutti i Gusti', description: '', flavors: gusti }, ...categorie];
+}
+
 export default function Menu() {
-  const [categories, setCategories] = useState(fallbackCategories);
-  const [active, setActive] = useState(fallbackCategories[0].id);
+  const [categories, setCategories] = useState(() => conTutti(fallbackCategories));
+  const [active, setActive] = useState(TUTTI);
 
   // Aggiornamento live da Supabase (con fallback ai dati statici)
   useEffect(() => {
     let alive = true;
     fetchMenu().then((data) => {
       if (!alive || !data?.length) return;
-      setCategories(data);
+      const conTutte = conTutti(data);
+      setCategories(conTutte);
       // Gli id delle categorie live ('crema', 'golosone'…) non coincidono con
       // quelli del fallback: se la categoria selezionata non c'è più, torniamo
-      // alla prima, altrimenti nessuna pillola resterebbe evidenziata.
-      setActive((cur) => (data.some((c) => c.id === cur) ? cur : data[0].id));
+      // a "Tutti i Gusti", altrimenti nessuna pillola resterebbe evidenziata.
+      setActive((cur) => (conTutte.some((c) => c.id === cur) ? cur : TUTTI));
     });
     return () => {
       alive = false;
@@ -31,12 +44,12 @@ export default function Menu() {
         <div className="menu-header">
           <span className="eyebrow">I nostri gusti</span>
           <h2 style={{ marginTop: '1.2rem' }}>
-            La carta del <em style={{ color: 'var(--violet-deep)', fontStyle: 'italic' }}>gelato</em>
+            Gusti nuovi <em style={{ color: 'var(--violet-deep)', fontStyle: 'italic' }}>ogni mese!</em>
           </h2>
           <p className="lead" style={{ marginTop: '1rem' }}>
-            Una selezione che cambia con le stagioni. Ogni mese aggiungiamo
-            <strong style={{ color: 'var(--violet-deep)' }}> Limited Edition</strong> e gusti stagionali —
-            chiedili al nostro staff!
+            Una selezione che cambia con le stagioni:
+            <strong style={{ color: 'var(--violet-deep)' }}> Limited Edition</strong> e gusti stagionali sempre
+            nuovi — chiedili al nostro staff!
           </p>
         </div>
 
@@ -79,7 +92,7 @@ export default function Menu() {
               const desc = (f.desc || '').trim();
               return (
                 <motion.div
-                  key={f.name}
+                  key={`${f.name}-${i}`}
                   className={`flavor${desc ? ' has-desc' : ''}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

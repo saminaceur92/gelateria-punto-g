@@ -84,17 +84,17 @@ export const cakeFlavors = [
   { name: 'Punto Gi', color: '#b651e4', allergeni: ['latte', 'frutta a guscio', 'arachidi', 'soia'] },
   { name: 'Mentaciock', color: '#8fd1a0', allergeni: ['latte'] },
   { name: 'Duplo', color: '#7a4a2e', allergeni: ['latte', 'glutine', 'frutta a guscio', 'soia'] },
-  { name: 'Limone', color: '#f5e26a', allergeni: [] },
-  { name: 'Fragola', color: '#e84a6e', allergeni: [] },
+  { name: 'Limone', color: '#f5e26a', allergeni: [], vegan: true },
+  { name: 'Fragola', color: '#e84a6e', allergeni: [], vegan: true },
 ];
 
 // Basi: le due "Classiche" sono senza lattosio (nota dei titolari).
 export const cakeBases = [
-  { id: 'cacao', name: 'Senza base', desc: 'Gelato direttamente sul piatto', priceDelta: 0, color: '#efe7da', allergeni: [] },
+  { id: 'cacao', name: 'Senza base', desc: 'Gelato direttamente sul piatto', priceDelta: 0, color: '#efe7da', allergeni: [], vegan: true, senzaZucchero: true },
   { id: 'classica', name: 'Classica Vaniglia', desc: 'Pan di Spagna sottile con bagna vaniglia', priceDelta: 1, color: '#e8d2a8', allergeni: ['glutine', 'uova'] },
   { id: 'classica-cioccolato', name: 'Classica Cioccolato', desc: 'Pan di Spagna sottile con bagna cioccolato', priceDelta: 1, color: '#8a5a3b', allergeni: ['glutine', 'uova'] },
   { id: 'glutenfree', name: 'Salame al cioccolato', desc: 'Il nostro inconfondibile salame per una base super golosa', priceDelta: 3, color: '#5a3520', allergeni: ['latte', 'soia', 'frutta a guscio', 'glutine'] },
-  { id: 'crock', name: 'Base croccante', desc: 'Biscotto croccante: scegli sotto il gusto del crumble', priceDelta: 0, color: '#b88c5a', allergeni: [] },
+  { id: 'crock', name: 'Base croccante', desc: 'Biscotto croccante: scegli sotto il gusto del crumble', priceDelta: 0, color: '#b88c5a', allergeni: [], vegan: true },
 ];
 
 // Tipi di crumble: si scelgono SOLO se la base è la "Base croccante"
@@ -104,7 +104,7 @@ export const cakeBases = [
 // Sono tutti GLUTEN FREE; il crumble caramello è anche vegan e senza lattosio.
 export const cakeCrumbles = [
   { id: 'cacao', name: 'Crumble cacao', desc: 'Base biscotto croccante al cacao', priceDelta: 2, color: '#5a3520', allergeni: ['latte', 'frutta a guscio'] },
-  { id: 'caramello', name: 'Crumble caramello', desc: 'Base biscotto croccante al caramello', priceDelta: 2, color: '#c8842b', allergeni: ['frutta a guscio'] },
+  { id: 'caramello', name: 'Crumble caramello', desc: 'Base biscotto croccante al caramello', priceDelta: 2, color: '#c8842b', allergeni: ['frutta a guscio'], vegan: true },
   { id: 'pistacchio', name: 'Crumble pistacchio', desc: 'Base biscotto croccante al pistacchio', priceDelta: 4, color: '#7ea15a', allergeni: ['latte', 'frutta a guscio'] },
   { id: 'fruttato', name: 'Crumble fruttato', desc: 'Base biscotto croccante con sapore fruttato adatto per torte con frutta', priceDelta: 2, color: '#e2a06a', allergeni: ['latte', 'frutta a guscio'] },
   { id: 'cereali-cacao', name: 'Crumble cereali e fave di cacao', desc: 'Base biscotto croccante con cereali senza glutine e fave di cacao', priceDelta: 2, color: '#6b4226', allergeni: ['latte', 'frutta a guscio'] },
@@ -112,28 +112,29 @@ export const cakeCrumbles = [
 
 // Farciture (variegato/cuore tra gli strati)
 export const cakeFillings = [
-  { id: 'nessuna', name: 'Nessuna', desc: 'Strati puri', priceDelta: 0, color: null, allergeni: [] },
-  { id: 'cremino', name: 'Variegato Nocciola e Gianduia', desc: 'Nocciola e cioccolato', priceDelta: 2, color: '#5a3520', allergeni: ['frutta a guscio', 'soia'] },
+  { id: 'nessuna', name: 'Nessuna', desc: 'Strati puri', priceDelta: 0, color: null, allergeni: [], vegan: true, senzaZucchero: true },
+  { id: 'cremino', name: 'Variegato Nocciola e Gianduia', desc: 'Nocciola e cioccolato', priceDelta: 2, color: '#5a3520', allergeni: ['frutta a guscio', 'soia'], senzaZucchero: true },
   { id: 'caramello', name: 'Salsa caramello salato', desc: 'Dolce e sapida', priceDelta: 2, color: '#c8842b', allergeni: ['latte'] },
-  { id: 'frutti-rossi', name: 'Cuore frutti rossi', desc: 'Salsa ai frutti rossi', priceDelta: 2, color: '#c93060', allergeni: [] },
-  { id: 'amarena', name: 'Salsa di amarene', desc: 'Classica, intensa', priceDelta: 2, color: '#8c1e3a', allergeni: [] },
+  { id: 'frutti-rossi', name: 'Cuore frutti rossi', desc: 'Salsa ai frutti rossi', priceDelta: 2, color: '#c93060', allergeni: [], vegan: true },
+  { id: 'amarena', name: 'Salsa di amarene', desc: 'Classica, intensa', priceDelta: 2, color: '#8c1e3a', allergeni: [], vegan: true },
   { id: 'nutella', name: 'Nutella', desc: 'Nutella… cosa devo spiegarti??', priceDelta: 2, color: '#3d2114', allergeni: ['latte', 'soia', 'frutta a guscio'] },
   { id: 'kinder', name: 'Crema Kinder', desc: 'Farcitura golosa con pezzettini di wafer', priceDelta: 2, color: '#e6c79c', allergeni: ['glutine', 'soia', 'latte'] },
   { id: 'biscotto', name: 'Biscotto', desc: 'Croccante salsa con pezzetti di biscotti', priceDelta: 2, color: '#b88c5a', allergeni: ['latte', 'frutta a guscio'] },
-  { id: 'granella', name: 'Granella di nocciole', desc: 'Croccante', priceDelta: 1, color: '#8a5a3b', allergeni: ['frutta a guscio'] },
-  { id: 'granella-pistacchi', name: 'Granella di Pistacchi', desc: 'Croccante', priceDelta: 1, color: '#9bbf6a', allergeni: ['frutta a guscio'] },
-  { id: 'pistacchio', name: 'Crema di pistacchi', desc: 'Con pistacchi interi cristallizzati', priceDelta: 2, color: '#7ea15a', allergeni: ['frutta a guscio'] },
+  { id: 'granella', name: 'Granella di nocciole', desc: 'Croccante', priceDelta: 1, color: '#8a5a3b', allergeni: ['frutta a guscio'], vegan: true },
+  { id: 'granella-pistacchi', name: 'Granella di Pistacchi', desc: 'Croccante', priceDelta: 1, color: '#9bbf6a', allergeni: ['frutta a guscio'], vegan: true },
+  { id: 'pistacchio', name: 'Crema di pistacchi', desc: 'Con pistacchi interi cristallizzati', priceDelta: 2, color: '#7ea15a', allergeni: ['frutta a guscio'], vegan: true },
 ];
 
 // Copertura / glassa esterna
 export const cakeCoverings = [
-  { id: 'panna', name: 'Panna montata INTORNO', desc: 'Soffice, classica', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
+  { id: 'panna', name: 'Panna montata a CIUFFI INTORNO', desc: 'Ciuffi di panna tutt’intorno alla torta e ghirlanda sul bordo', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
+  { id: 'panna-spatolata', name: 'Panna montata SPATOLATA INTORNO', desc: 'Panna liscia, spianata col coltello tutt’intorno alla torta', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sopra', name: 'Panna montata SOLO SOPRA', desc: 'Filo di panna solo sopra alla torta, con intorno un nastro trasparente non edibile', priceDelta: 0, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sotto-sopra', name: 'Panna montata SOTTO E SOPRA', desc: 'Filo di panna sul bordo inferiore e superiore della torta', priceDelta: 1, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'cioccolato-cop', name: 'Copertura morbida al cioccolato', desc: 'Copertura morbida al cioccolato al latte', priceDelta: 2, color: '#6b4226', allergeni: ['latte', 'soia', 'frutta a guscio'] },
-  { id: 'pistacchio-cop', name: 'Copertura al pistacchio', desc: 'Effetto wow', priceDelta: 4, color: '#7ea15a', allergeni: ['frutta a guscio'] },
-  { id: 'frutta-cop', name: 'Copertura di frutta', desc: 'Fresca, di stagione', priceDelta: 3, color: '#e84a6e', allergeni: [] },
-  { id: 'naked', name: 'Naked cake', desc: 'Bordi a vista, rustica', priceDelta: 0, color: null, allergeni: [] },
+  { id: 'pistacchio-cop', name: 'Copertura al pistacchio', desc: 'Effetto wow', priceDelta: 4, color: '#7ea15a', allergeni: ['frutta a guscio'], vegan: true },
+  { id: 'frutta-cop', name: 'Copertura di frutta', desc: 'Fresca, di stagione', priceDelta: 3, color: '#e84a6e', allergeni: [], vegan: true },
+  { id: 'naked', name: 'Naked cake', desc: 'Bordi a vista, rustica', priceDelta: 0, color: null, allergeni: [], vegan: true, senzaZucchero: true },
   { id: 'cioccolato-bianco-cop', name: 'Copertura cioccolato bianco', desc: 'Copertura morbida al cioccolato bianco', priceDelta: 2, color: '#f5f0dd', allergeni: ['latte', 'soia'] },
   { id: 'nocciola-cop', name: 'Copertura Nocciola', desc: 'Copertura morbida al gusto nocciola', priceDelta: 2, color: '#8a5a3b', allergeni: ['frutta a guscio', 'latte', 'soia'] },
 ];
@@ -166,7 +167,7 @@ const COLORI_SPUMINI = ['Rosa', 'Blu'];
 // Decorazioni: granelle, confettini, fiori, panna… Ora incidono sul prezzo
 // (`priceDelta`) e alcune permettono di scegliere il colore (`colorChoice`).
 export const cakeDecorations = [
-  { id: 'nessuna', name: 'Nessuna', desc: 'Top liscio', emoji: '∅', priceDelta: 0, allergeni: [], colorChoice: false, colors: [] },
+  { id: 'nessuna', name: 'Nessuna', desc: 'Top liscio', emoji: '∅', priceDelta: 0, allergeni: [], colorChoice: false, colors: [], vegan: true, senzaZucchero: true },
   { id: 'granella-nocciola', name: 'Granella NOCCIOLA', desc: 'Croccante e tostata', emoji: '🌰', priceDelta: 0, allergeni: ['frutta a guscio'], colorChoice: false, colors: [] },
   { id: 'granella-pistacchio', name: 'Granella PISTACCHIO', desc: 'Croccante e tostata', emoji: '🥜', priceDelta: 0, allergeni: ['frutta a guscio'], colorChoice: false, colors: [] },
   // Gli zuccherini sono già colorati misti: non si sceglie il colore (titolari).
@@ -174,14 +175,15 @@ export const cakeDecorations = [
   { id: 'smarties', name: 'Smarties', desc: 'I famosi confettini colorati ripieni di cioccolato', emoji: '🍬', priceDelta: 2, allergeni: ['latte', 'frutta a guscio', 'soia'], colorChoice: false, colors: [] },
   { id: 'perline', name: 'Perline colorate', desc: 'Perline placcate oro, argento, rosa o bianco', emoji: '⚪', priceDelta: 3, allergeni: [], colorChoice: true, colors: COLORI_PERLINE },
   { id: 'fiocchi', name: 'Fiocchi colorati', desc: 'In colore nero, rosa, rosso e oro', emoji: '🎀', priceDelta: 4, allergeni: [], colorChoice: true, colors: COLORI_FIOCCHI },
-  { id: 'cioccolato-fondente-deco', name: 'Decorazioni cioccolato fondente', desc: 'Allegri e golosi', emoji: '🍫', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
+  { id: 'cioccolato-fondente-deco', name: 'Decorazioni cioccolato fondente', desc: 'Allegri e golosi', emoji: '🍫', priceDelta: 2, allergeni: [], colorChoice: false, colors: [], vegan: true },
   { id: 'macarons', name: 'Macarons', desc: 'Colorati assortiti', emoji: '🧁', priceDelta: 2, allergeni: ['uova', 'frutta a guscio', 'latte'], colorChoice: false, colors: [] },
   { id: 'spumini', name: 'Spumini', desc: 'Rosa o blu', emoji: '☁️', priceDelta: 1, allergeni: ['uova'], colorChoice: true, colors: COLORI_SPUMINI },
-  { id: 'marshmallow', name: 'Marshmellow', desc: 'Morbidi e colorati', emoji: '🍡', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
+  { id: 'marshmallow', name: 'Marshmallow', desc: 'Morbidi e colorati', emoji: '🍡', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
   { id: 'fiori-eleganti', name: 'Fiori eleganti', desc: 'In zucchero duro, in colori diversi', emoji: '🌸', priceDelta: 5, allergeni: [], colorChoice: false, colors: [] },
   { id: 'fiori-ostia', name: 'Fiori ostia colorati', desc: 'Delicati fiori in ostia, in colori diversi', emoji: '🌼', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
   { id: 'cioccolato-deco', name: 'Decorazioni cioccolato', desc: 'Decorazioni in cioccolato bianco, latte e fondente', emoji: '🍫', priceDelta: 2, allergeni: ['latte', 'frutta a guscio', 'soia'], colorChoice: false, colors: [] },
-  { id: 'frutta-fresca', name: 'Frutta fresca', desc: 'Ribes, more, lamponi…', emoji: '🫐', priceDelta: 4, allergeni: [], colorChoice: false, colors: [] },
+  { id: 'drip', name: 'Drip cake', desc: 'Colature di glassa che scendono dal bordo', emoji: '🍫', priceDelta: 2, allergeni: [], colorChoice: false, colors: [] },
+  { id: 'frutta-fresca', name: 'Frutta fresca', desc: 'Ribes, more, lamponi…', emoji: '🫐', priceDelta: 4, allergeni: [], colorChoice: false, colors: [], vegan: true },
   { id: 'panna-deco', name: 'Panna montata', desc: 'Panna montata spatolata intorno e decorazione con ciuffi', emoji: '🍦', priceDelta: 2, allergeni: ['latte'], colorChoice: false, colors: [] },
   { id: 'panna-colorata', name: 'Panna montata colorata', desc: 'Colore a scelta tra rosa, rossa, azzurra, blu, verde, nera, gialla e arcobaleno', emoji: '🎨', priceDelta: 2, allergeni: ['latte'], colorChoice: true, colors: COLORI_PANNA },
   { id: 'fantasia', name: 'Fantasia del gelataio', desc: 'Renderemo bella la torta per il tuo evento usando la nostra fantasia e il nostro estro', emoji: '✨', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
@@ -213,7 +215,8 @@ export const cakeOccasions = [
   'Laurea',
   'Battesimo',
   'Comunione',
-  'Festa di famiglia',
+  'Gender reveal',
+  'Nessuna',
 ];
 
 // Allergeni ufficiali (Reg. UE 1169/2011) selezionabili nel configuratore.
@@ -266,7 +269,7 @@ export const cakeRecipes = [
     decoration: 'granella-nocciola',
   },
   {
-    name: 'La firma Punto Gi!',
+    name: 'La firma Punto Gi',
     shape: 'tonda',
     flavors: ['Pistacchio', 'Bacio'],
     filling: 'pistacchio',

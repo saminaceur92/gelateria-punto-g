@@ -59,7 +59,7 @@ export default function App() {
         <Marquee />
         <About />
         <Stats />
-        <Services />
+        <Services onOpenConfigurator={openCfg} />
         <Menu />
         <CakeCTA onOpen={openCfg} />
         <Gallery />

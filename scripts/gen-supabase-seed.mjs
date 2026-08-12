@@ -37,7 +37,7 @@ const rows = (table, cols, data) => {
   return `insert into ${table} (${cols.map((c) => c.replace(/:.*/, '')).join(', ')}) values\n${values};\n\n`;
 };
 
-let sql = '-- Seed contenuti Gelateria Punto Gi! (generato da scripts/gen-supabase-seed.mjs)\n';
+let sql = '-- Seed contenuti Gelateria Punto Gi (generato da scripts/gen-supabase-seed.mjs)\n';
 sql += '-- Esecuzione idempotente: svuota e ricarica le tabelle dei contenuti.\n';
 sql += 'truncate categorie, gusti, gusti_torte, tipi_torta, dimensioni, forme, basi, farciture, coperture, decorazioni, occasioni, orari restart identity cascade;\n\n';
 

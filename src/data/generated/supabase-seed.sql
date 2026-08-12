@@ -1,4 +1,4 @@
--- Seed contenuti Gelateria Punto Gi! (generato da scripts/gen-supabase-seed.mjs)
+-- Seed contenuti Gelateria Punto Gi (generato da scripts/gen-supabase-seed.mjs)
 -- Esecuzione idempotente: svuota e ricarica le tabelle dei contenuti.
 truncate categorie, gusti, gusti_torte, tipi_torta, dimensioni, forme, basi, farciture, coperture, decorazioni, occasioni, orari restart identity cascade;
 

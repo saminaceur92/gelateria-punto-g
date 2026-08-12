@@ -96,7 +96,7 @@ export default function Contact() {
 
           <motion.div className="contact-map" {...reveal} transition={{ ...reveal.transition, delay: 0.15 }}>
             <iframe
-              title="Mappa Gelateria Punto Gi! Carpi"
+              title="Mappa Gelateria Punto Gi Carpi"
               src="https://www.google.com/maps?q=Via+Remesina+Interna+46,+Carpi+MO&output=embed"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"

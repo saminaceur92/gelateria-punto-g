@@ -49,6 +49,18 @@
 .adm-card-head p { margin: .3rem 0 0; color: #888; font-size: .88rem; max-width: 60ch; }
 .adm-count { color: var(--v-deep); font-weight: 600; font-size: .82rem; text-align: right; }
 .adm-count-detail { color: #999; font-weight: 400; }
+/* "Salva tutto" + contatore, allineati a destra nella testata della scheda */
+.adm-head-destra { display: flex; align-items: center; gap: .8rem; flex-shrink: 0; }
+
+/* Foto di esempio nella riga (coperture): miniatura + carica/cambia/togli.
+   `flex-basis: 100%` = riga tutta sua, come i gruppi di spunte. */
+.adm-foto { flex-basis: 100%; display: flex; flex-direction: column; gap: .3rem; }
+.adm-foto-riga { display: flex; align-items: center; gap: .6rem; }
+.adm-foto-mini {
+  width: 52px; height: 52px; object-fit: cover; border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, .12); display: block;
+}
+.adm-foto-vuota { color: #999; font-size: .82rem; font-style: italic; }
 .adm-locked-note { margin: 1rem 0 0; font-size: .85rem; color: #777; background: var(--cream); border: 1px dashed var(--line); border-radius: 10px; padding: .7rem .9rem; }
 .adm-locked-note strong { color: var(--v-deep); }
 
@@ -278,4 +290,151 @@
   .prom-when, .prom-who { min-width: 0; flex-basis: 100%; }
   .prom-actions { margin-left: 0; flex-basis: 100%; }
   .prom-actions .adm-btn { flex: 1; }
+}
+
+/* ── Foto della gallery (scheda "🖼️ Foto della gallery") ─────────── */
+.adm-sub {
+  margin: 1.4rem 0 0.6rem;
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+  color: var(--v-deep, var(--violet-deep));
+}
+.gal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.6rem;
+}
+.gal-item {
+  margin: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(50, 40, 31, 0.12);
+  transition: opacity 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.gal-item[draggable="true"] { cursor: grab; }
+.gal-item[draggable="true"]:active { cursor: grabbing; }
+.gal-item-drag {
+  opacity: 0.42;
+  transform: scale(0.96);
+  box-shadow: 0 8px 24px rgba(50, 40, 31, 0.18);
+}
+.gal-item img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+.gal-item figcaption {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.72rem;
+}
+.gal-pos {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--v-deep, var(--violet-deep));
+  font-weight: 800;
+}
+.gal-actions {
+  display: flex;
+  gap: 0.22rem;
+  margin-left: auto;
+}
+.gal-actions .adm-btn {
+  min-width: 1.65rem;
+  padding: 0.25rem 0.36rem;
+  line-height: 1;
+}
+.gal-move { font-size: 0.95rem; }
+
+/* ── Codice personale: finestrella di conferma ────────────────────── */
+.codice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(28, 22, 16, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.codice-box {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.6rem 1.4rem 1.2rem;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+.codice-box h3 { margin: 0 0 0.4rem; }
+.codice-box p { margin: 0 0 1rem; font-size: 0.88rem; line-height: 1.5; }
+.codice-box input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1.4rem;
+  text-align: center;
+  letter-spacing: 0.4em;
+  border-radius: 10px;
+  border: 1.5px solid rgba(50, 40, 31, 0.2);
+}
+.codice-chiudi { position: absolute; top: 0.6rem; right: 0.6rem; display: flex; }
+.codice-err { color: #a33; font-size: 0.85rem; margin: 0.6rem 0 0; }
+.codice-azioni { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+.codice-riga { display: flex; gap: 0.5rem; max-width: 360px; }
+.codice-riga input { flex: 1; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1.5px solid rgba(50, 40, 31, 0.2); }
+
+/* ── Elenco delle persone e dello storico ─────────────────────────── */
+.codici-lista { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.codici-lista li {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.8rem;
+  background: #fff;
+  border: 1px solid rgba(50, 40, 31, 0.12);
+  border-radius: 10px;
+}
+.codici-nome { font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; }
+.codici-lista li .adm-muted { margin-left: auto; font-size: 0.78rem; }
+.codici-badge {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(44, 118, 153, 0.14);
+  color: #2c7699;
+  font-weight: 700;
+}
+.codici-badge-ko { background: rgba(170, 50, 50, 0.14); color: #a33; }
+.codici-nuovo-riga { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+.codici-nuovo-riga .adm-field { flex: 1 1 150px; }
+
+.attivita-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.attivita-lista li {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: 0.85rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed rgba(50, 40, 31, 0.12);
+}
+.attivita-quando { font-variant-numeric: tabular-nums; color: #7a7166; font-size: 0.78rem; min-width: 8.5rem; }
+
+/* Casella del codice nella schermata d'ingresso */
+.adm-pin {
+  text-align: center;
+  font-size: 1.6rem;
+  letter-spacing: 0.5em;
+  padding-left: 0.5em; /* compensa lo spazio dopo l'ultima cifra */
 }

@@ -3,16 +3,17 @@
  *
  * Filosofia: OGNI GUSTO È UNO STRATO DI COLORE PIENO, impilato come una vera
  * torta gelato. Materiali tipo gelato/panna (clearcoat + sheen), luci da studio
- * con ombre morbide, vassoio viola Punto Gi! con bordo dorato, rotazione
+ * con ombre morbide, vassoio viola Punto Gi con bordo dorato, rotazione
  * automatica + trascinamento col mouse/dito.
  *
  * Forme supportate: tonda (cilindro), cuore (extrude), quadrata/rettangolare
- * (rounded box). Le coperture di PANNA sono lisce e spatolate e possono
- * avvolgere anche i fianchi ("Panna montata INTORNO"); le altre coperture
- * restano sulla calotta, con le colature. Farcitura come anelli sottili tra gli
- * strati. Decorazioni 3D (macarons, spumini, fiori, fiocchi…), foto su cialda e
- * candelina. I ciuffi di panna arrivano SOLO dalla decorazione, mai dalla
- * copertura.
+ * (rounded box). La panna NON è di serie: arriva solo se scelta — con le
+ * coperture (a ruche col sac-à-poche o lisce e spatolate; quelle col
+ * sac-à-poche portano sul bordo di sopra UNA fila di ciuffi grossi il doppio)
+ * o con la decorazione di panna (fila fitta di ciuffi normali). Le altre
+ * coperture restano sulla calotta. Farcitura come anelli sottili tra gli
+ * strati. Decorazioni 3D (macarons, spumini, fiori, fiocchi…), foto su cialda
+ * e candelina; quando c'è l'anello di panna ci si appoggiano sopra.
  *
  * Le decorazioni possono essere PIÙ D'UNA: arrivano come lista di id
  * (`decorations`) più la mappa dei colori (`decorationColors`). I posti sul
@@ -502,9 +503,37 @@ function perimeterPts(shape, R, inset, n) {
       if (segs[i].acc + segs[i].len >= target) { seg = segs[i]; break; }
     }
     const t = seg.len ? (target - seg.acc) / seg.len : 0;
-    out.push([seg.a[0] + (seg.b[0] - seg.a[0]) * t, seg.a[1] + (seg.b[1] - seg.a[1]) * t, k]);
+    // Insieme al punto porto anche la DIREZIONE DEL LATO su cui sta: serve a
+    // orientare i pezzi che hanno un davanti. Ricavarla dai punti vicini non
+    // basta — su un angolo verrebbe la diagonale, e il pezzo d'angolo
+    // guarderebbe di sbieco rispetto a tutti i suoi vicini.
+    const dx = seg.len ? (seg.b[0] - seg.a[0]) / seg.len : 0;
+    const dz = seg.len ? (seg.b[1] - seg.a[1]) / seg.len : 0;
+    out.push([seg.a[0] + (seg.b[0] - seg.a[0]) * t, seg.a[1] + (seg.b[1] - seg.a[1]) * t, k, dx, dz]);
   }
   return out;
+}
+
+/**
+ * Quanto è lungo il contorno. Serve per i ciuffi messi in fila attaccati: il
+ * loro numero non si può decidere a occhio per forma, perché dipende anche dal
+ * formato — su una torta da 20 persone il giro è il doppio che su una da 6, e
+ * con un numero fisso i ciuffi si allontanano fino a diventare palline sparse.
+ */
+function perimeterLen(shape, R, inset) {
+  const p = perimeterPts(shape, R, inset, 160);
+  let L = 0;
+  for (let i = 0; i < p.length; i++) {
+    const a = p[i];
+    const b = p[(i + 1) % p.length];
+    L += Math.hypot(b[0] - a[0], b[1] - a[1]);
+  }
+  return L;
+}
+
+/** Quanti ciuffi larghi `passo` stanno attaccati lungo il contorno. */
+function quantiInFila(shape, R, inset, passo) {
+  return Math.max(10, Math.min(96, Math.round(perimeterLen(shape, R, inset) / passo)));
 }
 
 /* ============================ mesh di uno strato ============================ */
@@ -565,18 +594,22 @@ function ringPts(n, r, startDeg = 0) {
   return out;
 }
 
+/**
+ * Ciuffetto di panna. Prima era una pallina con sopra un cono: la sagoma
+ * tornava, ma era liscia, e la panna liscia non esiste — quella che si vede
+ * nelle loro torte porta sempre le righe della bocchetta a stella.
+ */
 function Dollop({ position, color, s = 1, rotation = 0 }) {
   return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      <mesh castShadow position={[0, 0.05 * s, 0]}>
-        <sphereGeometry args={[0.085 * s, 18, 14]} />
-        <meshPhysicalMaterial {...softMat(color)} />
-      </mesh>
-      <mesh castShadow position={[0, 0.13 * s, 0]}>
-        <coneGeometry args={[0.055 * s, 0.11 * s, 16]} />
-        <meshPhysicalMaterial {...softMat(color)} />
-      </mesh>
-    </group>
+    <mesh
+      castShadow
+      geometry={CREAM_DROP_GEO}
+      position={[position[0], position[1] - 0.03 * s, position[2]]}
+      rotation={[0, rotation, 0]}
+      scale={[0.21 * s, 0.28 * s, 0.21 * s]}
+    >
+      <meshPhysicalMaterial {...softMat(color)} />
+    </mesh>
   );
 }
 
@@ -631,7 +664,25 @@ function Pieces({ items, geometry, order = 'XYZ', children }) {
  * per far "guardare fuori" i pezzi che hanno un davanti (macarons, fiocchi).
  */
 function decoSpots(shape, R, n, inset = 0.8) {
-  return perimeterPts(shape, R, inset, n).map(([x, z, i]) => ({ x, z, i, ang: Math.atan2(z, x) }));
+  return perimeterPts(shape, R, inset, n).map(([x, z, i, dx, dz]) => {
+    // Verso "fuori" preso dal LATO su cui il pezzo è appoggiato, non dal centro
+    // della torta. Sul tondo è la stessa cosa; sul quadrato no: col verso preso
+    // dal centro, un pezzo vicino all'angolo guarda in diagonale mentre i suoi
+    // vicini guardano dritti — ed è esattamente il macaron che sembrava storto.
+    // Così invece tutti quelli sullo stesso lato guardano nella stessa identica
+    // direzione, angoli compresi.
+    let ang;
+    if (dx === undefined || Math.hypot(dx, dz) < 1e-6) {
+      ang = Math.atan2(z, x); // ripiego: forme senza lati (non dovrebbe capitare)
+    } else {
+      // normale = direzione del lato ruotata di 90°, girata verso l'esterno
+      let nx = dz;
+      let nz = -dx;
+      if (nx * x + nz * z < 0) { nx = -nx; nz = -nz; }
+      ang = Math.atan2(nz, nx);
+    }
+    return { x, z, i, ang };
+  });
 }
 
 /** Caso finto ma stabile: stessa torta → stessa disposizione a ogni render. */
@@ -643,18 +694,152 @@ function rnd(i, k = 1) {
 /* ---- geometrie riusate da più decorazioni (costruite una volta sola) ---- */
 
 /**
- * Ciuffo di meringa: sale rastremando e si chiude a punta, con le piccole
- * ondine della sac-à-poche. Raggio 0.5, altezza 1.
+ * IL CORDONE DI PANNA, da cui nasce tutto quello che è "fatto col ciuffo".
+ *
+ * La panna montata non esce liscia dalla tasca: la bocchetta è a stella, e
+ * lascia sul cordone le scanalature per il lungo. È quello — non la forma
+ * generale — che fa riconoscere la panna a colpo d'occhio. Qui si dà un
+ * percorso (`curve`) e un profilo di spessore (`taper`), e si ottiene il
+ * cordone con le sue righe: dritto e alto diventa una ruche sul fianco, corto
+ * e ritorto un ciuffetto, steso e appuntito una conchiglia.
+ *
+ *   lobes  quante scanalature (punte della bocchetta)
+ *   flute  quanto sono profonde: 0 = tondo liscio, 0.5 = stella marcata
+ *   twist  di quanto girano salendo — un filo, se no sembra una trivella
+ *   onde   le ondulazioni della mano che spinge: senza queste il cordone viene
+ *          identico a se stesso da cima a fondo e sembra plastica estrusa
  */
-const MERINGUE_GEO = (() => {
-  const prof = [
-    [0.0, 0.0], [0.44, 0.02], [0.5, 0.1], [0.455, 0.19], [0.475, 0.26],
-    [0.415, 0.36], [0.435, 0.43], [0.36, 0.55], [0.375, 0.62], [0.28, 0.74],
-    [0.285, 0.79], [0.15, 0.91], [0.0, 1.0],
-  ];
-  const g = new THREE.LatheGeometry(prof.map(([r, h]) => new THREE.Vector2(r, h)), 20);
+function creamRope({ curve, steps = 14, lobes = 6, flute = 0.32, twist = 0, onde = 0, nOnde = 6, taper }) {
+  const around = lobes * 4;
+  const frames = curve.computeFrenetFrames(steps, false);
+  const pos = [];
+  const idx = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const p = curve.getPoint(t);
+    const N = frames.normals[i];
+    const B = frames.binormals[i];
+    const r0 = 0.5 * Math.max(0.03, taper(t)) * (1 + onde * Math.sin(t * Math.PI * 2 * nOnde));
+    for (let j = 0; j < around; j++) {
+      const a = (j / around) * Math.PI * 2;
+      // la scanalatura: raggio pieno sulla cresta, rientrato nella valle
+      const r = r0 * (1 - flute * (0.5 - 0.5 * Math.cos(lobes * (a + twist * t))));
+      const cx = Math.cos(a) * r;
+      const cz = Math.sin(a) * r;
+      pos.push(p.x + N.x * cx + B.x * cz, p.y + N.y * cx + B.y * cz, p.z + N.z * cx + B.z * cz);
+    }
+  }
+  for (let i = 0; i < steps; i++) {
+    for (let j = 0; j < around; j++) {
+      const k = (j + 1) % around;
+      const a0 = i * around + j;
+      const b0 = i * around + k;
+      const a1 = (i + 1) * around + j;
+      const b1 = (i + 1) * around + k;
+      idx.push(a0, b0, a1, b0, b1, a1);
+    }
+  }
+  // tappi alle due estremità: senza, si vede dentro il cordone
+  const last = steps * around;
+  const p0 = curve.getPoint(0);
+  const c0 = pos.length / 3;
+  pos.push(p0.x, p0.y, p0.z);
+  for (let j = 0; j < around; j++) idx.push(c0, (j + 1) % around, j);
+  const p1 = curve.getPoint(1);
+  const c1 = pos.length / 3;
+  pos.push(p1.x, p1.y, p1.z);
+  for (let j = 0; j < around; j++) idx.push(c1, last + j, last + ((j + 1) % around));
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
   g.computeVertexNormals();
   return g;
+}
+
+const rettaSu = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+
+/**
+ * RUCHE: il cordone verticale che riveste il fianco della torta, dal vassoio
+ * fino al bordo di sopra.
+ *
+ * Va costruito su misura per ogni torta, non stirato in altezza: la calotta in
+ * cima dev'essere una semisfera VERA, alta quanto il cordone è largo. Stirando
+ * una geometria unica si schiacciava, e i cordoni finivano con un tettuccio
+ * piatto — sembravano tubi tagliati con la sega, non panna.
+ *
+ * `alt` = altezza in multipli della larghezza. Il pezzo esce largo 1.
+ */
+function rucheGeo(alt) {
+  const cupola = 0.5 / alt; // semisfera in cima: alta quanto il raggio
+  return creamRope({
+    curve: new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, alt, 0)),
+    steps: Math.max(14, Math.min(40, Math.round(alt * 4))),
+    lobes: 6,
+    // Scanalature appena accennate e onde piccolissime. Ogni volta che ho
+    // alzato uno dei due il cordone ha smesso di sembrare panna: con le
+    // scanalature marcate diventava una matita esagonale, con le onde grosse
+    // una pannocchia. Quello che fa la differenza è la fila di ombre fra un
+    // cordone e l'altro, non il rilievo del singolo.
+    flute: 0.11,
+    twist: 0.1,
+    onde: 0.022,
+    nOnde: 4,
+    // taglio netto in basso: finisce dentro il vassoio e non si vede
+    taper: (t) =>
+      t < 1 - cupola
+        ? 0.93 + 0.07 * Math.sin(Math.PI * t)
+        : Math.sqrt(Math.max(0, 1 - Math.pow((t - (1 - cupola)) / cupola, 2))),
+  });
+}
+
+/**
+ * CIUFFETTO: la goccia che esce tenendo ferma la bocchetta e tirando su.
+ * Sale girando e si chiude a punta. Larghezza 1, altezza 1.
+ */
+const CREAM_DROP_GEO = creamRope({
+  curve: rettaSu,
+  steps: 16,
+  lobes: 6,
+  flute: 0.3,
+  twist: 1.15,
+  // la punta resta un po' smussata: a chiuderla del tutto venivano dei
+  // pinoli, e la panna montata in cima si ripiega sempre un pochino
+  taper: (t) => Math.min(1, t / 0.09) * (1 - Math.pow(t, 2.3) * 0.88),
+});
+
+/**
+ * Spumino fatto come nella realtà: un unico cordone di meringa spremuto a
+ * spirale, largo alla base e sempre più stretto verso la punta. Il vecchio
+ * profilo tornito disegnava cerchi perfettamente sovrapposti e sembrava una
+ * pila di dischi; qui il giro è continuo e quindi molto più naturale.
+ */
+const MERINGUE_GEO = (() => {
+  const punti = [];
+  const giri = 2.45;
+  for (let i = 0; i <= 72; i++) {
+    const t = i / 72;
+    const r = 0.4 * (1 - Math.pow(t, 0.92)) + 0.012;
+    const a = -t * giri * Math.PI * 2;
+    // La base parte abbastanza alta da non affondare nel piano quando il
+    // cordone raggiunge il suo spessore pieno; poi sale lentamente a cono.
+    const y = 0.29 + t * 0.56 + Math.sin(t * Math.PI) * 0.018;
+    punti.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r));
+  }
+  const curva = new THREE.CatmullRomCurve3(punti, false, 'centripetal');
+  return creamRope({
+    curve: curva,
+    steps: 72,
+    lobes: 8,
+    flute: 0.14,
+    twist: 0.35,
+    onde: 0.018,
+    nOnde: 7,
+    // L'imbocco si chiude come una codina appoggiata; in cima il cordone si
+    // assottiglia molto, senza terminare con uno spillo alto e rigido.
+    taper: (t) =>
+      Math.min(1, t / 0.025) * (0.55 * (1 - 0.78 * Math.pow(t, 2.15)) + 0.02),
+  });
 })();
 
 /** Cilindretto morbido con gli angoli arrotondati (marshmallow). Raggio 0.5, altezza 1. */
@@ -721,7 +906,7 @@ function Macarons({ spots, y, color }) {
   );
 }
 
-/* ---- SPUMINI: piccoli ciuffi di meringa a punta (rosa o blu) ---- */
+/* ---- SPUMINI: piccole meringhe basse e tonde (rosa o blu) ---- */
 
 const SPUMINI_COLORS = ['#f7bfd3', '#a6cbf0'];
 
@@ -729,18 +914,18 @@ function Spumini({ spots, y, color }) {
   const items = useMemo(() => {
     const pal = decoPalette(SPUMINI_COLORS, color);
     return spots.map(({ x, z, i }) => {
-      const s = 0.2 + rnd(i, 5) * 0.045;
+      const s = 0.185 + rnd(i, 5) * 0.025;
       return {
-        position: [x, y - 0.012, z],
+        position: [x, y - 0.004, z],
         rotation: [0, rnd(i, 6) * 6.28, 0],
-        scale: [s, s * 1.15, s],
+        scale: [s, s * 0.78, s],
         color: pal[i % pal.length],
       };
     });
   }, [spots, y, color]);
   return (
     <Pieces items={items} geometry={MERINGUE_GEO}>
-      <meshPhysicalMaterial roughness={0.65} sheen={0.8} sheenRoughness={0.75} envMapIntensity={0.4} />
+      <meshPhysicalMaterial roughness={0.84} sheen={0.42} sheenRoughness={0.88} envMapIntensity={0.28} />
     </Pieces>
   );
 }
@@ -756,11 +941,11 @@ function Marshmallow({ spots, y, color }) {
       const r = 0.098 + rnd(i, 7) * 0.018;
       const h = 0.17 + rnd(i, 8) * 0.035;
       const c = pal[i % pal.length];
-      // qualcuno in piedi, qualcuno coricato: sembrano appoggiati a mano
-      const coricato = rnd(i, 9) > 0.6;
-      return coricato
-        ? { position: [x, y + r, z], rotation: [Math.PI / 2, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c }
-        : { position: [x, y + h / 2, z], rotation: [0, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c };
+      // Tutti in piedi, come si appoggiano davvero su una torta. Prima qualcuno
+      // era coricato e qualcuno no, e da fuori sembrava solo disordine.
+      // L'unica variazione è la rotazione su sé stessi, che non si nota come
+      // "storto" ma toglie l'effetto stampino.
+      return { position: [x, y + h / 2, z], rotation: [0, rnd(i, 10) * 6.28, 0], scale: [r * 2, h, r * 2], color: c };
     });
   }, [spots, y, color]);
   return (
@@ -945,19 +1130,23 @@ function Fiocchi({ spots, y, drop = 0.5, color }) {
       // è di raso: largo e piatto, non un cordoncino — altrimenti a questa
       // distanza il fiocco non si legge.
       for (const sgn of [-1, 1]) {
+        // Le due asole salgono verso l'ALTO allargandosi, come in un fiocco
+        // annodato davvero: prima erano inclinate in giù e sembravano due ali
+        // afflosciate. Sono anche un po' più alzate rispetto al nodo.
         asole.push({
-          position: [px + ux * sgn * 0.125, y + 0.026, pz + uz * sgn * 0.125],
-          rotation: [0, ry, sgn * 0.5],
-          scale: [0.15, 0.088, 0.034],
+          position: [px + ux * sgn * 0.135, y + 0.062, pz + uz * sgn * 0.135],
+          rotation: [0, ry, -sgn * 0.72],
+          scale: [0.17, 0.1, 0.036],
           color: c,
         });
-        // nastro che SCENDE lungo il fianco: un po' divaricato e di lunghezza
-        // diversa da un fiocco all'altro, così sembra annodato a mano
+        // I due nastri scendono DIVARICANDOSI verso l'esterno (prima si
+        // chiudevano verso il centro, e sembravano incollati fra loro).
+        // Lunghezza diversa da un fiocco all'altro: sembra annodato a mano.
         const len = drop * (0.55 + ((i * 7) % 5) * 0.06);
         code.push({
-          position: [px + ux * sgn * 0.062, y - len / 2 - 0.04, pz + uz * sgn * 0.062],
-          rotation: [0, ry, sgn * 0.13],
-          scale: [0.055, len, 0.014],
+          position: [px + ux * sgn * 0.055, y - len / 2 - 0.05, pz + uz * sgn * 0.055],
+          rotation: [0, ry, -sgn * 0.32],
+          scale: [0.058, len, 0.014],
           color: c,
         });
       }
@@ -1025,10 +1214,6 @@ const DECO_COUNT = {
   fiocchi: 8,
   fantasia: 15,
   colorate: 15,
-  // I ciuffi di panna: contano solo quando la panna divide il contorno con
-  // altre decorazioni — da sola ha un anello tutto suo (vedi CakeModel).
-  'panna-deco': 12,
-  'panna-colorata': 12,
 };
 
 /** Decorazioni che si annodano sul FIANCO invece di stare sulla superficie. */
@@ -1049,7 +1234,7 @@ const NASTRI_PER_DECO = 4;
  * UNA decorazione sulla superficie, sui posti del contorno che le sono toccati.
  * Chi non ha una resa 3D non disegna niente: meglio pulito che finto.
  */
-function DecorazioneSopra({ id, spots, y, color, dollopColor }) {
+function DecorazioneSopra({ id, spots, y, color }) {
   if (!spots || !spots.length) return null;
   switch (id) {
     case 'macarons':
@@ -1064,19 +1249,6 @@ function DecorazioneSopra({ id, spots, y, color, dollopColor }) {
       return <FioriOstia spots={spots} y={y} color={color} />;
     case 'frutta-fresca':
       return <FruttaFresca spots={spots} y={y} />;
-    // Ciuffi di panna messi in fila con le altre decorazioni: succede solo
-    // quando la panna non ha l'anello tutto suo.
-    case 'panna-deco':
-    case 'panna-colorata':
-      return spots.map(({ x, z, i }) => (
-        <Dollop
-          key={`ro${i}`}
-          position={[x, y - 0.02, z]}
-          color={dollopColor ? dollopColor(i) : '#fff8e6'}
-          s={0.85}
-          rotation={i}
-        />
-      ));
     // "fantasia del gelataio" e "decorazioni colorate" non passano di qui:
     // non si disegnano: dipendono dalla gelateria e si scrivono sopra la torta.
     default:
@@ -1092,7 +1264,17 @@ function DecorazioneSopra({ id, spots, y, color, dollopColor }) {
  * sopra l'altra. I nastri (fiocchi, e quelli del mix) fanno storia a sé: si
  * annodano sul FIANCO, su un anello loro, e non tolgono spazio alla superficie.
  */
-function Decorazioni3D({ ids, shape, R, y, colors, dollopColor, edgeR, edgeY, drop }) {
+function Decorazioni3D({
+  ids,
+  shape,
+  R,
+  y,
+  colors,
+  topInset = 0.79,
+  edgeR,
+  edgeY,
+  drop,
+}) {
   const shapeF = shape === 'rettangolare' ? 1.15 : shape === 'quadrata' ? 1.05 : 1;
 
   // chi occupa la superficie e chi il fianco (il mix sta di qua e di là)
@@ -1115,7 +1297,10 @@ function Decorazioni3D({ ids, shape, R, y, colors, dollopColor, edgeR, edgeY, dr
     return Math.max(k * 3, Math.ceil(grezzo / k) * k);
   }, [sopra, shapeF]);
 
-  const spotsSopra = useMemo(() => decoSpots(shape, R, nSopra, 0.79), [shape, R, nSopra]);
+  const spotsSopra = useMemo(
+    () => decoSpots(shape, R, nSopra, topInset),
+    [shape, R, nSopra, topInset]
+  );
   const gruppiSopra = useMemo(
     () => sopra.map((_, k) => spotsSopra.filter((s) => s.i % sopra.length === k)),
     [sopra, spotsSopra]
@@ -1139,7 +1324,6 @@ function Decorazioni3D({ ids, shape, R, y, colors, dollopColor, edgeR, edgeY, dr
           spots={gruppiSopra[k]}
           y={y}
           color={(colors && colors[id]) || ''}
-          dollopColor={dollopColor}
         />
       ))}
       {fianco.map((id, k) => (
@@ -1175,57 +1359,64 @@ function Granella({
   sizeMax = 0.046,
   holeW = 0,
   holeH = 0,
+  // Spessore della fascia lungo il bordo, in frazione del raggio.
+  banda = 0.3,
+  // Altezza dei ciuffi di panna sotto: se c'è, i chicchi si alzano fin lassù
+  // invece di stare appoggiati sulla torta.
+  sopraCiuffi = 0,
 }) {
   const ref = useRef();
+  // Sopra i ciuffi ne bastano la metà: lì la fascia è stretta quanto un ciuffo,
+  // e col numero pieno la granella diventava una crosta che copriva la panna
+  // invece di spolverarla. Deve vedersi tutt'e due.
+  const nChicchi = sopraCiuffi ? Math.round(count * 0.5) : count;
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
-    // campionatore di punti che SEGUE la forma del top
-    let sample;
-    let maxExt;
-    if (shape === 'quadrata' || shape === 'rettangolare') {
-      const [w, d] = boxDims(shape, R);
-      const hw = (w / 2) * coverage;
-      const hd = (d / 2) * coverage;
-      maxExt = Math.max(hw, hd);
-      sample = () => [(Math.random() * 2 - 1) * hw, (Math.random() * 2 - 1) * hd];
-    } else if (shape === 'cuore') {
-      const poly = heartFootprint(R * coverage);
-      let mnx = Infinity, mxx = -Infinity, mnz = Infinity, mxz = -Infinity;
-      for (const [x, z] of poly) {
-        if (x < mnx) mnx = x; if (x > mxx) mxx = x;
-        if (z < mnz) mnz = z; if (z > mxz) mxz = z;
-      }
-      maxExt = Math.max(mxx - mnx, mxz - mnz) / 2;
-      sample = () => {
-        for (let k = 0; k < 40; k++) {
-          const x = mnx + Math.random() * (mxx - mnx);
-          const z = mnz + Math.random() * (mxz - mnz);
-          if (pointInPoly(x, z, poly)) return [x, z];
-        }
-        return [0, 0];
-      };
-    } else {
-      const rMax = R * coverage;
-      maxExt = rMax;
-      sample = () => {
-        const a = Math.random() * Math.PI * 2;
-        const rr = Math.sqrt(Math.random()) * rMax;
-        return [Math.cos(a) * rr, Math.sin(a) * rr];
-      };
-    }
+    // I chicchi vanno in una FASCIA lungo il bordo, non sparsi su tutto il piano:
+    // così granelle, zuccherini, smarties e perline stanno dove stanno già gli
+    // altri pezzi (macarons, frutta fresca…) e il centro resta libero.
+    // `perimeterPts` conosce la forma: sul quadrato percorre il rettangolo, sul
+    // cuore il cuore. Prendo il contorno esterno della fascia una volta sola e
+    // poi, per ogni chicco, scivolo verso l'interno di una quantità a caso.
+    const contorno = perimeterPts(shape, R, coverage, 240);
+    const larghezza = Math.max(0.06, banda) * R; // spessore della fascia
+    let maxExt = 0;
+    for (const [px, pz] of contorno) maxExt = Math.max(maxExt, Math.hypot(px, pz));
+    const sample = (i) => {
+      // Ogni chicco ha la SUA fettina di contorno (i/n + un po' di caso): con
+      // il caso puro venivano i grumi — archi fitti di granella e archi nudi —
+      // e la fascia sembrava buttata lì storta invece che spolverata in giro.
+      const quota = ((i + Math.random()) / nChicchi) % 1;
+      const t = quota * contorno.length;
+      const i0 = Math.floor(t) % contorno.length;
+      const i1 = (i0 + 1) % contorno.length;
+      const f = t - Math.floor(t);
+      const x0 = contorno[i0][0] + (contorno[i1][0] - contorno[i0][0]) * f;
+      const z0 = contorno[i0][1] + (contorno[i1][1] - contorno[i0][1]) * f;
+      // verso il centro: più chicchi vicino al bordo che verso l'interno.
+      // Sopra i ciuffi invece no: la fascia è larga quanto un ciuffo e i chicchi
+      // vanno distribuiti pari, se no si ammucchiano sul lato interno e la fila
+      // di panna resta scoperta di fuori.
+      const l = Math.hypot(x0, z0) || 1e-3;
+      const dentro = Math.pow(Math.random(), sopraCiuffi ? 1 : 0.7) * larghezza;
+      const k = Math.max(0, (l - dentro) / l);
+      // pizzico di disordine, altrimenti sembra tracciata col righello
+      const j = () => (Math.random() - 0.5) * larghezza * 0.28;
+      return [x0 * k + j(), z0 * k + j(), dentro];
+    };
 
     const dummy = new THREE.Object3D();
     const cols = colors.map((c) => new THREE.Color(c));
     const tmp = new THREE.Color();
-    for (let i = 0; i < count; i++) {
-      let [x, z] = sample();
+    for (let i = 0; i < nChicchi; i++) {
+      let [x, z, dentro] = sample(i);
       let dist = Math.hypot(x, z);
       // buco centrale ellittico (per scritta/foto): granella solo nella corona esterna
       if (holeW > 0 && holeH > 0) {
         const inHole = () => (x * x) / (holeW * holeW) + (z * z) / (holeH * holeH) < 1;
         let tries = 0;
-        while (inHole() && tries < 30) { [x, z] = sample(); tries++; }
+        while (inHole() && tries < 30) { [x, z, dentro] = sample(i); tries++; }
         if (inHole()) {
           const e = Math.sqrt((x * x) / (holeW * holeW) + (z * z) / (holeH * holeH)) || 1e-3;
           const s = (1.05 + Math.random() * 0.12) / e;
@@ -1234,7 +1425,15 @@ function Granella({
         dist = Math.hypot(x, z);
       }
       const pile = (1 - Math.min(1, dist / (maxExt + 1e-3))) * 0.04;
-      const yy = y + 0.008 + Math.random() * 0.035 + pile;
+      // Spolverata sui ciuffi: il chicco si alza quanto è alta la panna NEL
+      // PUNTO dove sta — il ciuffo è una gobba, pieno al centro della fila e
+      // basso ai lati. Prima ogni chicco saliva di una quota a caso, e quelli
+      // ai bordi della fascia restavano campati in aria.
+      const gobba = sopraCiuffi
+        ? Math.sin(Math.PI * Math.min(1, dentro / larghezza)) * (0.9 + Math.random() * 0.18)
+        : 0;
+      const alto = sopraCiuffi ? sopraCiuffi * gobba : 0;
+      const yy = y + 0.008 + Math.random() * 0.035 + pile + alto;
       dummy.position.set(x, yy, z);
       dummy.rotation.set(Math.random() * 3.1, Math.random() * 3.1, Math.random() * 3.1);
       const s = sizeMin + Math.random() * Math.max(0, sizeMax - sizeMin);
@@ -1247,9 +1446,9 @@ function Granella({
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [shape, R, y, coverage, count, colors, shiny, round, flat, sizeMin, sizeMax, holeW, holeH]);
+  }, [shape, R, y, coverage, banda, nChicchi, colors, shiny, round, flat, sizeMin, sizeMax, holeW, holeH, sopraCiuffi]);
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, count]} castShadow receiveShadow>
+    <instancedMesh ref={ref} args={[undefined, undefined, nChicchi]} castShadow receiveShadow>
       <icosahedronGeometry args={[1, round ? 1 : 0]} />
       <meshStandardMaterial roughness={shiny ? 0.25 : 0.85} metalness={metal} envMapIntensity={shiny ? 1.3 : 0.4} />
     </instancedMesh>
@@ -1307,41 +1506,139 @@ const GLOSSY_COVERINGS = new Set([
 ]);
 
 /**
- * Coperture di PANNA MONTATA: panna liscia, spatolata, SENZA ciuffi.
- * Come veste la torta:
- *   'panna'             → sopra E FIANCHI (i colori dei gusti spariscono sotto)
- *   'panna-sotto-sopra' → sopra + una fascia in alto e una in basso
+ * Coperture di PANNA MONTATA. Come veste la torta:
+ *   'panna'             → sopra E FIANCHI, fatta col sac-à-poche: ruche
+ *                         verticali su tutto il giro e ghirlanda sul bordo
+ *   'panna-spatolata'   → sopra E FIANCHI, spianata col coltello: liscia
+ *   'panna-sotto-sopra' → sopra + una ghirlanda in alto e una alla base
  *   'panna-sopra'       → solo la superficie superiore
  * ('meringa' non è più in listino: resta com'era, solo sopra.)
  */
-const CREAM_COVERINGS = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra', 'meringa']);
+const CREAM_COVERINGS = new Set([
+  'panna',
+  'panna-spatolata',
+  'panna-sopra',
+  'panna-sotto-sopra',
+  'meringa',
+]);
 
 /** Copertura che avvolge tutto il fianco della torta. */
-const CREAM_WRAP_FULL = new Set(['panna']);
-
-/** Copertura a due fasce: un filo di panna in alto e uno in basso. */
-const CREAM_WRAP_BANDS = new Set(['panna-sotto-sopra']);
+const CREAM_WRAP_FULL = new Set(['panna', 'panna-spatolata']);
 
 /**
- * Decorazioni di panna montata: sono le UNICHE che mettono i ciuffi (Dollop),
- * e portano con sé la panna spatolata intorno se la copertura non è di panna.
+ * Coperture che portano l'ANELLO di ciuffi sul bordo di sopra: quelle fatte
+ * col sac-à-poche. La spatolata no (è liscia per scelta), la meringa nemmeno.
+ */
+const CREAM_RING_COVERINGS = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra']);
+
+/**
+ * Decorazioni di panna montata: mettono la fila di ciuffi sul bordo, e portano
+ * con sé la panna spatolata intorno se la copertura non è già di panna.
  */
 const CREAM_DECORATIONS = new Set(['panna-deco', 'panna-colorata']);
+
+/** Decorazione "drip cake": le colature che scendono dal bordo. */
+const DRIP_ID = 'drip';
+
+/* ======================= panna montata col sac-à-poche ======================= */
+
+/**
+ * Larghezza di un cordone di ruche. Serve anche fuori di qui: le ruche
+ * sporgono di mezzo cordone oltre il guscio di panna, e chi si appoggia al
+ * FIANCO della torta (i fiocchi, che ci si annodano intorno) deve saperlo — se
+ * no si lega al raggio del guscio e sparisce dietro la panna.
+ */
+const RUCHE_LARGHEZZA = 0.15;
+
+/**
+ * L'anello di ciuffi sul bordo di sopra. Non c'è di serie: arriva SOLO con la
+ * panna — dalle coperture fatte col sac-à-poche o dalla decorazione di panna,
+ * ed è SEMPRE LO STESSO: una fila sola, stessa grandezza e stessa posizione
+ * sul bordo, da qualsiasi delle due strade arrivi ("voglio sia uguale").
+ * Granella, decorazioni solide e fiocchi scelti insieme ci si appoggiano sopra.
+ *
+ * "Doppio" = ben più grosso del ciuffo base, non il doppio esatto: a 2× i
+ * ciuffi di sopra sembravano enormi accanto alla ghirlanda della base
+ * ("sproporzionate"); a 1.5×, con la base a 0.22, stanno in proporzione.
+ */
+const CIUFFO_DOPPIO = 0.2625;
+const CIUFFO_BASE = 0.22;
+
+/**
+ * RUCHE su tutto il fianco: cordoni verticali attaccati uno all'altro, dal
+ * vassoio al bordo di sopra. Quanti ne servono lo dice il giro della torta —
+ * con un numero fisso, sui formati grandi si sarebbero allontanati fino a
+ * sembrare righe sparse invece di un rivestimento.
+ */
+function RucheDiPanna({ shape, R, yBase, h, colore }) {
+  const larghezza = RUCHE_LARGHEZZA;
+  const geo = useMemo(() => rucheGeo(h / larghezza), [h]);
+  useEffect(() => () => geo.dispose(), [geo]);
+  const items = useMemo(
+    () =>
+      decoSpots(shape, R, quantiInFila(shape, R, 1, larghezza * 0.88), 1).map(({ x, z, i, ang }) => {
+        // nessuno esce identico all'altro: un filo più grosso, girato di poco.
+        // È la differenza fra la panna e una fila di tubi di plastica
+        const w = larghezza * (0.94 + rnd(i, 21) * 0.13);
+        return {
+          position: [x, yBase, z],
+          rotation: [0, Math.PI / 2 - ang + (rnd(i, 22) - 0.5) * 0.5, 0],
+          // in altezza variano pochissimo: il filo di cime disuguali è quello
+          // che si vede in una torta fatta a mano
+          scale: [w, larghezza * (0.99 + rnd(i, 23) * 0.025), w],
+          color: colore(i),
+        };
+      }),
+    [shape, R, yBase, colore]
+  );
+  return (
+    <Pieces items={items} geometry={geo} order="YXZ">
+      <meshPhysicalMaterial {...softMat('#ffffff')} />
+    </Pieces>
+  );
+}
+
+/**
+ * GHIRLANDA lungo un bordo: ciuffetti in piedi, uno appoggiato all'altro, tutto
+ * il giro. `s` è la larghezza del ciuffo; il passo è appena più stretto, così
+ * si toccano e la fila risulta piena invece che a palline distanziate.
+ */
+function GhirlandaDiPanna({ shape, R, inset = 1, y, s, colore }) {
+  const items = useMemo(
+    () =>
+      decoSpots(shape, R, quantiInFila(shape, R, inset, s * 0.72), inset).map(({ x, z, i }) => {
+        const w = s * (0.92 + rnd(i, 11) * 0.16);
+        // più larghi che alti: tirati su, sembravano meringhe a punta
+        return {
+          position: [x, y, z],
+          rotation: [0, rnd(i, 9) * 6.28, 0],
+          scale: [w, s * (0.82 + rnd(i, 12) * 0.16), w],
+          color: colore(i),
+        };
+      }),
+    [shape, R, inset, y, s, colore]
+  );
+  return (
+    <Pieces items={items} geometry={CREAM_DROP_GEO} order="YXZ">
+      <meshPhysicalMaterial {...softMat('#ffffff')} />
+    </Pieces>
+  );
+}
 
 /* ============================ colature copertura ============================ */
 
 function Drips({ shape, R, topEdgeY, color, maxLen }) {
   // Colature di glassa che scendono dal bordo della calotta sui lati.
-  // Solo tonda: i punti circolari non seguirebbero il bordo di cuore/box.
-  if (shape !== 'tonda') return null;
-  const n = 16;
-  const drips = ringPts(n, R * 0.99);
+  // Seguono il contorno VERO della torta (perimeterPts conosce quadrata,
+  // rettangolare e cuore): prima erano su un cerchio, quindi si potevano fare
+  // solo sulle tonde e sulle altre forme non comparivano affatto.
+  const n = shape === 'tonda' ? 16 : shape === 'cuore' ? 18 : 20;
+  const drips = decoSpots(shape, R, n, 0.99);
   return (
     <group>
-      {drips.map(([x, z, i]) => {
+      {drips.map(({ x, z, i, ang }) => {
         const seed = (i * 53) % 100;
         const len = maxLen * (0.4 + (seed / 100) * 0.6);
-        const ang = Math.atan2(z, x);
         return (
           <group key={`drip${i}`} position={[x, topEdgeY + 0.02, z]} rotation={[0, -ang + Math.PI / 2, 0]}>
             {/* rigonfiamento sul bordo: schiacciato, così legge come glassa che
@@ -1580,16 +1877,23 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // stringa dei colori scelti: serve solo come dipendenza stabile per i useMemo
   const colorKey = decoIds.map((id) => decoColors[id] || '').join('|');
   const creamIds = decoIds.filter((id) => CREAM_DECORATIONS.has(id));
-  const pieceIds = decoIds.filter((id) => PIECE_DECORATIONS.has(id));
+  // "Drip cake": le colature lungo il bordo. Prima venivano da sole con ogni
+  // copertura lucida; è uno stile preciso, quindi ora si sceglie.
+  const hasDrip = decoIds.includes(DRIP_ID);
 
   // ---- PANNA: quanto veste la torta e di che colore è ----
+  // La panna NON è di serie: c'è solo se la si sceglie, come copertura o come
+  // decorazione. (Per un giorno ogni torta usciva con due file di ciuffi
+  // standard: no — chi vuole la torta pulita la deve poter avere pulita.)
   const coverIsCream = !!useCover && CREAM_COVERINGS.has(covering?.id);
   // La decorazione di panna porta con sé la panna spatolata intorno alla torta
   // (è proprio quello che dicono le loro descrizioni), ma solo se la copertura
   // scelta non è già di panna: in quel caso comanda la copertura.
   const creamDecoWrap = creamIds.length > 0 && !coverIsCream;
   const wrapFull = (coverIsCream && CREAM_WRAP_FULL.has(covering.id)) || creamDecoWrap;
-  const wrapBands = coverIsCream && CREAM_WRAP_BANDS.has(covering.id);
+  // "Sotto e sopra" è composta soltanto dalle ghirlande a ciuffi: serve qui per
+  // sapere quanto sporge il bordo, ma non genera fasce lisce sul fianco.
+  const pannaSottoSopra = coverIsCream && covering?.id === 'panna-sotto-sopra';
   // panna aggiunta dalla decorazione su una torta senza copertura: ci vuole
   // anche la superficie superiore, altrimenti resterebbe il gusto scoperto
   const extraCreamCap = creamDecoWrap && !useCover;
@@ -1658,7 +1962,6 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // guscio di panna intorno alla torta: un filo più largo dei gusti, così li copre
   const bodyH = layers * bandH;
   const wrapR = R * 1.05;
-  const bandT = Math.min(0.17, bodyH * 0.34);
   // Raggio della calotta di copertura. Deve essere un po' PIÙ LARGO del corpo:
   // sia la calotta sia i dischi di gelato hanno il bordo volutamente irregolare
   // (±1%), e con raggi uguali capitava che la calotta rientrasse sotto il bordo
@@ -1680,14 +1983,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
       fill: fillingColor ? makeLayerGeo(shape, R * 1.015, 0.06, 8.2) : null,
       // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
       shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
-      // fascia di panna sul bordo alto e su quello basso ("SOTTO E SOPRA")
-      band: wrapBands ? rainbow(makeLayerGeo(shape, wrapR, bandT, 4.4)) : null,
       // calotta di panna aggiunta dalla decorazione su una torta senza copertura
       creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, wrapR * 0.998, capH * 1.6, 5.5)) : null,
     };
   }, [
     shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
-    wrapFull, wrapBands, extraCreamCap, wrapR, capR, bodyH, bandT, creamRainbow,
+    wrapFull, extraCreamCap, wrapR, capR, bodyH, creamRainbow,
   ]);
 
   // ---- Piatto (vassoio) ORO, con forma dedicata ----
@@ -1752,38 +2053,57 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   useEffect(() => () => plateGeo.dispose(), [plateGeo]);
   useEffect(() => () => plateRimGeo.dispose(), [plateRimGeo]);
 
-  // Anello di ciuffi: SOLO le decorazioni di panna montata. Una copertura di
-  // panna è liscia e spatolata, i ciuffi non c'entrano.
-  // I ciuffi tengono l'anello tutto loro finché la panna è l'unica decorazione
-  // sulla superficie; se ci sono anche pezzi si mettono in fila con loro sul
-  // contorno (vedi Decorazioni3D), altrimenti si accavallerebbero.
-  const pezziSopra = pieceIds.filter((id) => !EDGE_DECORATIONS.has(id));
-  const showRosetteRing = creamIds.length > 0 && pezziSopra.length === 0;
-  // Decorazioni passate alla resa 3D "a pezzi": quelle scelte e — se non hanno
-  // l'anello tutto loro — anche i ciuffi di panna.
+  // Dove finisce DAVVERO il fianco della torta. I fiocchi si annodano intorno,
+  // e finora si legavano al raggio del guscio di panna: con le ruche, che
+  // sporgono di mezzo cordone più in fuori, restavano sepolti dietro la panna.
+  // Vale anche per le due fasce di "sotto e sopra", che allargano il fianco
+  // pur non essendo un guscio intero.
+  const pannaACiuffi = coverIsCream && covering?.id === 'panna';
+  const fiancoR =
+    wrapFull || pannaSottoSopra ? wrapR + (pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0) : R;
+
+  // ---- L'ANELLO di ciuffi sul bordo di sopra: c'è solo se c'è la panna ----
+  // UNA fila sola, sempre la stessa — che arrivi dalla copertura fatta col
+  // sac-à-poche o dalla decorazione di panna: stessa grandezza, stessa
+  // posizione sul bordo (Lucia: "voglio sia uguale"). E se la copertura ha già
+  // il suo anello, la decorazione non aggiunge niente: al massimo il colore,
+  // con la panna colorata.
+  const coverRing = coverIsCream && CREAM_RING_COVERINGS.has(covering.id);
+  const decoRing = creamIds.length > 0 && !coverRing;
+  const hasRing = coverRing || decoRing;
+  // dove sta l'anello (in frazione di R) e quanto è largo il suo ciuffo
+  const ringInset = (wrapR * 0.93) / R;
+  const ringS = CIUFFO_DOPPIO;
+
+  // I ciuffi di panna hanno la loro ghirlanda dedicata; qui passano soltanto le
+  // decorazioni solide. In questo modo panna + pezzi non genera una seconda
+  // fila, ma un unico bordo con i pezzi posati sui ciuffi.
   const ids3D = useMemo(
-    () =>
-      decoIds.filter(
-        (id) => PIECE_DECORATIONS.has(id) || (CREAM_DECORATIONS.has(id) && !showRosetteRing)
-      ),
-    [decoIds, showRosetteRing]
+    () => decoIds.filter((id) => PIECE_DECORATIONS.has(id)),
+    [decoIds]
   );
+  const pezziSopra = ids3D.filter((id) => !EDGE_DECORATIONS.has(id));
 
   // Scritta / foto al centro → il topping si sagoma con un buco al centro
   const hasMessage = !!(message && message.trim());
   const hasGranella = toppings.length > 0;
-  const hasPieces = pieceIds.length > 0;
-  // La granella copre il top; se sul contorno ci sono anche pezzi o ciuffi si
-  // stringe verso il centro, così i pezzi restano sul bordo e la granella non
-  // ci finisce sotto: convivono senza pestarsi.
-  const contornoOccupato = showRosetteRing || pezziSopra.length > 0;
-  const granellaCoverage =
-    (shape === 'tonda' ? 0.98 : shape === 'cuore' ? 0.92 : 0.9) * (contornoOccupato ? 0.74 : 1);
-  // Riquadro scritta: dipende da forma e dal bordo occupato — e tiene conto di
-  // TUTTE le decorazioni scelte. Ciuffi e decorazioni 3D stanno sul contorno →
-  // 'panna'; la granella copre il top → 'granella'; con una panna liscia il
-  // bordo è libero → 'none'.
-  const borderLevel = hasGranella ? 'granella' : showRosetteRing || hasPieces ? 'panna' : 'none';
+  // Anche la granella sta sul BORDO, come tutto il resto: è una fascia lungo il
+  // contorno, non una spolverata su tutta la torta. Se sul bordo ci sono già i
+  // pezzi (macarons, frutta…) la fascia si sposta appena più dentro, così i due
+  // anelli convivono senza pestarsi invece di sovrapporsi.
+  //
+  // Con l'ANELLO di panna invece no: la granella non fa una seconda fila più
+  // dentro, va SOPRA i ciuffi — è quello che si fa davvero, si spolvera sulla
+  // panna appena fatta. Quindi la fascia sta esattamente sull'anello e i
+  // chicchi si alzano fino alla sua cima.
+  const granellaCoverage = hasRing
+    ? ringInset + ringS / 2 / R
+    : (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * (pezziSopra.length ? 0.82 : 1);
+  const granellaBanda = hasRing ? ringS / R : pezziSopra.length ? 0.22 : 0.32;
+  const granellaSuiCiuffi = hasRing ? ringS * 0.9 : 0;
+  // Riquadro scritta: TUTTE le decorazioni stanno sul contorno, quindi quando
+  // c'è qualcosa sul bordo il centro si restringe allo stesso modo.
+  const borderLevel = hasGranella || hasRing || pezziSopra.length ? 'panna' : 'none';
   const msgBox = messageBox(shape, R, borderLevel);
   // colore del fondo sotto la scritta → scritta bianca (panna) su scuro, cioccolato su chiaro
   const topFlavor = flavors[layers - 1] || flavors[flavors.length - 1] || { color: '#fff4e0' };
@@ -1795,9 +2115,19 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
   const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
 
+  // La torta deve stare TUTTA nell'inquadratura. La camera è fissa e tarata
+  // sulle torte normali: una "Alta" sforava e usciva decapitata dall'immagine.
+  // Oltre un certo ingombro l'intera scena si rimpicciolisce in proporzione —
+  // piatto compreso, come allontanare la macchina fotografica — così le
+  // proporzioni restano vere.
+  // Nell'ingombro contano anche calotta e anello di ciuffi (+0.35 fisso): al
+  // primo giro guardavo solo gli strati, e una Alta a 2 gusti con la panna a
+  // ciuffi passava il controllo ma sforava comunque.
+  const fit = Math.min(1, 1.22 / (stackBottom + bodyH + 0.35));
+
   return (
-    <group>
-      {/* ---- Piatto ORO Punto Gi! (forma in base alla torta / n° persone) ---- */}
+    <group scale={fit}>
+      {/* ---- Piatto ORO Punto Gi (forma in base alla torta / n° persone) ---- */}
       <mesh geometry={plateGeo} position={[0, platterY, 0]} castShadow receiveShadow>
         <meshPhysicalMaterial {...goldPlate} />
       </mesh>
@@ -1836,18 +2166,6 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         </LayerMesh>
       )}
 
-      {/* ---- PANNA SOTTO E SOPRA: due fasce, i gusti restano a vista in mezzo ---- */}
-      {geos.band && (
-        <>
-          <LayerMesh geometry={geos.band} y={bodyTop - bandT / 2}>
-            <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
-          </LayerMesh>
-          <LayerMesh geometry={geos.band} y={stackBottom + bandT / 2}>
-            <meshPhysicalMaterial key={creamMatKey} {...softMat(creamColor)} vertexColors={creamRainbow} />
-          </LayerMesh>
-        </>
-      )}
-
       {/* ---- Copertura: calotta sottile sul disco superiore (niente cupola) ---- */}
       {useCover && (
         <>
@@ -1858,18 +2176,10 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
               vertexColors={capRainbow}
             />
           </LayerMesh>
-          {/* Colature solo per glasse lucide (ganache, cioccolato, pistacchio…).
-              Partono dal bordo della CALOTTA, non da dentro la torta: se no
-              sembrano spilli piantati invece di glassa che cola. */}
-          {glossyCover && (
-            <Drips
-              shape={shape}
-              R={capR}
-              topEdgeY={capBottom + 0.02}
-              color={coverColor}
-              maxLen={Math.min(0.38, bodyH * 0.42)}
-            />
-          )}
+          {/* Le colature NON sono più automatiche: prima ogni copertura lucida
+              le portava con sé, ma è uno stile preciso (la "drip cake") e chi
+              vuole una copertura liscia se le ritrovava per forza. Ora sono una
+              decorazione a sé — vedi più sotto. */}
         </>
       )}
 
@@ -1880,32 +2190,85 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         </LayerMesh>
       )}
 
-      {/* ---- Ciuffi di panna lungo il bordo: SOLO se la decorazione è di panna ---- */}
-      {showRosetteRing &&
-        perimeterPts(shape, R, 0.86, shape === 'tonda' ? 12 : shape === 'cuore' ? 15 : 16).map(([x, z, i]) => (
-          <Dollop key={`ro${i}`} position={[x, surfaceY - 0.02, z]} color={dollopColor(i)} s={0.85} rotation={i} />
-        ))}
+      {/* ---- Drip cake: colature dal bordo, ora che è una decorazione a sé ----
+              Il colore è quello della copertura scelta; senza copertura si usa
+              il cioccolato, che è il caso classico della drip cake. ---- */}
+      {hasDrip && (
+        <Drips
+          shape={shape}
+          R={capR}
+          topEdgeY={(useCover ? capBottom : bodyTop) + 0.02}
+          color={useCover ? coverColor : '#5a3520'}
+          maxLen={Math.min(0.38, bodyH * 0.42)}
+        />
+      )}
+
+      {/* ---- Panna montata fatta col SAC-À-POCHE ----
+              "Panna INTORNO" aggiunge le ruche verticali su tutto il fianco;
+              "Sotto e sopra" aggiunge la ghirlanda alla base. Le due file in
+              alto sono già standard per tutte le torte. ---- */}
+      {coverIsCream && covering?.id === 'panna' && (
+        <>
+          {/* le ruche partono da dentro il vassoio: il taglio netto in fondo
+              resta nascosto e la panna sembra scendere fino al piatto */}
+          <RucheDiPanna
+            shape={shape}
+            R={wrapR}
+            yBase={-0.02}
+            h={surfaceY - 0.02}
+            colore={dollopColor}
+          />
+        </>
+      )}
+
+      {coverIsCream && covering?.id === 'panna-sotto-sopra' && (
+        <GhirlandaDiPanna
+          shape={shape}
+          R={wrapR}
+          y={stackBottom + 0.01}
+          s={CIUFFO_BASE}
+          colore={dollopColor}
+        />
+      )}
+
+      {/* ---- L'ANELLO sul bordo di sopra: solo se la panna è stata scelta.
+              Dalle coperture col sac-à-poche: UNA fila di ciuffi grossi il
+              doppio. Dalla decorazione di panna: la fila fitta normale. ---- */}
+      {hasRing && (
+        <GhirlandaDiPanna
+          shape={shape}
+          R={R}
+          inset={ringInset}
+          y={surfaceY - 0.03}
+          s={ringS}
+          colore={dollopColor}
+        />
+      )}
 
       {/* ---- Decorazioni 3D "a pezzi": macarons, spumini, fiori, fiocchi…
-              Se sono più d'una si dividono i posti sul contorno. ---- */}
+              Se sono più d'una si dividono i posti sul contorno. Quando c'è
+              l'anello di panna si appoggiano SOPRA i ciuffi (come la granella);
+              senza panna stanno sulla torta, come sempre. ---- */}
       {ids3D.length > 0 && (
         <Decorazioni3D
           ids={ids3D}
           shape={shape}
           R={R}
-          y={surfaceY}
+          y={surfaceY + (hasRing ? ringS * 0.55 : 0)}
+          topInset={hasRing ? ringInset : 0.79}
           colors={decoColors}
-          dollopColor={dollopColor}
-          // per i fiocchi, che si legano sul fianco: raggio esterno della torta
-          // (la panna che avvolge la allarga un po'), altezza del nodo appena
-          // sotto il bordo superiore, e altezza del corpo per i nastri
-          edgeR={wrapFull ? wrapR : R}
-          edgeY={bodyTop - bandH * 0.38}
-          drop={bodyH}
+          // I FIOCCHI: senza panna si annodano sul fianco (raggio esterno vero
+          // della torta, nodo sotto il bordo, nastri lungo il corpo). Con
+          // l'anello di panna invece si APPOGGIANO SOPRA i ciuffi, col nodo
+          // sulla cresta e i nastri corti che ricadono sulla panna — annodati
+          // al fianco finivano sepolti in mezzo alle due ghirlande.
+          edgeR={hasRing ? R * ringInset + 0.04 : fiancoR}
+          edgeY={hasRing ? surfaceY + ringS * 0.55 : bodyTop - bandH * 0.38}
+          drop={hasRing ? ringS * 1.5 : bodyH}
         />
       )}
 
-      {/* ---- Topping: granella croccante sopra, SEGUE la forma; buco per scritta/foto ---- */}
+      {/* ---- Topping: granella croccante in una fascia lungo il BORDO (segue la forma) ---- */}
       {toppings.map(({ id, ...granella }) => (
         <Granella
           key={`gr-${id}`}
@@ -1913,6 +2276,8 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           R={R}
           y={surfaceY}
           coverage={granellaCoverage}
+          banda={granellaBanda}
+          sopraCiuffi={granellaSuiCiuffi}
           holeW={holeW}
           holeH={holeH}
           {...granella}
@@ -2018,11 +2383,30 @@ function Scene({ spin = true, ...props }) {
 
 export default function Cake3D(props) {
   const [spin, setSpin] = useState(true);
+  const stage = useRef(null);
+  // La torta 3D si ridisegna 60 volte al secondo. Sulla home ce n'è una anche
+  // nella sezione "Crea la tua torta": senza questo controllo continuerebbe a
+  // lavorare pure quando è lontanissima dallo schermo, e il sito scatta mentre
+  // si scorre. Con `frameloop="never"` il disegno si ferma (resta l'ultimo
+  // fotogramma, che nessuno sta guardando) e riparte appena torna in vista.
+  const [inVista, setInVista] = useState(true);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const io = new IntersectionObserver(
+      ([e]) => setInVista(e.isIntersecting),
+      { rootMargin: '200px' } // riparte un attimo prima di entrare in scena
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <div className="cake3d-stage">
+    <div className="cake3d-stage" ref={stage}>
       <Canvas
         shadows
         dpr={[1, 2]}
+        frameloop={inVista ? 'always' : 'never'}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
         camera={{ position: [0, 2.7, 5.0], fov: 30 }}
       >

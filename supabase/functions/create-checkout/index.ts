@@ -44,12 +44,18 @@ Deno.serve(async (req) => {
       return json({ error: 'Dati ordine incompleti' }, 400);
     }
 
-    const { amountCents, summary } = await computeOrder(supabase, config);
+    const { amountCents, summary, sconto, scontoCodice } = await computeOrder(supabase, config);
     if (amountCents <= 0) return json({ error: 'Importo non valido' }, 400);
 
     // La riga ordine (senza immagine) va nei metadata, a pezzi da <500 char.
     const payload = JSON.stringify(insert);
     const metadata: Record<string, string> = { chunks: String(Math.ceil(payload.length / 450)) };
+    // Lo sconto DAVVERO applicato viaggia a parte: il webhook lo scrive
+    // sull'ordine e scala il contatore del codice solo a pagamento avvenuto.
+    if (scontoCodice && sconto > 0) {
+      metadata.sconto_codice = scontoCodice;
+      metadata.sconto_euro = sconto.toFixed(2);
+    }
     for (let i = 0, k = 0; i < payload.length; i += 450, k++) {
       metadata['d' + k] = payload.slice(i, i + 450);
     }
@@ -65,7 +71,7 @@ Deno.serve(async (req) => {
           currency: 'eur',
           unit_amount: amountCents,
           product_data: {
-            name: 'Torta personalizzata — Gelateria Punto Gi!',
+            name: 'Torta personalizzata — Gelateria Punto Gi',
             description: summary || undefined,
           },
         },

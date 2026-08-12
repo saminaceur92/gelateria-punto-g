@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { uploadCakePhoto } from '../lib/cakePhoto';
 import CakePreview from './CakePreview';
+import Lightbox from './Lightbox';
 
 // Ordine passi: tipo → n° persone → allergie → forma → base → [crumble] → gusti →
 // inserto (farcitura) → copertura → decorazioni → scritta → dati → riepilogo.
@@ -35,14 +36,17 @@ const STEPS = [
 // Passi effettivi del wizard (STEPS meno quelli non applicabili): reso
 // disponibile agli step figli per la numerazione "Passo N di M".
 const StepsCtx = createContext(STEPS);
-// Le torte "Alte" (semifreddo e gelato) consentono 4 gusti; le altre (basse) 3.
+// Le torte "Alte" (semifreddo e gelato) consentono 4 gusti; le altre (basse) 2.
+// Non e' un obbligo: si puo' fare una torta a un gusto solo. Il numero
+// consigliato (GUSTI_CONSIGLIATI) e' quello che rende meglio in vetrina.
 // L'elenco degli id sta in ../data/cakeOptions.js perché lo usa anche
 // l'anteprima, che le disegna più alte.
-const maxFlavorsFor = (typeId) => (isTallType(typeId) ? 4 : 3);
+const maxFlavorsFor = (typeId) => (isTallType(typeId) ? 4 : 2);
+const GUSTI_CONSIGLIATI = 2;
 const MAX_FLAVORS = 4; // cap assoluto (usato dal contatore combinazioni)
-// Decorazioni: si possono scegliere insieme, ma non all'infinito — oltre tre la
-// torta diventa illeggibile (e impossibile da decorare bene a mano).
-const MAX_DECORAZIONI = 3;
+// Decorazioni: si possono scegliere insieme, ma non all'infinito — oltre cinque
+// la torta diventa illeggibile (e impossibile da decorare bene a mano).
+const MAX_DECORAZIONI = 5;
 // Id dell'opzione "niente decorazioni": non finisce mai nella lista delle
 // scelte (lista vuota = nessuna decorazione), serve solo come card da toccare.
 const NO_DECO = 'nessuna';
@@ -164,6 +168,16 @@ const personeOf = (size) => {
 // La forma rettangolare è disponibile solo da 15 persone in su.
 const RECT_MIN_PERSONE = 15;
 
+// Preferenze alimentari dichiarate nello step "Allergie": non sono allergeni,
+// filtrano al contrario (passa solo cio' che e' dichiarato adatto). L'elenco di
+// cosa e' vegano o senza zuccheri aggiunti lo danno i titolari dal gestionale.
+const DIETA_VEGAN = 'vegan';
+const DIETA_NO_ZUCCHERO = 'senza-zucchero';
+const DIETE = [
+  { id: DIETA_VEGAN, emoji: '🌱', name: 'Vegan' },
+  { id: DIETA_NO_ZUCCHERO, emoji: '🍃', name: 'Senza zuccheri aggiunti' },
+];
+
 // Consegna a domicilio della torta: sovrapprezzo e zone coperte.
 const DELIVERY_FEE = 4;
 const DELIVERY_ZONES = [
@@ -172,9 +186,20 @@ const DELIVERY_ZONES = [
   'Limidi e Soliera',
 ];
 
-// Un'opzione è in conflitto se contiene un allergene tra quelli da evitare.
-const conflictsAllergies = (item, allergies) =>
-  !!item && (item.allergeni || []).some((a) => (allergies || []).includes(a));
+// Un'opzione è esclusa se contiene un allergene fra quelli da evitare oppure se
+// non rispetta una preferenza dichiarata (vegan / senza zuccheri aggiunti).
+// Attenzione alla differenza: gli allergeni ESCLUDONO (c'è dentro → fuori), le
+// preferenze INCLUDONO (passa solo ciò che i titolari hanno dichiarato adatto).
+// Su vegan e zuccheri non si deduce nulla: se il dato manca, l'opzione resta
+// spenta finché in gestionale non viene spuntata.
+const conflictsAllergies = (item, allergies, diets) => {
+  if (!item) return false;
+  if ((item.allergeni || []).some((a) => (allergies || []).includes(a))) return true;
+  const d = diets || [];
+  if (d.includes(DIETA_VEGAN) && !item.vegan) return true;
+  if (d.includes(DIETA_NO_ZUCCHERO) && !item.senzaZucchero) return true;
+  return false;
+};
 
 const emailOk = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((s || '').trim());
 
@@ -267,6 +292,10 @@ function makeInitialConfig(cake, initial = {}) {
     shape: cake.cakeShapes[0]?.id || 'tonda',
     sizeId: '', // scelta esplicita: sblocca "Sorprendimi" e le regole legate alle persone
     allergies: initial.allergies || [], // allergeni da evitare (ingrigiscono le scelte)
+    // Il passo allergie va risposto: o si sceglie almeno un allergene, o si
+    // dichiara di non averne. Non si prosegue lasciandolo in bianco.
+    noAllergies: false,
+    diets: [],           // preferenze alimentari: vegan, senza zuccheri aggiunti
     flavors: [], // [{name,color}]
     baseId: cake.cakeBases[0]?.id || '',
     crumbleId: '', // tipo di crumble: usato solo con la base crumble croccante
@@ -282,6 +311,8 @@ function makeInitialConfig(cake, initial = {}) {
     messageFont: DEFAULT_FONT,
     candle: false,
     occasion: '',
+    surprise: false,     // "è una sorpresa": si somma all'occasione
+    gift: false,         // "è un regalo": idem
     photo: null,
     photoTransform: { zoom: 1, posX: 50, posY: 50 },
     pickupDate: '',
@@ -292,6 +323,9 @@ function makeInitialConfig(cake, initial = {}) {
     phone: '',
     email: '',
     notes: '',
+    // Codice sconto applicato: { codice, tipo, valore, descrizione }.
+    // È solo quello che si VEDE — l'importo addebitato lo ricalcola il server.
+    sconto: null,
   };
 
   // Precompilazione (es. torta dell'anno scorso): solo i campi previsti e solo
@@ -387,7 +421,7 @@ function makeInitialConfig(cake, initial = {}) {
   return base;
 }
 
-export default function CakeConfigurator({ open, onClose, staff = false, initial }) {
+export default function CakeConfigurator({ open, onClose, staff = false, initial, operatore = null }) {
   const cake = useCakeData();
   const {
     cakeShapes,
@@ -468,20 +502,20 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     setConfig((c) => {
       const patch = {};
       const base = cakeBases.find((b) => b.id === c.baseId);
-      if (conflictsAllergies(base, c.allergies)) {
-        patch.baseId = cakeBases.find((b) => !conflictsAllergies(b, c.allergies))?.id || '';
+      if (conflictsAllergies(base, c.allergies, c.diets)) {
+        patch.baseId = cakeBases.find((b) => !conflictsAllergies(b, c.allergies, c.diets))?.id || '';
         patch.crumbleId = '';
       }
       const crumble = cakeCrumbles.find((x) => x.id === c.crumbleId);
-      if (conflictsAllergies(crumble, c.allergies)) patch.crumbleId = '';
+      if (conflictsAllergies(crumble, c.allergies, c.diets)) patch.crumbleId = '';
       const filling = cakeFillings.find((f) => f.id === c.fillingId);
-      if (conflictsAllergies(filling, c.allergies)) patch.fillingId = 'nessuna';
+      if (conflictsAllergies(filling, c.allergies, c.diets)) patch.fillingId = 'nessuna';
       const covering = cakeCoverings.find((cc) => cc.id === c.coveringId);
-      if (conflictsAllergies(covering, c.allergies)) patch.coveringId = '';
+      if (conflictsAllergies(covering, c.allergies, c.diets)) patch.coveringId = '';
       // Decorazioni in conflitto: si tolgono dalla lista (con il loro colore),
       // le altre restano scelte.
       const decorations = (c.decorations || []).filter(
-        (id) => !conflictsAllergies(cakeDecorations.find((d) => d.id === id), c.allergies)
+        (id) => !conflictsAllergies(cakeDecorations.find((d) => d.id === id), c.allergies, c.diets)
       );
       if (decorations.length !== (c.decorations || []).length) {
         patch.decorations = decorations;
@@ -492,16 +526,16 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Extra in conflitto: si tolgono dalla lista degli extra scelti.
       const extras = Object.fromEntries(
         Object.entries(c.extras || {}).filter(
-          ([id]) => !conflictsAllergies(cakeExtras.find((e) => e.id === id), c.allergies)
+          ([id]) => !conflictsAllergies(cakeExtras.find((e) => e.id === id), c.allergies, c.diets)
         )
       );
       if (Object.keys(extras).length !== Object.keys(c.extras || {}).length) patch.extras = extras;
-      const flavors = c.flavors.filter((f) => !conflictsAllergies(f, c.allergies));
+      const flavors = c.flavors.filter((f) => !conflictsAllergies(f, c.allergies, c.diets));
       if (flavors.length !== c.flavors.length) patch.flavors = flavors;
       return Object.keys(patch).length ? { ...c, ...patch } : c;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.allergies]);
+  }, [config.allergies, config.diets]);
 
   // Il colore appartiene alla decorazione, non alla torta: appena una
   // decorazione esce dalle scelte (o la sua lista colori si restringe / arriva
@@ -547,7 +581,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   // indicate. Se non ne resta nessuno, la finestra delle proposte non compare
   // (proporre roba che il cliente non può mangiare è peggio che non proporre).
   const extraProponibili = useMemo(
-    () => cakeExtras.filter((e) => !conflictsAllergies(e, config.allergies)),
+    () => cakeExtras.filter((e) => !conflictsAllergies(e, config.allergies, config.diets)),
     [cakeExtras, config.allergies]
   );
 
@@ -586,9 +620,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       (filling?.priceDelta ?? 0) +
       (covering?.priceDelta ?? 0) +
       decos.reduce((s, d) => s + (d.priceDelta ?? 0), 0);
-    // Gusti extra: dopo il primo, +2€ ciascuno
-    if (config.flavors.length > 1) p += (config.flavors.length - 1) * 2;
-    if (config.candle) p += 1;
+    // I gusti sono TUTTI compresi nel prezzo della torta (nessun supplemento per
+    // gli strati in più) e la candelina è un regalo della gelateria.
+    // ⚠️ Stessa regola lato server: supabase/functions/_shared/price.ts.
     if (config.photo) p += 5;
     if (config.delivery) p += DELIVERY_FEE; // consegna a domicilio
     // Extra dell'ordine (salame al kg, cabaret di pasticcini): prezzo × quantità
@@ -597,6 +631,19 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // Dipende anche dai listini: arrivano da Supabase DOPO il primo render, e senza
     // di loro il totale resterebbe fermo ai prezzi della copia di sicurezza.
   }, [config, cakeTypes, cakeSizes, cakeBases, cakeCrumbles, cakeShapes, cakeFillings, cakeCoverings, cakeDecorations, cakeExtras]);
+
+  // Sconto del codice, ricalcolato sul totale corrente: se il cliente torna
+  // indietro e cambia la torta, la cifra resta coerente da sola.
+  // ⚠️ Questa è la cifra MOSTRATA. Quella addebitata la ricalcola il server
+  // (supabase/functions/_shared/price.ts), che riverifica il codice da capo:
+  // scrivere un codice a mano nel browser non fa pagare di meno.
+  const scontoEuro = useMemo(() => {
+    const s = config.sconto;
+    if (!s) return 0;
+    const v = s.tipo === 'percentuale' ? (total * Number(s.valore || 0)) / 100 : Number(s.valore || 0);
+    return Math.min(Math.max(Math.round(v * 100) / 100, 0), total);
+  }, [config.sconto, total]);
+  const totaleFinale = Math.round((total - scontoEuro) * 100) / 100;
 
   // Allergeni: unione di gusti + base (+ crumble) + farcitura + copertura +
   // TUTTE le decorazioni scelte + extra scelti (indicativi)
@@ -638,7 +685,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     switch (steps[step]) {
       case 'type': return !!config.type;
       case 'size': return !!config.sizeId;
-      case 'allergies': return true; // opzionale
+      // Va data una risposta: allergeni scelti oppure "Nessuna intolleranza".
+      // Le preferenze (vegan, senza zuccheri) da sole non bastano: sono un'altra
+      // domanda, e per la gelateria conta avere la dichiarazione sulle allergie.
+      case 'allergies': return config.noAllergies || config.allergies.length > 0;
       case 'shape':
         return !!config.shape &&
           (config.shape !== 'rettangolare' || personeOf(size) >= RECT_MIN_PERSONE);
@@ -664,15 +714,14 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  const toggleFlavor = (f) => {
-    const max = maxFlavorsFor(config.type);
-    const exists = config.flavors.find((x) => x.name === f.name);
-    if (exists) {
-      set({ flavors: config.flavors.filter((x) => x.name !== f.name) });
-    } else if (config.flavors.length < max) {
-      set({ flavors: [...config.flavors, f] });
-    }
+  // Gli strati si possono ripetere (crema, cioccolato, crema) e l'ordine è
+  // quello con cui si toccano: toccare un gusto AGGIUNGE uno strato in cima,
+  // si toglie dall'elenco degli strati sotto la griglia.
+  const addFlavor = (f) => {
+    if (config.flavors.length >= maxFlavorsFor(config.type)) return;
+    set({ flavors: [...config.flavors, f] });
   };
+  const removeFlavorAt = (i) => set({ flavors: config.flavors.filter((_, k) => k !== i) });
 
   const surpriseMe = () => {
     const max = maxFlavorsFor(config.type);
@@ -686,7 +735,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // rispetta le allergie scelte e il numero massimo di gusti del tipo.
     // Match per nome case-insensitive: i gusti sono editabili dalla dashboard,
     // quindi un nome della ricetta potrebbe non combaciare più.
-    const ok = (f) => f && !conflictsAllergies(f, config.allergies);
+    const ok = (f) => f && !conflictsAllergies(f, config.allergies, config.diets);
     let flavors = recipe.flavors
       .map((n) => cakeFlavors.find((f) => f.name.toLowerCase() === n.toLowerCase()))
       .filter(ok);
@@ -711,7 +760,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // esce ne ha una. Se è incompatibile con le allergie (o non è più a menù)
     // si resta senza decorazioni.
     const deco = cakeDecorations.find((d) => d.id === recipe.decoration);
-    const decorations = deco && !conflictsAllergies(deco, config.allergies) ? [deco.id] : [];
+    const decorations = deco && !conflictsAllergies(deco, config.allergies, config.diets) ? [deco.id] : [];
     // Se la decorazione vuole un colore, ne scegliamo uno fra quelli davvero
     // disponibili: altrimenti "Sorprendimi" lascerebbe il passo a metà, con la
     // domanda "di che colore la vuoi?" senza risposta.
@@ -730,8 +779,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     set({
       flavors,
       ...(shapeOk ? { shape: recipe.shape } : {}),
-      fillingId: conflictsAllergies(filling, config.allergies) ? 'nessuna' : recipe.filling,
-      coveringId: conflictsAllergies(covering, config.allergies) ? config.coveringId : recipe.covering,
+      fillingId: conflictsAllergies(filling, config.allergies, config.diets) ? 'nessuna' : recipe.filling,
+      coveringId: conflictsAllergies(covering, config.allergies, config.diets) ? config.coveringId : recipe.covering,
       decorations,
       decorationColors,
     });
@@ -766,21 +815,42 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // la sua) e totale coerente: il resto della torta non cambia, quindi basta
     // sostituire nel totale la quota degli extra. Senza proposte è `total`.
     const extras = chosenExtras(cfg.extras, cakeExtras);
-    const totale = extraFinali
+    const lordo = extraFinali
       ? Math.round(
           (total
             - chosenExtras(config.extras, cakeExtras).reduce((s, e) => s + e.total, 0)
             + extras.reduce((s, e) => s + e.total, 0)) * 100
         ) / 100
       : total;
+    // Lo sconto si ricalcola sul totale definitivo (gli extra dell'ultima
+    // finestra possono averlo cambiato), sempre entro i limiti.
+    const scontoOrdine = config.sconto
+      ? Math.min(
+          Math.max(
+            Math.round(
+              (config.sconto.tipo === 'percentuale'
+                ? (lordo * Number(config.sconto.valore || 0)) / 100
+                : Number(config.sconto.valore || 0)) * 100
+            ) / 100,
+            0
+          ),
+          lordo
+        )
+      : 0;
+    const totale = Math.round((lordo - scontoOrdine) * 100) / 100;
     // Allergeni scelti dal cliente, in MAIUSCOLO (per riepilogo/Telegram/mail)
     const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
     const allergLine = allergNames.length ? allergNames.join(', ').toUpperCase() : '';
+    // Preferenze alimentari e "sorpresa/regalo": informazioni che cambiano il
+    // lavoro in laboratorio (e come si consegna), quindi viaggiano con l'ordine.
+    const dietLine = (config.diets || []).map((id) => DIETE.find((d) => d.id === id)?.name || id).join(', ').toUpperCase();
+    const noteConsegna = [config.surprise && 'è una sorpresa', config.gift && 'è un regalo'].filter(Boolean).join(' · ');
 
     const msg = [
-      staff ? `🎂 *Nuovo ordine in gelateria — Punto Gi!*` : `🎂 *Nuova richiesta torta — Punto Gi!*`,
+      staff ? `🎂 *Nuovo ordine in gelateria — Punto Gi*` : `🎂 *Nuova richiesta torta — Punto Gi*`,
       ``,
       allergLine ? `⚠️ *ALLERGENI:* ${allergLine}` : '',
+      dietLine ? `🌱 *PREFERENZE:* ${dietLine}` : '',
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
@@ -795,6 +865,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.photo ? `*Foto su cialda:* sì (verrà inviata a parte)` : '',
       config.candle ? `*Candelina:* sì` : '',
       config.occasion ? `*Occasione:* ${config.occasion}` : '',
+      scontoOrdine > 0 ? `*Sconto:* ${config.sconto?.codice} (−€${scontoOrdine.toFixed(2)})` : '',
+      noteConsegna ? `*Attenzione:* ${noteConsegna}` : '',
       ``,
       config.delivery
         ? `*Consegna a domicilio:* ${config.pickupDate}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}`
@@ -839,6 +911,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const insertBase = {
       immagine: immagineUrl,
       stato: 'da_fare',
+      // Sconto: qui c'è quello CHIESTO dal cliente. Per gli ordini pagati online
+      // il webhook lo riscrive con quello davvero applicato dal server.
+      sconto_codice: config.sconto?.codice || null,
+      sconto_euro: scontoOrdine || null,
       cliente_nome: config.name,
       cliente_telefono: config.phone,
       cliente_email: config.email || null,
@@ -878,6 +954,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const quando = config.pickupDate ? `${config.pickupDate.split('-').reverse().join('/')}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}` : '';
     const ordineEmail = [
       allergLine ? `ALLERGENI: ${allergLine}` : '',
+      dietLine ? `PREFERENZE: ${dietLine}` : '',
       `Tipo: ${type?.name}`,
       `Forma: ${shape?.name}`,
       `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
@@ -892,6 +969,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.photo ? `Foto su cialda: sì` : '',
       config.candle ? `Candelina: sì` : '',
       config.occasion ? `Occasione: ${config.occasion}` : '',
+      scontoOrdine > 0 ? `Sconto ${config.sconto?.codice}: -€${scontoOrdine.toFixed(2)}` : '',
+      noteConsegna ? `Attenzione: ${noteConsegna}` : '',
       config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
       quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
       config.notes ? `Note: ${config.notes}` : '',
@@ -918,7 +997,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Se il caricamento su Storage non è riuscito, per lo staff si ripiega
       // sull'immagine grezza (che qui ci sta: non passa dai metadata Stripe).
       const { error } = await supabase.from('ordini').insert({
-        ...insertBase, totale, immagine: immagineUrl || immagine,
+        // creato_da: chi ha preso l'ordine al banco. Il nome arriva dal codice
+        // personale, verificato dal database prima di aprire il configuratore.
+        ...insertBase, totale, immagine: immagineUrl || immagine, creato_da: operatore || null,
       });
       if (error) {
         console.warn('[ordine] non salvato:', error.message);
@@ -939,7 +1020,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       // Il server ricalcola il prezzo da `config` (computeOrder): deve ricevere
       // gli extra definitivi, altrimenti Stripe farebbe pagare un altro totale.
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { config: cfg, insert: insertBase },
+        // Il codice sconto va mandato: il server lo riverifica da capo e
+        // ricalcola l'importo. Non mandiamo mai un totale, solo le scelte.
+        body: { config: { ...cfg, scontoCodice: config.sconto?.codice || null }, insert: insertBase },
       });
       if (error) throw error;
       if (data?.url) { window.location.href = data.url; return; }
@@ -1014,7 +1097,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
             <div className="cfg-title">
               <Cake size={20} color="var(--violet-deep)" />
               {staff ? 'Nuovo ordine' : 'Crea la tua torta'}
-              <small style={{ marginLeft: '0.5rem' }}>· Punto Gi!</small>
+              <small style={{ marginLeft: '0.5rem' }}>· Punto Gi</small>
             </div>
             {!sent && (
               <div className="cfg-stepper" aria-hidden="true">
@@ -1052,7 +1135,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               </div>
               <div className="price-row">
                 <div className="price">
-                  €{total.toFixed(0)}
+                  €{totaleFinale.toFixed(0)}
                   <small>totale</small>
                 </div>
                 {config.flavors.length > 0 && (
@@ -1074,6 +1157,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                 </button>
               )}
             </div>
+
+            {/* NB: su schermi grandi il riepilogo NON si ripete qui: la card
+                sopra racconta già la torta ("farcito con…", "coperto da…").
+                Su telefono la card è compattata e quelle righe spariscono,
+                quindi lì il riepilogo c'è, nella barretta in fondo. */}
           </aside>
 
           <StepsCtx.Provider value={steps}>
@@ -1096,13 +1184,15 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                   {steps[step] === 'shape' && <StepShape config={config} set={set} />}
                   {steps[step] === 'base' && <StepBase config={config} set={set} />}
                   {steps[step] === 'crumble' && <StepCrumble config={config} set={set} />}
-                  {steps[step] === 'flavors' && <StepFlavors config={config} toggle={toggleFlavor} staff={staff} />}
+                  {steps[step] === 'flavors' && <StepFlavors config={config} add={addFlavor} removeAt={removeFlavorAt} />}
                   {steps[step] === 'filling' && <StepFilling config={config} set={set} />}
                   {steps[step] === 'covering' && <StepCovering config={config} set={set} />}
                   {steps[step] === 'decoration' && <StepDecoration config={config} set={set} />}
                   {steps[step] === 'message' && <StepMessage config={config} set={set} staff={staff} />}
                   {steps[step] === 'details' && <StepDetails config={config} set={set} staff={staff} orari={orari} earliestISO={earliestISO} earliestMin={earliestMin} />}
-                  {steps[step] === 'review' && <StepReview config={config} total={total} staff={staff} />}
+                  {steps[step] === 'review' && (
+                    <StepReview config={config} total={total} sconto={scontoEuro} set={set} staff={staff} />
+                  )}
                 </motion.div>
               </AnimatePresence>
             )}
@@ -1115,9 +1205,12 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
 
           {!sent && (
             <footer className="cfg-footer">
+              {/* Solo su telefono: barretta che apre il riepilogo (su schermi
+                  grandi il riepilogo sta già nella colonna di sinistra). */}
+              <RiepilogoBarra config={config} total={totaleFinale} staff={staff} steps={steps} step={step} />
               <div className="price-tag">
                 <span>Prezzo totale</span>
-                <strong>€{total.toFixed(2)}</strong>
+                <strong>€{totaleFinale.toFixed(2)}</strong>
               </div>
               {/* su mobile, al posto del totale, c'è Sorprendimi (sbloccato dopo il n° persone) */}
               <button
@@ -1143,7 +1236,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                       ? (staff ? 'Invio…' : 'Attendi…')
                       : staff
                         ? (<><Check size={16} /> Crea ordine</>)
-                        : (<><CreditCard size={16} /> Ordina e paga €{total.toFixed(2)}</>)}
+                        : (<><CreditCard size={16} /> Ordina e paga €{totaleFinale.toFixed(2)}</>)}
                   </button>
                 )}
               </div>
@@ -1158,7 +1251,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               set={set}
               staff={staff}
               listino={extraProponibili}
-              total={total}
+              total={totaleFinale}
               onOrdinaSenza={ordinaSenzaExtra}
               onOrdinaCon={ordinaConExtra}
               onChiudi={chiudiProposte}
@@ -1296,15 +1389,24 @@ function StepAllergies({ config, set }) {
   const { cakeAllergens } = useCakeData();
   const toggle = (id) => {
     const has = config.allergies.includes(id);
-    set({ allergies: has ? config.allergies.filter((x) => x !== id) : [...config.allergies, id] });
+    set({
+      allergies: has ? config.allergies.filter((x) => x !== id) : [...config.allergies, id],
+      // Indicare un allergene smentisce "non ne ho": le due risposte si escludono.
+      noAllergies: false,
+    });
+  };
+  const toggleDieta = (id) => {
+    const scelte = config.diets || [];
+    set({ diets: scelte.includes(id) ? scelte.filter((x) => x !== id) : [...scelte, id] });
   };
   const chosenNames = config.allergies.map((id) => cakeAllergens.find((a) => a.id === id)?.name || id);
+  const dietNames = (config.diets || []).map((id) => DIETE.find((d) => d.id === id)?.name || id);
   return (
     <>
       <StepHeader
         stepKey="allergies"
         title="Allergie o intolleranze?"
-        lead="Seleziona cosa vuoi evitare: lo segnaliamo al laboratorio e ingrigiamo le opzioni incompatibili. Se non ne hai, vai avanti."
+        lead="Questa risposta ci serve sempre: indica cosa evitare, oppure dichiara che non ci sono intolleranze. Le opzioni incompatibili si spengono da sole nei passi successivi."
       />
       <div className="toggle-row">
         {cakeAllergens.map((a) => (
@@ -1318,52 +1420,131 @@ function StepAllergies({ config, set }) {
           </button>
         ))}
       </div>
+
+      {/* Dichiarazione esplicita: si esclude a vicenda con gli allergeni qui sopra,
+          così non si va avanti senza aver risposto. */}
+      <div className="toggle-row" style={{ marginTop: '0.9rem' }}>
+        <button
+          type="button"
+          className={`toggle-pill toggle-pill-ok ${config.noAllergies ? 'active' : ''}`}
+          onClick={() => set({ noAllergies: !config.noAllergies, allergies: [] })}
+        >
+          ✅ Nessuna intolleranza
+        </button>
+      </div>
+
+      <div className="cfg-field" style={{ marginTop: '1.6rem' }}>
+        <label>Preferenze alimentari (facoltative)</label>
+        <div className="toggle-row">
+          {DIETE.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              className={`toggle-pill ${(config.diets || []).includes(d.id) ? 'active' : ''}`}
+              onClick={() => toggleDieta(d.id)}
+            >
+              {d.emoji} {d.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {config.allergies.length > 0 && (
         <div className="flavor-hint" style={{ marginTop: '1.2rem' }}>
           Segnaleremo: <strong>{chosenNames.join(', ')}</strong>. Le scelte incompatibili appariranno in grigio.
         </div>
       )}
-      <p className="cfg-field hint" style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--grey)', lineHeight: 1.5 }}>
-        ⚠️ <strong>Sicurezza alimentare:</strong> tutti i nostri prodotti sono lavorati nello stesso laboratorio,
-        quindi non possiamo garantire l'assenza totale di contaminazioni crociate — ogni torta può contenere
-        tracce di glutine, latte, uova, soia, frutta a guscio e arachidi. Per allergie gravi conferma sempre con lo staff.
-      </p>
+      {(config.diets || []).length > 0 && (
+        <div className="flavor-hint" style={{ marginTop: '0.8rem' }}>
+          Ti mostreremo solo ciò che è <strong>{dietNames.join(' e ')}</strong>: restano spenti gli ingredienti
+          per cui non abbiamo questa garanzia.
+        </div>
+      )}
+
+      <div className="cfg-avviso" role="note">
+        <span className="cfg-avviso-ico" aria-hidden="true">⚠️</span>
+        <div>
+          <strong>Sicurezza alimentare</strong>
+          <p>
+            Tutti i nostri prodotti sono lavorati nello stesso laboratorio: non possiamo garantire l'assenza
+            totale di contaminazioni crociate. Ogni torta può contenere tracce di glutine, latte, uova, soia,
+            frutta a guscio e arachidi. <strong>Per allergie gravi conferma sempre con lo staff.</strong>
+          </p>
+        </div>
+      </div>
     </>
   );
 }
 
-function StepFlavors({ config, toggle, staff }) {
+function StepFlavors({ config, add, removeAt }) {
   const { cakeFlavors } = useCakeData();
   const max = maxFlavorsFor(config.type);
+  const pieno = config.flavors.length >= max;
+  // Lo stesso gusto si può ripetere: qui conto quante volte è già stato usato,
+  // così la card mostra "×2" invece di sembrare semplicemente "selezionata".
+  const quante = (nome) => config.flavors.filter((x) => x.name === nome).length;
+  const disponibili = cakeFlavors.filter((f) => !conflictsAllergies(f, config.allergies, config.diets));
   return (
     <>
       <StepHeader
         stepKey="flavors"
         title="Scegli i gusti degli strati"
-        lead={`Da 1 a ${max} gusti — l'ordine determina gli strati (dal basso verso l'alto).${staff ? '' : ' Ogni gusto extra: +2€.'}`}
+        // Il massimo non si scrive: non è un traguardo da raggiungere. Quando è
+        // pieno lo dice la card, che smette di rispondere e spiega perché.
+        lead={`Consigliati ${GUSTI_CONSIGLIATI} gusti. L'ordine è quello degli strati, dal basso verso l'alto — e lo stesso gusto si può ripetere.`}
       />
-      <div className="flavor-hint">
-        Hai scelto <strong>{config.flavors.length}</strong> di {max} strati.{' '}
-        {config.flavors.length === 0 && 'Tocca un gusto per aggiungerlo.'}
-      </div>
+
+      {/* Strati scelti, in ordine: è anche il posto da cui si tolgono, visto che
+          toccare una card ora aggiunge sempre (i gusti si possono ripetere). */}
+      {config.flavors.length > 0 && (
+        <div className="strati-scelti">
+          {config.flavors.map((f, i) => (
+            <button
+              key={`${f.name}-${i}`}
+              type="button"
+              className="strato-chip"
+              onClick={() => removeAt(i)}
+              title="Togli questo strato"
+            >
+              <span className="flavor-dot" style={{ background: f.color }} />
+              <span className="strato-num">{i + 1}</span>
+              {f.name}
+              <span className="strato-x" aria-hidden="true">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {disponibili.length === 0 && (
+        <div className="cfg-avviso" role="note">
+          <span className="cfg-avviso-ico" aria-hidden="true">😕</span>
+          <div>
+            <strong>Nessun gusto disponibile con queste scelte</strong>
+            <p>
+              Con le allergie e le preferenze che hai indicato non ci resta nessun gusto da proporti.
+              Torna indietro e togline qualcuna, oppure scrivici: troviamo una soluzione insieme.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="opt-grid cols-flavors">
         {cakeFlavors.map((f) => {
-          const idx = config.flavors.findIndex((x) => x.name === f.name);
-          const selected = idx !== -1;
-          const allergic = conflictsAllergies(f, config.allergies);
-          const disabled = allergic || (!selected && config.flavors.length >= max);
+          const usato = quante(f.name);
+          const allergic = conflictsAllergies(f, config.allergies, config.diets);
+          const disabled = allergic || pieno;
           return (
             <button
               key={f.name}
-              className={`opt-card opt-flavor ${selected ? 'selected' : ''}`}
-              onClick={() => !disabled && toggle(f)}
+              className={`opt-card opt-flavor ${usato ? 'selected' : ''}`}
+              onClick={() => !disabled && add(f)}
               disabled={disabled}
-              title={allergic ? `Contiene: ${f.allergeni.join(', ')}` : ''}
+              title={allergic ? `Contiene: ${f.allergeni.join(', ')}` : pieno ? `Hai già ${max} strati: togline uno per cambiarlo` : 'Aggiungi uno strato di questo gusto'}
               style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
             >
               <span className="flavor-dot" style={{ background: f.color }} />
               <span className="flavor-name">{f.name}</span>
-              {selected && <span className="flavor-pos">{idx + 1}</span>}
+              {usato > 0 && <span className="flavor-pos">{usato > 1 ? `×${usato}` : '1'}</span>}
             </button>
           );
         })}
@@ -1383,7 +1564,7 @@ function StepFilling({ config, set }) {
       />
       <div className="opt-grid cols-3">
         {cakeFillings.map((f) => {
-          const blocked = conflictsAllergies(f, config.allergies);
+          const blocked = conflictsAllergies(f, config.allergies, config.diets);
           return (
             <button
               key={f.id}
@@ -1410,6 +1591,9 @@ function StepFilling({ config, set }) {
 
 function StepCovering({ config, set }) {
   const { cakeCoverings } = useCakeData();
+  // Foto di esempio aperta a tutto schermo (null = chiusa). È la foto vera
+  // caricata dai titolari nella scheda Coperture della dashboard.
+  const [fotoAperta, setFotoAperta] = useState(null);
   return (
     <>
       <StepHeader
@@ -1419,27 +1603,47 @@ function StepCovering({ config, set }) {
       />
       <div className="opt-grid cols-2">
         {cakeCoverings.map((c) => {
-          const blocked = conflictsAllergies(c, config.allergies);
+          const blocked = conflictsAllergies(c, config.allergies, config.diets);
+          const scelta = config.coveringId === c.id;
           return (
-            <button
-              key={c.id}
-              className={`opt-card ${config.coveringId === c.id ? 'selected' : ''}`}
-              onClick={() => !blocked && set({ coveringId: c.id })}
-              disabled={blocked}
-              style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-            >
-              <div className="opt-name">
-                {c.color && (
-                  <span className="opt-dot" style={{ background: c.color, border: '1px solid rgba(0,0,0,0.1)' }} />
-                )}
-                {c.name}
-              </div>
-              <div className="opt-desc">{blocked ? `Contiene: ${c.allergeni.join(', ')}` : c.desc}</div>
-              <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'inclusa'}</div>
-            </button>
+            // La card e il collegamento alla foto sono DUE bottoni separati (uno
+            // dentro l'altro non si può): il div tiene loro due il posto di una
+            // cella sola nella griglia.
+            <div key={c.id} className="opt-cella">
+              <button
+                className={`opt-card ${scelta ? 'selected' : ''}`}
+                onClick={() => !blocked && set({ coveringId: c.id })}
+                disabled={blocked}
+                style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+              >
+                <div className="opt-name">
+                  {c.color && (
+                    <span className="opt-dot" style={{ background: c.color, border: '1px solid rgba(0,0,0,0.1)' }} />
+                  )}
+                  {c.name}
+                </div>
+                <div className="opt-desc">{blocked ? `Contiene: ${c.allergeni.join(', ')}` : c.desc}</div>
+                <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'inclusa'}</div>
+              </button>
+              {/* Il collegamento compare solo sulla copertura SCELTA, e solo se
+                  in dashboard le hanno caricato la foto. */}
+              {scelta && c.foto && (
+                <button type="button" className="opt-foto-link" onClick={() => setFotoAperta(c)}>
+                  📷 Clicca qui per vedere un&rsquo;immagine a scopo illustrativo della copertura
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
+      {fotoAperta && (
+        <Lightbox
+          foto={[{ url: fotoAperta.foto, titolo: `${fotoAperta.name} — immagine a scopo illustrativo` }]}
+          indice={0}
+          onCambia={() => {}}
+          onChiudi={() => setFotoAperta(null)}
+        />
+      )}
     </>
   );
 }
@@ -1451,7 +1655,7 @@ function StepBase({ config, set }) {
       <StepHeader stepKey="base" title="Quale base preferisci?" lead="Quello che sostiene la torta sotto: dalla classica al salame al cioccolato, o senza base." />
       <div className="opt-grid cols-2">
         {cakeBases.map((b) => {
-          const blocked = conflictsAllergies(b, config.allergies);
+          const blocked = conflictsAllergies(b, config.allergies, config.diets);
           return (
             <button
               key={b.id}
@@ -1488,7 +1692,7 @@ function StepCrumble({ config, set }) {
       />
       <div className="opt-grid cols-2">
         {cakeCrumbles.map((c) => {
-          const blocked = conflictsAllergies(c, config.allergies);
+          const blocked = conflictsAllergies(c, config.allergies, config.diets);
           return (
             <button
               key={c.id}
@@ -1518,6 +1722,7 @@ function StepCrumble({ config, set }) {
 // svuota tutto ed è selezionata quando non c'è nessuna decorazione.
 function StepDecoration({ config, set }) {
   const { cakeDecorations } = useCakeData();
+  const disponibili = cakeDecorations;
   const scelte = config.decorations || [];
   const colori = config.decorationColors || {};
   const pieno = scelte.length >= MAX_DECORAZIONI;
@@ -1570,8 +1775,8 @@ function StepDecoration({ config, set }) {
         {pieno && ' Hai raggiunto il massimo: togline una per cambiarla.'}
       </div>
       <div className="opt-grid cols-3">
-        {cakeDecorations.map((d) => {
-          const blocked = conflictsAllergies(d, config.allergies);
+        {disponibili.map((d) => {
+          const blocked = conflictsAllergies(d, config.allergies, config.diets);
           const nessuna = d.id === NO_DECO;
           // "Nessuna" è accesa quando non c'è nessuna decorazione scelta.
           const selected = nessuna ? scelte.length === 0 : scelte.includes(d.id);
@@ -1871,7 +2076,7 @@ function StepMessage({ config, set, staff }) {
             className={`toggle-pill ${config.candle ? 'active' : ''}`}
             onClick={() => set({ candle: true })}
           >
-            Aggiungi candelina{staff ? '' : ' (+ €1)'}
+            Aggiungi candelina{staff ? '' : ' (in regalo)'}
           </button>
         </div>
       </div>
@@ -1885,9 +2090,26 @@ function StepMessage({ config, set, staff }) {
               className={`toggle-pill ${config.occasion === o ? 'active' : ''}`}
               onClick={() => set({ occasion: config.occasion === o ? '' : o })}
             >
-              {o}
+              {/* "Nessuna" non è un'occasione triste: le diamo comunque un cuore. */}
+              {o === 'Nessuna' ? '💙 Nessuna' : o}
             </button>
           ))}
+        </div>
+        {/* Si sommano all'occasione: una torta di compleanno può benissimo essere
+            anche una sorpresa e un regalo. Per il laboratorio cambia parecchio. */}
+        <div className="toggle-row" style={{ marginTop: '0.7rem' }}>
+          <button
+            className={`toggle-pill ${config.surprise ? 'active' : ''}`}
+            onClick={() => set({ surprise: !config.surprise })}
+          >
+            🤫 È una sorpresa
+          </button>
+          <button
+            className={`toggle-pill ${config.gift ? 'active' : ''}`}
+            onClick={() => set({ gift: !config.gift })}
+          >
+            🎁 È un regalo
+          </button>
         </div>
       </div>
     </>
@@ -2037,12 +2259,206 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
           value={config.notes}
           onChange={(e) => set({ notes: e.target.value })}
         />
+        <div className="cfg-avviso cfg-avviso-dolce" role="note">
+          <span className="cfg-avviso-ico" aria-hidden="true">💙</span>
+          <div>
+            <p>
+              Faremo di tutto per assecondare le tue richieste. L'ordine potrà subire modifiche
+              secondo le disponibilità.
+            </p>
+          </div>
+        </div>
       </div>
     </>
   );
 }
 
-function StepReview({ config, total, staff }) {
+/**
+ * Voci del riepilogo che si popola mentre si sceglie.
+ * Restituisce solo quello che è stato DAVVERO scelto: finché il cliente non ha
+ * deciso, la riga non c'è (un riepilogo pieno di "—" non aiuta nessuno).
+ * L'ordine segue quello dei passi, così si legge come il percorso fatto.
+ */
+function vociRiepilogo(config, cake, steps, step) {
+  const nomeDi = (list, id) => (list || []).find((x) => x.id === id)?.name || '';
+  const v = [];
+  // Una voce compare solo quando si è arrivati al passo che la decide: forma e
+  // base hanno un valore di partenza, ma finché il cliente non ci passa non è
+  // una SUA scelta e nel riepilogo sarebbe solo rumore.
+  const visto = (stepKey) => {
+    const i = (steps || []).indexOf(stepKey);
+    return i !== -1 && i <= step;
+  };
+  const push = (stepKey, k, val) => { if (val && visto(stepKey)) v.push([k, val]); };
+
+  push('type', 'Tipo', nomeDi(cake.cakeTypes, config.type));
+  push('size', 'Dimensione', (cake.cakeSizes || []).find((s) => s.id === config.sizeId)?.label);
+
+  if (config.noAllergies) push('allergies', 'Allergie', 'nessuna');
+  else if (config.allergies?.length) {
+    push('allergies', 'Allergie', config.allergies
+      .map((id) => (cake.cakeAllergens || []).find((a) => a.id === id)?.name || id)
+      .join(', '));
+  }
+  if (config.diets?.length) {
+    push('allergies', 'Preferenze', config.diets.map((id) => DIETE.find((d) => d.id === id)?.name || id).join(', '));
+  }
+
+  push('shape', 'Forma', nomeDi(cake.cakeShapes, config.shape));
+  push('base', 'Base', nomeDi(cake.cakeBases, config.baseId));
+  push('crumble', 'Crumble', nomeDi(cake.cakeCrumbles, config.crumbleId));
+  // Gli strati si possono ripetere: si elencano nell'ordine scelto.
+  if (config.flavors?.length) push('flavors', 'Strati', config.flavors.map((f) => f.name).join(' · '));
+  if (config.fillingId && config.fillingId !== 'nessuna') push('filling', 'Inserto', nomeDi(cake.cakeFillings, config.fillingId));
+  push('covering', 'Copertura', nomeDi(cake.cakeCoverings, config.coveringId));
+  if (config.decorations?.length) {
+    push('decoration', 'Decorazioni', config.decorations
+      .map((id) => {
+        const col = (config.decorationColors || {})[id];
+        return nomeDi(cake.cakeDecorations, id) + (col ? ` (${col})` : '');
+      })
+      .join(' · '));
+  }
+  if (config.message) push('message', 'Scritta', `"${config.message}"`);
+  if (config.photo) push('message', 'Foto', 'su cialda');
+  if (config.candle) push('message', 'Candelina', 'sì, in regalo');
+  push('message', 'Occasione', config.occasion);
+  push('message', 'Attenzione', [config.surprise && 'è una sorpresa', config.gift && 'è un regalo'].filter(Boolean).join(' · '));
+  if (config.pickupDate) {
+    push('details', config.delivery ? 'Consegna' : 'Ritiro', `${config.pickupDate}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}`);
+  }
+  return v;
+}
+
+/** Elenco del riepilogo (usato sia nella colonna sinistra sia nella barretta). */
+function RiepilogoVivo({ config, steps, step }) {
+  const cake = useCakeData();
+  const voci = vociRiepilogo(config, cake, steps, step);
+  if (!voci.length) {
+    return <p className="riepilogo-vuoto">Le tue scelte compariranno qui, una alla volta.</p>;
+  }
+  return (
+    <dl className="riepilogo-lista">
+      {voci.map(([k, val]) => (
+        <div key={k}>
+          <dt>{k}</dt>
+          <dd>{val}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Barretta in fondo allo schermo (solo telefono): si tocca e si apre. */
+function RiepilogoBarra({ config, total, staff, steps, step }) {
+  const [aperto, setAperto] = useState(false);
+  const cake = useCakeData();
+  const n = vociRiepilogo(config, cake, steps, step).length;
+  return (
+    <>
+      <button
+        type="button"
+        className="riepilogo-barra"
+        onClick={() => setAperto((a) => !a)}
+        aria-expanded={aperto}
+      >
+        <span className="riepilogo-barra-tit">
+          {aperto ? '▼' : '▲'} La tua torta{n > 0 ? ` · ${n} ${n === 1 ? 'scelta' : 'scelte'}` : ''}
+        </span>
+        {!staff && <span className="riepilogo-barra-prezzo">€{total.toFixed(2)}</span>}
+      </button>
+      {aperto && (
+        <div className="riepilogo-sheet" role="dialog" aria-label="Riepilogo della tua torta">
+          <div className="riepilogo-sheet-head">
+            <strong>La tua torta</strong>
+            <button type="button" onClick={() => setAperto(false)} aria-label="Chiudi il riepilogo">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="riepilogo-sheet-body">
+            <RiepilogoVivo config={config} steps={steps} step={step} />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Campo del codice sconto, in fondo al riepilogo.
+ * Il codice NON si verifica qui dentro con una lista scaricata dal browser
+ * (sarebbe come lasciare l'elenco degli sconti in vetrina): si chiede al
+ * database, che risponde solo su quel codice. E comunque l'importo vero lo
+ * ricalcola il server al momento del pagamento.
+ */
+function CampoSconto({ config, set, total }) {
+  const [codice, setCodice] = useState(config.sconto?.codice || '');
+  const [stato, setStato] = useState(null); // { ok, messaggio }
+  const [busy, setBusy] = useState(false);
+
+  async function applica() {
+    const c = codice.trim();
+    if (!c) return;
+    if (!supabase) {
+      setStato({ ok: false, messaggio: 'Non riesco a verificare il codice adesso.' });
+      return;
+    }
+    setBusy(true);
+    setStato(null);
+    const { data, error } = await supabase.rpc('verifica_sconto', { p_codice: c, p_totale: total });
+    setBusy(false);
+    if (error) {
+      setStato({ ok: false, messaggio: 'Non riesco a verificare il codice adesso. Riprova.' });
+      return;
+    }
+    if (!data?.valido) {
+      set({ sconto: null });
+      setStato({ ok: false, messaggio: data?.motivo || 'Codice non valido.' });
+      return;
+    }
+    set({ sconto: { codice: data.codice, tipo: data.tipo, valore: data.valore, descrizione: data.descrizione } });
+    setStato({ ok: true, messaggio: `Codice applicato: −€${Number(data.sconto).toFixed(2)}` });
+  }
+
+  function togli() {
+    set({ sconto: null });
+    setCodice('');
+    setStato(null);
+  }
+
+  return (
+    <div className="cfg-field sconto-box">
+      <label htmlFor="codice-sconto">Hai un codice sconto?</label>
+      <div className="sconto-riga">
+        <input
+          id="codice-sconto"
+          type="text"
+          value={codice}
+          onChange={(e) => setCodice(e.target.value.toUpperCase())}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applica())}
+          placeholder="Es. ESTATE10"
+          autoComplete="off"
+          spellCheck="false"
+          disabled={!!config.sconto || busy}
+        />
+        {config.sconto ? (
+          <button type="button" className="cfg-btn cfg-btn-back" onClick={togli}>Togli</button>
+        ) : (
+          <button type="button" className="cfg-btn cfg-btn-next" onClick={applica} disabled={busy || !codice.trim()}>
+            {busy ? 'Verifico…' : 'Applica'}
+          </button>
+        )}
+      </div>
+      {stato && (
+        <p className={stato.ok ? 'sconto-ok' : 'sconto-ko'}>
+          {stato.ok ? '✅ ' : '⚠️ '}{stato.messaggio}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StepReview({ config, total, sconto = 0, set, staff }) {
   const cake = useCakeData();
   const { cakeShapes, cakeTypes, cakeSizes, cakeBases, cakeCrumbles = [], cakeFillings, cakeCoverings, cakeDecorations, cakeExtras = [], cakeAllergens } = cake;
   const allergNames = (config.allergies || []).map((id) => (cakeAllergens || []).find((a) => a.id === id)?.name || id);
@@ -2078,6 +2494,10 @@ function StepReview({ config, total, staff }) {
           {config.photo && (<><dt>Foto</dt><dd>su cialda alimentare</dd></>)}
           {config.candle && (<><dt>Candelina</dt><dd>sì</dd></>)}
           {config.occasion && (<><dt>Occasione</dt><dd>{config.occasion}</dd></>)}
+          {config.sconto && (<><dt>Codice sconto</dt><dd>{config.sconto.codice}</dd></>)}
+          {(config.surprise || config.gift) && (
+            <><dt>Attenzione</dt><dd>{[config.surprise && 'è una sorpresa', config.gift && 'è un regalo'].filter(Boolean).join(' · ')}</dd></>
+          )}
           <dt>{config.delivery ? 'Consegna' : 'Ritiro'}</dt><dd>{config.pickupDate || '—'}{config.pickupTime ? ` alle ${config.pickupTime}` : ''}</dd>
           {config.delivery && (<><dt>Indirizzo</dt><dd>{config.deliveryAddress || '—'}</dd></>)}
           <dt>Cliente</dt><dd>{config.name}</dd>
@@ -2087,11 +2507,20 @@ function StepReview({ config, total, staff }) {
       </div>
       {!staff && (
         <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(124,183,215,0.2)' }}>
+          {sconto > 0 && (
+            <p style={{ margin: '0 0 0.3rem', fontSize: '0.9rem', color: 'var(--grey)' }}>
+              Prezzo pieno €{total.toFixed(2)} — codice <strong>{config.sconto?.codice}</strong>: −€{sconto.toFixed(2)}
+            </p>
+          )}
           <p style={{ margin: 0, fontSize: '1rem', color: 'var(--ink)' }}>
-            <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{total.toFixed(2)}</strong>
+            <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{(total - sconto).toFixed(2)}</strong>
           </p>
         </div>
       )}
+
+      {/* Il codice sconto si mette alla fine, quando il prezzo è già sotto agli
+          occhi: è lì che uno si ricorda di averne uno. */}
+      <CampoSconto config={config} set={set} total={total} />
     </>
   );
 }

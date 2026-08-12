@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { playPing } from '../lib/ping';
+import ChiediCodice from './ChiediCodice';
 
 const STATI = [
   { value: 'da_fare', label: 'Da fare', color: '#b651e4' },
@@ -92,22 +93,52 @@ export default function OrdersPanel() {
     };
   }, []);
 
-  async function setStato(id, stato) {
-    const { error } = await supabase.from('ordini').update({ stato }).eq('id', id);
+  // "Pronto" ed "elimina" chiedono il codice personale: sono le due azioni su
+  // cui, se qualcosa va storto, serve sapere chi è stato. Gli altri passaggi di
+  // stato (in lavorazione, consegnato) restano scorrevoli come prima.
+  const [chiedi, setChiedi] = useState(null);
+
+  async function applicaStato(id, stato, chi) {
+    const patch = { stato };
+    if (stato === 'pronto') {
+      patch.pronto_da = chi?.nome || null;
+      patch.pronto_il = new Date().toISOString();
+    }
+    const { error } = await supabase.from('ordini').update(patch).eq('id', id);
     if (error) { setError(error.message); return; }
-    setOrders((os) => os.map((o) => (o.id === id ? { ...o, stato } : o)));
+    setOrders((os) => os.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+  }
+
+  async function setStato(id, stato) {
     const o = orders.find((x) => x.id === id);
     const label = (STATI.find((s) => s.value === stato) || {}).label || stato;
+    if (stato === 'pronto') {
+      setChiedi({
+        azione: 'Ordine segnato Pronto',
+        dettaglio: o?.cliente_nome || 'ordine',
+        descrizione: `Stai segnando come PRONTO l'ordine di ${o?.cliente_nome || 'un cliente'}. Metti il tuo codice.`,
+        onFatto: (chi) => { setChiedi(null); applicaStato(id, stato, chi); },
+      });
+      return;
+    }
+    await applicaStato(id, stato, null);
     logAction('Ordine spostato', `${o?.cliente_nome || 'ordine'} → ${label}`);
   }
 
   async function remove(id) {
     const o = orders.find((x) => x.id === id);
     if (!window.confirm("Eliminare questo ordine? L'operazione non è reversibile.")) return;
-    const { error } = await supabase.from('ordini').delete().eq('id', id);
-    if (error) { setError(error.message); return; }
-    setOrders((os) => os.filter((x) => x.id !== id));
-    logAction('Ordine eliminato', o?.cliente_nome || 'ordine');
+    setChiedi({
+      azione: 'Ordine eliminato',
+      dettaglio: o?.cliente_nome || 'ordine',
+      descrizione: `Stai eliminando l'ordine di ${o?.cliente_nome || 'un cliente'}. Non si torna indietro: metti il tuo codice.`,
+      onFatto: async () => {
+        setChiedi(null);
+        const { error } = await supabase.from('ordini').delete().eq('id', id);
+        if (error) { setError(error.message); return; }
+        setOrders((os) => os.filter((x) => x.id !== id));
+      },
+    });
   }
 
   async function saveLab(id) {
@@ -272,6 +303,16 @@ export default function OrdersPanel() {
           );
         })}
       </div>
+
+      {chiedi && (
+        <ChiediCodice
+          azione={chiedi.azione}
+          dettaglio={chiedi.dettaglio}
+          descrizione={chiedi.descrizione}
+          onFatto={chiedi.onFatto}
+          onAnnulla={() => setChiedi(null)}
+        />
+      )}
     </section>
   );
 }

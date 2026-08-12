@@ -29,7 +29,7 @@ const MAX_EXTRA_ITEMS = 20;
 // Quante decorazioni si possono mettere su una torta: stessa costante del
 // frontend (MAX_DECORAZIONI in CakeConfigurator.jsx). Oltre, la torta diventa
 // illeggibile — e un client "creativo" non deve poter allungare la lista.
-const MAX_DECORAZIONI = 3;
+const MAX_DECORAZIONI = 5;
 // Id dell'opzione "niente decorazioni": si scarta dal conteggio e dal riepilogo
 // (supplemento 0, non è una decorazione vera). Stesso id della tabella
 // `decorazioni` e della copia di sicurezza src/data/fallback/cakeOptions.js.
@@ -55,6 +55,9 @@ export interface CakeConfig {
   candle?: boolean;
   photo?: unknown; // url o flag: se presente, +5€
   delivery?: boolean; // consegna a domicilio +4€
+  // Codice sconto scritto dal cliente: qui è solo una richiesta, la validità la
+  // decide il database (funzione `verifica_sconto`), non il browser.
+  scontoCodice?: string | null;
   message?: string;
   messageFont?: string; // id della tabella `scritte` (nessun costo)
   extras?: Record<string, number>; // { idExtra: quantità }
@@ -140,9 +143,10 @@ async function decorationsOf(
   const conSupplemento = await supabase
     .from('decorazioni')
     .select('id, nome, supplemento')
+    .eq('attivo', true)
     .in('id', ids);
   const res = conSupplemento.error
-    ? await supabase.from('decorazioni').select('id, nome').in('id', ids)
+    ? await supabase.from('decorazioni').select('id, nome').eq('attivo', true).in('id', ids)
     : conSupplemento;
   if (res.error || !res.data) return vuoto;
 
@@ -217,12 +221,36 @@ export async function computeOrder(supabase: SupabaseClient, config: CakeConfig)
     extrasOf(supabase, config.extras),
   ]);
 
-  const nFlavors = Array.isArray(config.flavors) ? config.flavors.length : 0;
   let euros = tipoBase + dim + forma + base + crumble + farc + cop + deco.euros + extra.euros;
-  if (nFlavors > 1) euros += (nFlavors - 1) * 2;
-  if (config.candle) euros += 1;
+  // I gusti sono TUTTI compresi nel prezzo della torta (nessun supplemento per gli
+  // strati in più) e la candelina è un regalo della gelateria.
+  // ⚠️ Stessa regola lato sito: `total` in src/components/CakeConfigurator.jsx.
   if (config.photo) euros += 5;
   if (config.delivery) euros += 4; // consegna a domicilio (DELIVERY_FEE)
+
+  // ── Codice sconto ────────────────────────────────────────────────────
+  // Qui è l'unico posto che conta: l'importo addebitato nasce da questa riga.
+  // Il codice che arriva dal browser NON è preso per buono — si richiede al
+  // database se vale, adesso, su QUESTO totale (scadenza, utilizzi, minimo di
+  // spesa). Chi scrivesse un codice a mano nella console non pagherebbe meno.
+  const lordo = Math.round(euros * 100) / 100;
+  let sconto = 0;
+  let scontoCodice: string | null = null;
+  if (config.scontoCodice) {
+    const { data } = await supabase.rpc('verifica_sconto', {
+      p_codice: config.scontoCodice,
+      p_totale: lordo,
+    });
+    if (data && data.valido) {
+      sconto = Number(data.sconto) || 0;
+      scontoCodice = data.codice as string;
+    }
+  }
+  // Mai sotto il minimo addebitabile da Stripe (~0,50 €): uno sconto che porta
+  // il totale a zero farebbe fallire il pagamento con un errore incomprensibile.
+  const MINIMO = 0.5;
+  if (lordo - sconto < MINIMO) sconto = Math.max(0, Math.round((lordo - MINIMO) * 100) / 100);
+  euros = lordo - sconto;
 
   const amountCents = Math.round(euros * 100);
 
@@ -242,5 +270,5 @@ export async function computeOrder(supabase: SupabaseClient, config: CakeConfig)
     extra.labels.length && `extra: ${extra.labels.join(', ')}`,
   ].filter(Boolean).join(' · ');
 
-  return { amountCents, summary };
+  return { amountCents, summary, sconto, scontoCodice, lordo };
 }
