@@ -1108,6 +1108,10 @@ p {
 /* Nastro orizzontale ad auto-scroll (foto delle creazioni) */
 .gallery-scroll {
   margin-top: clamp(2rem, 4vw, 3.4rem);
+  /* Respiro sopra e sotto: le stampe sono inclinate e hanno un'ombra larga,
+     e `overflow: hidden` taglia al bordo del padding. Senza questo spazio si
+     vedrebbero angoli mozzati e ombre tranciate di netto. */
+  padding-block: clamp(0.9rem, 2vw, 1.6rem);
   overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
@@ -1135,22 +1139,45 @@ p {
    scorrimento. La classe la mette/toglie Gallery.jsx guardando se è in vista. */
 .gallery-scroll:not(.in-vista) .gallery-track { animation-play-state: paused; }
 
+/* Le foto sono stampe Polaroid appoggiate sul banco: idea presa dalla versione
+   V2, che è piaciuta ai titolari. Tre cose la fanno leggere come una Polaroid,
+   e tolta una qualsiasi non funziona più:
+   il formato FISSO (una Polaroid è sempre uguale, è il senso del formato),
+   il bordo bianco più SPESSO SOTTO (lì ci andava la scritta a mano), e
+   l'inclinazione appena accennata, come foto posate a mano una accanto all'altra.
+   La scritta sotto non c'è di proposito: qui la vogliono senza. */
 .gallery-shot {
   flex: 0 0 auto;
-  height: clamp(230px, 34vw, 360px);
+  width: clamp(178px, 24vw, 268px);
   margin: 0;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--cream-warm);
-  box-shadow: 0 16px 34px -18px rgba(50, 40, 31, 0.4);
+  /* Il bordo basso è il doppio abbondante degli altri: è la firma della
+     Polaroid. Scala insieme alla stampa, se no su telefono — dove la stampa è
+     larga 180px invece di 270 — quello stesso bordo pesa la metà in più e la
+     foto sembra spinta in alto dentro la cornice. */
+  padding: clamp(6px, 1.6vw, 9px) clamp(6px, 1.6vw, 9px) clamp(15px, 4vw, 22px);
+  background: #fffdf7;
+  border-radius: 3px;
+  /* Due ombre: una stretta che stacca la stampa dal fondo, una larga e morbida
+     che la fa sembrare appoggiata invece che incollata. */
+  box-shadow:
+    0 1px 2px rgba(50, 40, 31, 0.16),
+    0 18px 34px -20px rgba(50, 40, 31, 0.5);
 }
 
+/* Inclinazione alternata. Il nastro duplica l'elenco, quindi il ritmo resta
+   identico anche quando riparte da capo e non si vede nessuno stacco. */
+.gallery-shot:nth-child(odd) { transform: rotate(-1.1deg); }
+.gallery-shot:nth-child(even) { transform: rotate(1.1deg); }
+
 .gallery-shot img {
-  height: 100%;
-  width: auto;
+  width: 100%;
+  height: auto;
   max-width: none;
+  aspect-ratio: 4 / 3.4;
   display: block;
   object-fit: cover;
+  border-radius: 1px;
+  background: var(--cream-warm); /* mentre carica non lampeggia bianco su bianco */
 }
 
 @keyframes gallery-marquee {
@@ -1453,7 +1480,10 @@ p {
 /* La foto della fascia ora è un pulsante: toccandola si apre ingrandita. */
 .gallery-shot-btn {
   display: block;
-  height: 100%;
+  width: 100%;
+  /* Non più `height: 100%`: ora la stampa ha una larghezza fissa e l'altezza
+     la decide il rapporto della foto, quindi imporre l'altezza schiaccerebbe
+     il bordo bianco inferiore. */
   padding: 0;
   border: 0;
   background: none;
