@@ -458,16 +458,6 @@ function heartFootprint(R) {
   return poly.map(([x, z]) => [(x - cx), (z - cz)]);
 }
 
-/** Punto dentro poligono (ray casting). */
-function pointInPoly(x, z, poly) {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
-    if (((zi > z) !== (zj > z)) && (x < ((xj - xi) * (z - zi)) / (zj - zi) + xi)) inside = !inside;
-  }
-  return inside;
-}
-
 /** Il poligono del contorno della torta, forma per forma. */
 function contornoPoly(shape, R, inset) {
   if (shape === 'cuore') return heartFootprint(R * inset);
@@ -483,21 +473,6 @@ function contornoPoly(shape, R, inset) {
     poly.push([Math.cos(a) * R * inset, Math.sin(a) * R * inset]);
   }
   return poly;
-}
-
-/**
- * Il posto è su un tratto di bordo che guarda DAVVERO fuori?
- *
- * Serve al CUORE, che ha l'incavo in cima: lì il contorno rientra, e quello che
- * per un pezzo è il "fuori" punta verso il centro della torta. Un fiocco
- * annodato in quel punto finiva in mezzo al cuore invece che sul bordo —
- * sembrava un errore, ed era un errore.
- *
- * Il controllo è geometrico e vale per qualsiasi forma: si fa un passo nel
- * verso in cui il pezzo sporge e si guarda se si è usciti dalla sagoma.
- */
-function bordoLibero(poly, x, z, ang, passo) {
-  return !pointInPoly(x + Math.cos(ang) * passo, z + Math.sin(ang) * passo, poly);
 }
 
 /** N punti distribuiti lungo il CONTORNO della forma (per i ciuffi di panna). */
@@ -1129,8 +1104,11 @@ const FIOCCHI_COLORS = ['#3a3540', '#f4a9c0', '#e0334c', '#e8c069'];
  *
  * Sono tutti IDENTICI fra loro: né misure né lunghezze cambiano da un fiocco
  * all'altro. Vengono da un nastro comprato, non annodati uno per uno.
+ *
+ * `s` rimpicciolisce tutto il fiocco: serve sulle torte basse, dove a
+ * grandezza piena non ci starebbe nel fianco.
  */
-function Fiocchi({ spots, y, drop = 0.5, color }) {
+function Fiocchi({ spots, y, drop = 0.5, color, s = 1 }) {
   const { asole, nodi, code } = useMemo(() => {
     const pal = decoPalette(FIOCCHI_COLORS, color);
     const asole = [];
@@ -1144,8 +1122,8 @@ function Fiocchi({ spots, y, drop = 0.5, color }) {
       const nx = Math.cos(ang);     // normale uscente
       const nz = Math.sin(ang);
       // il nodo sporge dal fianco, così il nastro non sprofonda nella torta
-      const px = x + nx * 0.028;
-      const pz = z + nz * 0.028;
+      const px = x + nx * 0.028 * s;
+      const pz = z + nz * 0.028 * s;
       // due asole affiancate lungo il fianco, inclinate verso l'alto. Il nastro
       // è di raso: largo e piatto, non un cordoncino — altrimenti a questa
       // distanza il fiocco non si legge.
@@ -1154,9 +1132,9 @@ function Fiocchi({ spots, y, drop = 0.5, color }) {
         // annodato davvero: prima erano inclinate in giù e sembravano due ali
         // afflosciate. Sono anche un po' più alzate rispetto al nodo.
         asole.push({
-          position: [px + ux * sgn * 0.135, y + 0.062, pz + uz * sgn * 0.135],
+          position: [px + ux * sgn * 0.135 * s, y + 0.062 * s, pz + uz * sgn * 0.135 * s],
           rotation: [0, ry, -sgn * 0.72],
-          scale: [0.17, 0.1, 0.036],
+          scale: [0.17 * s, 0.1 * s, 0.036 * s],
           color: c,
         });
         // I due nastri scendono DIVARICANDOSI verso l'esterno (prima si
@@ -1166,16 +1144,16 @@ function Fiocchi({ spots, y, drop = 0.5, color }) {
         // si notava soltanto che erano diversi fra loro.
         const len = drop * 0.65;
         code.push({
-          position: [px + ux * sgn * 0.055, y - len / 2 - 0.05, pz + uz * sgn * 0.055],
+          position: [px + ux * sgn * 0.055 * s, y - len / 2 - 0.05 * s, pz + uz * sgn * 0.055 * s],
           rotation: [0, ry, -sgn * 0.32],
-          scale: [0.058, len, 0.014],
+          scale: [0.058 * s, len, 0.014 * s],
           color: c,
         });
       }
-      nodi.push({ position: [px, y, pz], scale: [0.052, 0.048, 0.038], color: shade(c, -0.18) });
+      nodi.push({ position: [px, y, pz], scale: [0.052 * s, 0.048 * s, 0.038 * s], color: shade(c, -0.18) });
     }
     return { asole, nodi, code };
-  }, [spots, y, drop, color]);
+  }, [spots, y, drop, color, s]);
   // raso: molto lucido e liscio
   const nastro = { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1.05 };
   return (
@@ -1253,6 +1231,67 @@ const MIX_DECORATIONS = new Set();
 const NASTRI_PER_DECO = 4;
 
 /**
+ * Un fiocco è LARGO (mezza larghezza ≈ 0.34) e piatto: per starci, il bordo
+ * dev'essere abbastanza DISTESO sotto tutta la sua ampiezza. Dove il contorno
+ * gira stretto — la punta del cuore, il suo incavo, gli spigoli di quadrata e
+ * rettangolare — la faccia accanto taglia il nastro in due, ed è esattamente
+ * quello che sembrava "un fiocco rotto".
+ *
+ * TOLL è di quanto il bordo può allontanarsi dal piano del fiocco nel tratto
+ * che il fiocco copre. 0.08 è misurato, non scelto a occhio: sotto 0.06 viene
+ * scartata perfino la torta TONDA (la curvatura di un cerchio su 34 cm di
+ * corda vale già ~0.05), sopra 0.09 rientrano i posti dentro l'incavo del
+ * cuore, dove le due gobbe nascondono il fiocco. A 0.08: tonda tutti i posti
+ * buoni, quadrata e rettangolare scartano gli spigoli, cuore scarta punta,
+ * incavo e i loro dintorni.
+ */
+const META_FIOCCO = 0.34;
+const TOLL_FIOCCO = 0.08;
+
+/** I posti lungo il bordo dove un fiocco ci sta davvero, in ordine di giro. */
+function postiPerFiocchi(shape, R, quanti, fuori) {
+  const N = 360;
+  const fitto = decoSpots(shape, R, N, 1);
+  const perim = perimeterLen(shape, R, 1) || 1;
+  const finestra = Math.max(1, Math.round(META_FIOCCO / (perim / N)));
+  const buoni = [];
+  for (let i = 0; i < N; i++) {
+    const s = fitto[i];
+    const nx = Math.cos(s.ang);
+    const nz = Math.sin(s.ang);
+    // `avanti` = quanto la sagoma si spinge DAVANTI al piano del fiocco nel
+    // tratto che il fiocco copre. Il fiocco è piatto e appoggiato di taglio:
+    // se non lo si scosta almeno di tanto, la torta gli passa attraverso e si
+    // vedono solo le punte delle asole — sembrava un fiocco rotto a metà.
+    let avanti = 0;
+    let ok = true;
+    for (let j = -finestra; j <= finestra && ok; j++) {
+      const p = fitto[(i + j + N) % N];
+      const d = (p.x - s.x) * nx + (p.z - s.z) * nz;
+      if (Math.abs(d) > TOLL_FIOCCO) ok = false;
+      else if (d > avanti) avanti = d;
+    }
+    if (ok) buoni.push({ s, avanti });
+  }
+  if (!buoni.length) return [];
+  // Fra i posti buoni se ne prendono `quanti`, distribuiti lungo il giro. E si
+  // spostano in fuori LUNGO LA PROPRIA NORMALE (non ingrandendo la sagoma: su
+  // un cuore ingrandire allontana il bordo di quantità diverse punto per punto).
+  const scelti = [];
+  for (let k = 0; k < quanti; k++) {
+    const { s, avanti } = buoni[Math.floor((k * buoni.length) / quanti)];
+    const spinta = fuori + avanti + 0.035;
+    scelti.push({
+      ...s,
+      i: k,
+      x: s.x + Math.cos(s.ang) * spinta,
+      z: s.z + Math.sin(s.ang) * spinta,
+    });
+  }
+  return scelti;
+}
+
+/**
  * UNA decorazione sulla superficie, sui posti del contorno che le sono toccati.
  * Chi non ha una resa 3D non disegna niente: meglio pulito che finto.
  */
@@ -1294,8 +1333,10 @@ function Decorazioni3D({
   colors,
   topInset = 0.79,
   edgeR,
+  edgeOut = 0,
   edgeY,
   drop,
+  bowS = 1,
 }) {
   const shapeF = shape === 'rettangolare' ? 1.15 : shape === 'quadrata' ? 1.05 : 1;
 
@@ -1328,18 +1369,14 @@ function Decorazioni3D({
     [sopra, spotsSopra]
   );
 
-  // Fianco: pochi nastri, ben distanziati, sul contorno esterno della torta.
-  // Si scartano i posti che cadono in un rientro del bordo — sul cuore è
-  // l'incavo in cima: un nastro annodato lì finirebbe in mezzo alla torta.
-  // Meglio un fiocco in meno che uno piantato dove non si può annodare.
+  // Fianco: pochi nastri, ben distanziati, e solo dove il bordo li regge
+  // davvero (vedi postiPerFiocchi).
   const bowR = edgeR ?? R;
   const nFianco = fianco.length * NASTRI_PER_DECO;
-  const spotsFianco = useMemo(() => {
-    const poly = contornoPoly(shape, bowR, 1.0);
-    return decoSpots(shape, bowR, nFianco, 1.0).filter((s) =>
-      bordoLibero(poly, s.x, s.z, s.ang, bowR * 0.1)
-    );
-  }, [shape, bowR, nFianco]);
+  const spotsFianco = useMemo(
+    () => postiPerFiocchi(shape, bowR, nFianco, edgeOut),
+    [shape, bowR, nFianco, edgeOut]
+  );
   const gruppiFianco = useMemo(
     () => fianco.map((_, k) => spotsFianco.filter((s) => s.i % fianco.length === k)),
     [fianco, spotsFianco]
@@ -1362,6 +1399,7 @@ function Decorazioni3D({
           spots={gruppiFianco[k] || []}
           y={edgeY ?? y}
           drop={drop}
+          s={bowS}
           color={(colors && colors[id]) || ''}
         />
       ))}
@@ -2088,16 +2126,28 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // sporgono di mezzo cordone più in fuori, restavano sepolti dietro la panna.
   // Vale anche per le due fasce di "sotto e sopra", che allargano il fianco
   // pur non essendo un guscio intero.
-  // Il raggio a cui si annodano i fiocchi: devono restare DAVANTI alla panna,
-  // se no ci finiscono dietro e spariscono. Comanda quindi la panna che sporge
-  // di più, qualunque sia — le ruche verticali sul fianco o la ghirlanda alla
-  // base di "sotto e sopra", dove finivano nascosti i nastri.
+  // Dove si annodano i fiocchi. Due numeri, non uno solo: il contorno che
+  // seguono (`fiancoBase`) e di quanto stanno in fuori rispetto a quello
+  // (`fiancoFuori`), per restare DAVANTI alla panna invece che finirci dietro.
+  // Comanda la panna che sporge di più: le ruche verticali sul fianco o la
+  // ghirlanda alla base di "sotto e sopra".
   const pannaACiuffi = coverIsCream && covering?.id === 'panna';
-  const fiancoR = Math.max(
-    wrapFull || pannaSottoSopra ? wrapR : R,
-    pannaACiuffi ? wrapR + RUCHE_LARGHEZZA * 0.5 : 0,
-    pannaSottoSopra ? wrapR + CIUFFO_BASE * 0.55 : 0
+  const fiancoBase = wrapFull || pannaSottoSopra ? wrapR : R;
+  const fiancoFuori = Math.max(
+    pannaACiuffi ? RUCHE_LARGHEZZA * 0.5 : 0,
+    pannaSottoSopra ? CIUFFO_BASE * 0.55 : 0
   );
+  // Il fiocco dev'essere CONTENUTO nel fianco. Era questo a farlo sembrare
+  // rotto, su ogni forma: le asole salgono ~0.2 sopra il nodo e i nastri
+  // scendono, e con le misure fisse di prima il fiocco era più alto del fianco
+  // in TUTTE le torte — le asole spuntavano oltre il bordo (dove la superficie
+  // di sopra le taglia) e i nastri finivano sul vassoio.
+  // Quindi: nodo a due terzi d'altezza, nastri che arrivano quasi alla base, e
+  // se il fianco è basso si rimpicciolisce tutto invece di sbordare.
+  const fiancoAlt = bodyTop - stackBottom;
+  const nodoY = stackBottom + fiancoAlt * 0.62;
+  const bowS = Math.min(1, (bodyTop - nodoY) / 0.2);
+  const nastroLen = Math.max(0.06, (nodoY - stackBottom) * 0.8);
 
   // ---- L'ANELLO di ciuffi sul bordo di sopra: c'è solo se c'è la panna ----
   // UNA fila sola, sempre la stessa — che arrivi dalla copertura fatta col
@@ -2297,11 +2347,13 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           // I FIOCCHI si annodano SEMPRE sul fianco, con o senza panna: è così
           // che si mette un nastro a una torta. (Per un giro li avevo appoggiati
           // sopra la panna per non farli coprire: sembravano posati lì, non
-          // legati. La panna non li nasconde lo stesso, perché `fiancoR` tiene
-          // conto di quanto sporgono le ruche.)
-          edgeR={fiancoR}
-          edgeY={bodyTop - bandH * 0.38}
-          drop={bodyH}
+          // legati. La panna non li nasconde lo stesso, perché `fiancoFuori`
+          // tiene conto di quanto sporge.)
+          edgeR={fiancoBase}
+          edgeOut={fiancoFuori}
+          edgeY={nodoY}
+          drop={nastroLen / 0.65}
+          bowS={bowS}
         />
       )}
 
