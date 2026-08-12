@@ -1908,12 +1908,57 @@
   font-size: 0.88rem;
   margin: 0 0 1rem;
 }
-.consigliate-gruppo { margin-top: 1rem; }
-.consigliate-gruppo h4 {
-  margin: 0 0 0.55rem;
-  font-size: 0.95rem;
-  letter-spacing: 0.02em;
+/* I due tasti gelato / semifreddo: si escludono, e finche' non se ne tocca
+   uno le carte restano chiuse. Con tutte e nove aperte la pagina del passo
+   "che forma vuoi" diventava lunghissima da scorrere. */
+.consigliate-tasti {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
 }
+.consigliate-tasto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  background: var(--cream);
+  border: 1.5px solid rgba(44, 118, 153, 0.22);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--violet-deep);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.consigliate-tasto:hover {
+  background: rgba(124, 183, 215, 0.1);
+  border-color: var(--violet-deep);
+  transform: translateY(-1px);
+}
+.consigliate-tasto.aperto {
+  background: var(--violet-deep);
+  border-color: var(--violet-deep);
+  color: #fff;
+}
+/* Quante torte ci sono dentro: si sa cosa aspettarsi prima di aprire */
+.consigliate-quante {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35em;
+  height: 1.35em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: rgba(44, 118, 153, 0.14);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.consigliate-tasto.aperto .consigliate-quante {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.consigliate-gruppo { margin-top: 0.2rem; }
 /* La descrizione è il piatto forte della carta: si legge tutta, non tagliata */
 .consigliata-card .opt-desc {
   display: block;

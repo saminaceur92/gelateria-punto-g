@@ -1397,6 +1397,8 @@ function StepShape({ config, set, consigliata }) {
     cakeFillings, cakeCoverings, cakeDecorations, torteConsigliate,
   } = useCakeData();
   const persone = personeOf(cakeSizes.find((s) => s.id === config.sizeId));
+  // Quale gruppo di consigliate è aperto ('' = nessuno, si vedono solo i tasti).
+  const [gruppoAperto, setGruppoAperto] = useState('');
 
   // "Le nostre consigliate": ogni carta si risolve CONTRO IL LISTINO VERO —
   // gusti per nome, il resto per id. Se un ingrediente non c'è più (spento
@@ -1464,14 +1466,35 @@ function StepShape({ config, set, consigliata }) {
         <div className="consigliate">
           <h3 className="consigliate-titolo">Se non sai cosa scegliere, ecco le nostre consigliate</h3>
           <p className="consigliate-sotto">
-            Torte già pensate da noi: toccane una e ti resta solo da decidere scritta, foto e candelina.
+            Torte già pensate da noi: scegli prima se la vuoi gelato o semifreddo, poi toccane una
+            e ti resta solo da decidere scritta, foto e candelina.
           </p>
+          {/* Prima si sceglie il tipo, poi compaiono le sue torte: tutte e nove
+              insieme facevano una pagina lunghissima da scorrere. I due tasti si
+              escludono a vicenda; ritoccare quello aperto lo richiude. */}
+          <div className="consigliate-tasti" role="group" aria-label="Tipo di torta consigliata">
+            {gruppi.map((g) => {
+              const quante = consigliate.filter((t) => t.gruppo === g.id).length;
+              if (!quante) return null;
+              const aperto = gruppoAperto === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={`consigliate-tasto ${aperto ? 'aperto' : ''}`}
+                  aria-pressed={aperto}
+                  onClick={() => setGruppoAperto(aperto ? '' : g.id)}
+                >
+                  {g.titolo} <span className="consigliate-quante">{quante}</span>
+                </button>
+              );
+            })}
+          </div>
           {gruppi.map((g) => {
             const lista = consigliate.filter((t) => t.gruppo === g.id);
-            if (!lista.length) return null;
+            if (!lista.length || gruppoAperto !== g.id) return null;
             return (
               <div key={g.id} className="consigliate-gruppo">
-                <h4>{g.titolo}</h4>
                 <div className="opt-grid cols-2">
                   {lista.map((t) => (
                     <button
