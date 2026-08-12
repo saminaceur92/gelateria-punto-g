@@ -468,24 +468,41 @@ function pointInPoly(x, z, poly) {
   return inside;
 }
 
-/** N punti distribuiti lungo il CONTORNO della forma (per i ciuffi di panna). */
-function perimeterPts(shape, R, inset, n) {
-  // costruisce il poligono di contorno per la forma
-  let poly;
-  if (shape === 'cuore') {
-    poly = heartFootprint(R * inset);
-  } else if (shape === 'quadrata' || shape === 'rettangolare') {
+/** Il poligono del contorno della torta, forma per forma. */
+function contornoPoly(shape, R, inset) {
+  if (shape === 'cuore') return heartFootprint(R * inset);
+  if (shape === 'quadrata' || shape === 'rettangolare') {
     const [w, d] = boxDims(shape, R);
     const hw = (w / 2) * inset, hd = (d / 2) * inset;
-    poly = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]];
-  } else {
-    poly = [];
-    const m = 96;
-    for (let i = 0; i < m; i++) {
-      const a = (i / m) * Math.PI * 2;
-      poly.push([Math.cos(a) * R * inset, Math.sin(a) * R * inset]);
-    }
+    return [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]];
   }
+  const poly = [];
+  const m = 96;
+  for (let i = 0; i < m; i++) {
+    const a = (i / m) * Math.PI * 2;
+    poly.push([Math.cos(a) * R * inset, Math.sin(a) * R * inset]);
+  }
+  return poly;
+}
+
+/**
+ * Il posto è su un tratto di bordo che guarda DAVVERO fuori?
+ *
+ * Serve al CUORE, che ha l'incavo in cima: lì il contorno rientra, e quello che
+ * per un pezzo è il "fuori" punta verso il centro della torta. Un fiocco
+ * annodato in quel punto finiva in mezzo al cuore invece che sul bordo —
+ * sembrava un errore, ed era un errore.
+ *
+ * Il controllo è geometrico e vale per qualsiasi forma: si fa un passo nel
+ * verso in cui il pezzo sporge e si guarda se si è usciti dalla sagoma.
+ */
+function bordoLibero(poly, x, z, ang, passo) {
+  return !pointInPoly(x + Math.cos(ang) * passo, z + Math.sin(ang) * passo, poly);
+}
+
+/** N punti distribuiti lungo il CONTORNO della forma (per i ciuffi di panna). */
+function perimeterPts(shape, R, inset, n) {
+  const poly = contornoPoly(shape, R, inset);
   // ricampiona n punti equidistanti per lunghezza d'arco
   const segs = [];
   let total = 0;
@@ -1316,9 +1333,17 @@ function Decorazioni3D({
   );
 
   // Fianco: pochi nastri, ben distanziati, sul contorno esterno della torta.
+  // Si scartano i posti che cadono in un rientro del bordo — sul cuore è
+  // l'incavo in cima: un nastro annodato lì finirebbe in mezzo alla torta.
+  // Meglio un fiocco in meno che uno piantato dove non si può annodare.
   const bowR = edgeR ?? R;
   const nFianco = fianco.length * NASTRI_PER_DECO;
-  const spotsFianco = useMemo(() => decoSpots(shape, bowR, nFianco, 1.0), [shape, bowR, nFianco]);
+  const spotsFianco = useMemo(() => {
+    const poly = contornoPoly(shape, bowR, 1.0);
+    return decoSpots(shape, bowR, nFianco, 1.0).filter((s) =>
+      bordoLibero(poly, s.x, s.z, s.ang, bowR * 0.1)
+    );
+  }, [shape, bowR, nFianco]);
   const gruppiFianco = useMemo(
     () => fianco.map((_, k) => spotsFianco.filter((s) => s.i % fianco.length === k)),
     [fianco, spotsFianco]
@@ -2268,17 +2293,14 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
           y={surfaceY + (hasRing ? ringS * 0.55 : 0)}
           topInset={hasRing ? ringInset : 0.79}
           colors={decoColors}
-          // I FIOCCHI: senza panna si annodano sul fianco (raggio esterno vero
-          // della torta, nodo sotto il bordo, nastri lungo il corpo). Con
-          // l'anello di panna si APPOGGIANO SOPRA i ciuffi, se no la panna li
-          // copre — ma lì vanno rimpiccioliti, tenuti bassi e tirati un po'
-          // verso il centro: a grandezza piena si alzavano come una corona e
-          // uscivano dalla sagoma della torta.
-          edgeR={hasRing ? R * ringInset - 0.06 : fiancoR}
-          edgeY={hasRing ? surfaceY + ringS * 0.72 : bodyTop - bandH * 0.38}
-          drop={hasRing ? ringS * 0.7 : bodyH}
-          bowS={hasRing ? 0.62 : 1}
-          bowAlzata={hasRing ? 0.42 : 0.72}
+          // I FIOCCHI si annodano SEMPRE sul fianco, con o senza panna: è così
+          // che si mette un nastro a una torta. (Per un giro li avevo appoggiati
+          // sopra la panna per non farli coprire: sembravano posati lì, non
+          // legati. La panna non li nasconde lo stesso, perché `fiancoR` tiene
+          // conto di quanto sporgono le ruche.)
+          edgeR={fiancoR}
+          edgeY={bodyTop - bandH * 0.38}
+          drop={bodyH}
         />
       )}
 
