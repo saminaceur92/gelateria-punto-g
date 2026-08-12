@@ -353,7 +353,10 @@ export default function Dashboard() {
             { key: 'usi', label: 'Già usato (volte)', type: 'number' },
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
           ],
-          newRow: () => ({ id: uuid(), codice: '', descrizione: '', tipo: 'percentuale', valore: 10, minimo: 0, scadenza: null, usi_max: null, usi: 0, attivo: true }),
+          // Il codice di partenza è provvisorio ma DIVERSO ogni volta: due codici
+          // uguali non possono esistere, e partendo tutti da vuoto la seconda
+          // riga nuova sbatteva contro la prima ancora da compilare.
+          newRow: () => ({ id: uuid(), codice: `NUOVO${Math.random().toString(36).slice(2, 6).toUpperCase()}`, descrizione: '', tipo: 'percentuale', valore: 10, minimo: 0, scadenza: null, usi_max: null, usi: 0, attivo: true }),
         },
       },
       {
@@ -398,7 +401,9 @@ export default function Dashboard() {
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
             { key: 'ordine', label: 'Ordine', type: 'number' },
           ],
-          newRow: () => ({ id: uuid(), codice: 'E000', nome: 'Nuovo additivo', descrizione: '', attivo: true, ordine: 1000 }),
+          // Codice provvisorio diverso a ogni aggiunta: anche qui i doppioni non
+          // sono ammessi, e con "E000" fisso il secondo additivo non entrava.
+          newRow: () => ({ id: uuid(), codice: `E${900 + Math.floor(Math.random() * 100)}`, nome: 'Nuovo additivo', descrizione: '', attivo: true, ordine: 1000 }),
         },
       },
       {

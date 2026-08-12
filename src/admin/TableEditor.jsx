@@ -114,6 +114,25 @@ function MultiCheckField({ value, options, onChange }) {
   );
 }
 
+/**
+ * Gli errori del database arrivano in inglese e in gergo ("duplicate key value
+ * violates unique constraint…"): chi gestisce il menù non deve leggere quella
+ * roba, deve capire cosa ha sbagliato e come rimediare.
+ */
+function messaggioErrore(msg = '') {
+  if (/duplicate key|unique constraint/i.test(msg)) {
+    return 'Ne esiste già uno con lo stesso codice: cambialo e riprova. (Due voci non possono avere lo stesso codice.)';
+  }
+  if (/violates not-null|null value in column/i.test(msg)) {
+    const campo = (msg.match(/column "([^"]+)"/) || [])[1];
+    return campo
+      ? `Manca un dato obbligatorio: "${campo}". Compilalo e riprova.`
+      : 'Manca un dato obbligatorio: compila i campi vuoti e riprova.';
+  }
+  if (/does not exist|schema cache/i.test(msg)) return msg; // ha già il suo messaggio
+  return msg;
+}
+
 export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [] }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
@@ -164,7 +183,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     const patch = {};
     for (const f of campiDaSalvare) patch[f.key] = row[f.key];
     const { error } = await supabase.from(table).update(patch).eq('id', row.id);
-    if (error) setError(error.message);
+    if (error) setError(messaggioErrore(error.message));
     else {
       setDirty((d) => ({ ...d, [row.id]: false }));
       logAction('Contenuto modificato', `${title}: ${rowLabel(row)}`);
@@ -185,7 +204,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       const { error } = await supabase.from(table).update(patch).eq('id', row.id);
       // Al primo errore ci si ferma: le righe già salvate restano salvate,
       // quelle dopo restano segnate da salvare — niente si perde in silenzio.
-      if (error) { setError(`${rowLabel(row)}: ${error.message}`); break; }
+      if (error) { setError(`${rowLabel(row)}: ${messaggioErrore(error.message)}`); break; }
       setDirty((d) => ({ ...d, [row.id]: false }));
       salvate += 1;
     }
@@ -198,7 +217,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     setError('');
     const next = !row.attivo;
     const { error } = await supabase.from(table).update({ attivo: next }).eq('id', row.id);
-    if (error) setError(error.message);
+    if (error) setError(messaggioErrore(error.message));
     else {
       setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, attivo: next } : r)));
       logAction(next ? 'Contenuto attivato' : 'Contenuto disattivato', `${title}: ${rowLabel(row)}`);
@@ -215,7 +234,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       .insert({ ...newRow(), ordine: maxOrd + 10, attivo: true })
       .select()
       .single();
-    if (error) setError(error.message);
+    if (error) setError(messaggioErrore(error.message));
     else {
       setRows((rs) => [...rs, data]);
       logAction('Contenuto aggiunto', title);
@@ -228,7 +247,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     setBusy(true);
     setError('');
     const { error } = await supabase.from(table).delete().eq('id', row.id);
-    if (error) setError(error.message);
+    if (error) setError(messaggioErrore(error.message));
     else {
       setRows((rs) => rs.filter((r) => r.id !== row.id));
       logAction('Contenuto eliminato', `${title}: ${rowLabel(row)}`);
@@ -321,7 +340,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
                   row={row}
                   field={f}
                   table={table}
-                  onError={setError}
+                  onError={(m) => setError(messaggioErrore(m))}
                   onSaved={(id, patch) =>
                     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)))
                   }
