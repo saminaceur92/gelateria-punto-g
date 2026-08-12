@@ -3,6 +3,23 @@
    Trasforma il wizard in un'esperienza tipo app nativa
    ============================================================ */
 
+/* Il bollino delle preferenze cookie di iubenda galleggia in basso a sinistra
+   e finisce SOPRA la barra del configuratore. Non è solo antiestetico: è lui a
+   ricevere il dito al posto di "Sorprendimi", quindi quel pulsante da telefono
+   non si riesce a premere. Mentre il configuratore è aperto sparisce; appena
+   si chiude torna, e le preferenze cookie restano raggiungibili dal piè di
+   pagina del sito, dove c'è la voce apposta.
+
+   La classe è ripetuta tre volte di proposito, non è un errore: iubenda
+   impone `display: block !important` con un selettore da tre classi
+   (`.iubenda-tp-btn:not(...):not(...)`), e fra due `!important` vince il più
+   specifico. Ripetere la classe è il modo standard di salire di specificità
+   senza mettere le mani nell'HTML di terze parti. */
+body:has(.cfg-overlay) .iubenda-tp-btn.iubenda-tp-btn.iubenda-tp-btn,
+body:has(.cfg-overlay) #iubenda-cs-banner .iubenda-cs-preferences-link {
+  display: none !important;
+}
+
 @media (max-width: 900px) {
   /* Layout: header fisso, preview hero, body scrollabile, footer fisso */
   .cfg-overlay { padding: 0; align-items: stretch; }
@@ -51,15 +68,24 @@
      l'immagine è dimostrativa, ed è proprio da telefono che la torta si guarda.
      Solo più compatto, per non rubare spazio alla scelta. */
   .cake-card-footer {
-    margin-top: 0.5rem;
-    padding-top: 0.45rem;
-    font-size: 0.72rem;
-    line-height: 1.35;
+    margin-top: 0.3rem;
+    padding-top: 0.3rem;
+    font-size: 0.68rem;
+    line-height: 1.25;
   }
   .cake-card-type { font-size: 1.15rem; margin-top: 0.2rem; }
   .cake-card-size { font-size: 0.78rem; margin: 0.1rem 0 0; }
 
-  .cake3d-stage { max-width: 240px; height: 240px; margin-bottom: 0.2rem; }
+  /* L'altezza della torta si lega allo SCHERMO, non a un numero fisso.
+     A 240px pieni l'anteprima si prendeva metà del telefono e alle scelte —
+     cioè al motivo per cui la schermata esiste — ne restava il 17%. Legandola
+     ai dvh, su un telefono piccolo la torta si stringe da sola invece di
+     mangiarsi lo spazio di chi deve scegliere; su uno grande resta grande. */
+  .cake3d-stage {
+    max-width: 240px;
+    height: min(240px, 26dvh);
+    margin-bottom: 0.2rem;
+  }
 
   /* Info preview sotto: solo prezzo. Combos in alto, Sorprendimi in barra. */
   .cfg-preview-info { margin-top: 0.3rem; }
@@ -67,7 +93,12 @@
   .cfg-preview-info p:not(.combo-counter) { display: none; }
   .cfg-preview-info .combo-counter { display: none; }
   .cfg-preview-info .cfg-btn { display: none; } /* Sorprendimi spostato nella barra */
-  .cfg-preview-info .price { font-size: 1.4rem; margin-top: 0; }
+  /* Il totale qui NON serve: sta già nella barretta in fondo, sempre visibile
+     mentre si sceglie. Erano due prezzi identici nella stessa schermata — è
+     rimasto quello sotto la torta quando ad agosto è stata aggiunta la barra.
+     Toglierlo restituisce spazio a chi deve scegliere, che è il problema
+     segnalato dai titolari ("lo spazio delle scelte è sproporzionato"). */
+  .cfg-preview-info .price { display: none; }
 
   /* combos in alto, sopra la torta (non collide con il 3D) */
   .combo-counter-top {
@@ -130,16 +161,30 @@
   .cfg-field-row { grid-template-columns: 1fr; gap: 0.7rem; }
 
   /* Footer fissato in basso, con safe-area iPhone */
+  /* La barra occupava TRE righe impilate — riepilogo, Sorprendimi, e
+     Indietro/Avanti — cioè un quarto dello schermo solo di comandi, mentre le
+     scelte ne avevano il 17%. Il riepilogo la sua riga la tiene (è il pannello
+     che si apre col totale), ma gli altri due devono stare insieme sulla
+     seconda: non ci stavano per una manciata di pixel, e bastava stringere
+     "Sorprendimi". */
   .cfg-footer {
-    padding: 0.7rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
-    gap: 0.5rem;
-    flex-wrap: nowrap;
+    padding: 0.55rem 0.8rem calc(0.55rem + env(safe-area-inset-bottom));
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
     box-shadow: 0 -8px 20px -10px rgba(0,0,0,0.15);
     z-index: 5;
   }
   .cfg-footer .price-tag strong { font-size: 1.25rem; }
   .cfg-footer .price-tag span { font-size: 0.6rem; }
-  .cfg-footer-actions { gap: 0.4rem; flex-shrink: 0; }
+  .cfg-footer .cfg-btn-surprise {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    flex: 0 0 auto;
+  }
+  /* Avanti spinge a destra e si prende quello che avanza: è il pulsante che
+     si cerca col pollice, e deve restare il più grande della riga. */
+  .cfg-footer-actions { gap: 0.4rem; flex: 1 1 auto; justify-content: flex-end; }
   .cfg-btn { padding: 0.7rem 1rem; font-size: 0.85rem; }
   .cfg-btn-back { padding: 0.7rem 0.85rem; }
   .cfg-btn-back span { display: none; } /* solo freccia */
@@ -205,7 +250,10 @@
 @media (max-width: 380px) {
   .opt-grid.cols-2,
   .opt-grid.cols-3 { grid-template-columns: 1fr; }
-  .cake3d-stage { max-width: 200px; height: 200px; }
+  /* Stessa logica della regola più sopra: legata allo schermo, non fissa.
+     È proprio sui telefoni piccoli che lo spazio per scegliere manca di più,
+     e questa riga vinceva su quella e rimetteva i 200px pieni. */
+  .cake3d-stage { max-width: 200px; height: min(200px, 24dvh); }
 }
 /* ═══════════════════════════════════════════════════════════════════
    Riepilogo su telefono: barretta in fondo che si apre (agosto 2026).
