@@ -1,6 +1,6 @@
-# Gelateria Punto Gi! – Sito ufficiale
+# Gelateria Punto Gi – Sito ufficiale
 
-Sito vetrina per la **Gelateria Punto Gi!** di Carpi (MO).
+Sito vetrina per la **Gelateria Punto Gi** di Carpi (MO).
 Realizzato con **Vite + React + Framer Motion**, pronto per il deploy su **Vercel**.
 
 > *"Il gelato che ti emoziona."*

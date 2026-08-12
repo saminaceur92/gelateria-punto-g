@@ -1,7 +1,7 @@
 # Local SEO Analysis — gelateria-punto-g.vercel.app
 
 **Data analisi:** agosto 2026
-**Business:** Gelateria Punto Gi! — Via Remesina Interna 46, 41012 Carpi (MO)
+**Business:** Gelateria Punto Gi — Via Remesina Interna 46, 41012 Carpi (MO)
 **Ragione sociale (da PagineGialle):** Gelateria Punto Gi di Bulgarelli Cristian & C. s.n.c.
 
 ---
@@ -70,8 +70,8 @@ Segnali rilevati: carta dei gusti, torte su ordinazione, pagina allergeni Reg. U
 
 | Fonte | Nome | Indirizzo | Telefono |
 |---|---|---|---|
-| Footer sito | Gelateria Punto Gi! | Via Remesina Interna 46, 41012 Carpi (MO) | 320 330 6009 |
-| Sezione Contatti | Gelateria Punto Gi! | Via Remesina Interna 46, 41012 Carpi (MO) | 320 330 6009 |
+| Footer sito | Gelateria Punto Gi | Via Remesina Interna 46, 41012 Carpi (MO) | 320 330 6009 |
+| Sezione Contatti | Gelateria Punto Gi | Via Remesina Interna 46, 41012 Carpi (MO) | 320 330 6009 |
 | Schema JSON-LD | ❌ **assente** | ❌ assente | ❌ assente |
 | PagineGialle | Gelateria Punto Gi di Bulgarelli Cristian & C. s.n.c. | Via Remesina 46 | 320 3306009 |
 
@@ -123,7 +123,7 @@ Questo **spacca le recensioni su due schede**, confonde Google sull'identità de
   "@context": "https://schema.org",
   "@type": "IceCreamShop",
   "@id": "https://gelateria-punto-g.vercel.app/#business",
-  "name": "Gelateria Punto Gi!",
+  "name": "Gelateria Punto Gi",
   "legalName": "Gelateria Punto Gi di Bulgarelli Cristian & C. s.n.c.",
   "description": "Gelateria artigianale a Carpi (MO). Gelato cremoso prodotto fresco ogni giorno, anche senza lattosio e vegan. Torte gelato su ordinazione, semifreddi e pasticceria a freddo.",
   "url": "https://gelateria-punto-g.vercel.app",

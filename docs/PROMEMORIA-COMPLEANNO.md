@@ -31,7 +31,7 @@ Parte dal modello "Contact Us": va svuotato e riempito così.
 | Campo | Valore |
 |---|---|
 | To Email | `{{email}}` |
-| From Name | `Gelateria Punto Gi!` |
+| From Name | `Gelateria Punto Gi` |
 | From Email | lasciare *Use Default Email Address* |
 | Reply To | **vuoto** (se resta `{{email}}` le risposte tornano al cliente) |
 | Bcc / Cc | vuoti |
@@ -50,7 +50,7 @@ Parte dal modello "Contact Us": va svuotato e riempito così.
     <a href="{{link_torta}}" style="background:#2c7699;color:#ffffff;text-decoration:none;padding:14px 26px;border-radius:999px;font-weight:bold;display:inline-block;">Rifai questa torta</a>
   </p>
   <p style="color:#6b6b7b;font-size:13px;">È già pronta come l'anno scorso: devi solo scegliere il giorno e confermare. Per le torte servono almeno 5 ore di preavviso.</p>
-  <p>Ti aspettiamo!<br><strong>Gelateria Punto Gi!</strong> — Via Remesina Interna 46, Carpi (MO)</p>
+  <p>Ti aspettiamo!<br><strong>Gelateria Punto Gi</strong> — Via Remesina Interna 46, Carpi (MO)</p>
   <hr style="border:none;border-top:1px solid #e6e0d4;margin:24px 0;">
   <p style="color:#8a8073;font-size:12px;">
     Ricevi questa mail perché un anno fa hai ordinato da noi una torta di compleanno.
@@ -85,7 +85,7 @@ Esempio di testo:
 >
 > 👉 **[Rifai questa torta]({{link_torta}})** — è già pronta, devi solo confermare
 >
-> Ti aspettiamo! — Gelateria Punto Gi!, Carpi
+> Ti aspettiamo! — Gelateria Punto Gi, Carpi
 >
 > ---
 > *Non vuoi più questi promemoria? [Disiscriviti qui]({{link_stop}}) (un clic, niente moduli).*

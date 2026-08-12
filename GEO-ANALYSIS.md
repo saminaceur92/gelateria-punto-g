@@ -73,7 +73,7 @@ Richiesta reale come `GPTBot/1.0` alla home — questo è **tutto** ciò che ric
 
 ```
 { "@context": "https://schema.org", "@type": "IceCreamShop",
-  "name": "Gelateria Punto Gi!", "description": "Gelateria artigianale a Carpi (MO)…" }
+  "name": "Gelateria Punto Gi", "description": "Gelateria artigianale a Carpi (MO)…" }
 ```
 
 Nient'altro. Nessun gusto, nessun orario nel corpo, nessuna storia, nessuna gallery.
