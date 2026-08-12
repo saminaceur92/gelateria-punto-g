@@ -21,7 +21,7 @@ const fallback = {
   cakeAllergens: fb.cakeAllergens,
 };
 
-const CakeDataCtx = createContext({ ...fallback, cakeRecipes: fb.cakeRecipes });
+const CakeDataCtx = createContext({ ...fallback, cakeRecipes: fb.cakeRecipes, torteConsigliate: fb.torteConsigliate });
 
 export function CakeDataProvider({ children }) {
   const [data, setData] = useState(fallback);
@@ -36,8 +36,8 @@ export function CakeDataProvider({ children }) {
     };
   }, []);
 
-  // cakeRecipes resta sempre dai dati statici
-  const value = { ...data, cakeRecipes: fb.cakeRecipes };
+  // cakeRecipes e torteConsigliate restano sempre dai dati statici
+  const value = { ...data, cakeRecipes: fb.cakeRecipes, torteConsigliate: fb.torteConsigliate };
   return <CakeDataCtx.Provider value={value}>{children}</CakeDataCtx.Provider>;
 }
 

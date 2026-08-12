@@ -398,3 +398,142 @@ export const cakeRecipes = [
     decoration: 'panna-colorata',
   },
 ];
+
+// "Le nostre consigliate": torte già composte dai titolari, proposte nel passo
+// della forma per chi non sa cosa scegliere. Toccarne una compila TUTTA la
+// torta (tipo, base, gusti, farcitura, copertura, decorazioni) e porta dritti
+// al passo di scritta, foto e candelina; la forma resta quella selezionata.
+// I gusti sono per NOME (come nelle ricette del Sorprendimi), il resto per id
+// del listino. Se un ingrediente sparisce dal listino la carta si nasconde da
+// sola; se è in conflitto con le intolleranze dichiarate resta visibile ma
+// sbarrata, col perché.
+export const torteConsigliate = [
+  // ---- Torte gelato ----
+  {
+    id: 'golosa',
+    gruppo: 'gelato',
+    name: 'La Golosa',
+    type: 'gelato',
+    baseId: 'crock',
+    crumbleId: 'cereali-cacao',
+    flavors: ['Nutella', 'Kinder'],
+    fillingId: 'nessuna',
+    coveringId: 'panna-sotto-sopra',
+    decorations: ['cioccolato-deco', 'granella-nocciola', 'fantasia'],
+    desc: 'Base crumble cereali e fave di cacao, gelato Nutella e Kinder, filo di panna montata sopra e sotto, decorazioni in cioccolato, granella di nocciola e decorazioni Ferrero in base alla disponibilità',
+  },
+  {
+    id: 'delicata',
+    gruppo: 'gelato',
+    name: 'La Delicata',
+    type: 'gelato',
+    baseId: 'classica',
+    crumbleId: '',
+    flavors: ['Crema', 'Fior di Latte'],
+    fillingId: 'nessuna',
+    coveringId: 'panna',
+    decorations: ['zuccherini', 'fiori-ostia'],
+    desc: 'Base di pan di Spagna morbido alla vaniglia, gelato crema e fior di latte, panna montata a ciuffi intorno e decorazioni colorate in zucchero e ostia',
+  },
+  {
+    id: 'fresca',
+    gruppo: 'gelato',
+    name: 'La Fresca',
+    type: 'gelato',
+    baseId: 'crock',
+    crumbleId: 'fruttato',
+    flavors: ['Fragola', 'Limone'],
+    fillingId: 'nessuna',
+    coveringId: 'frutta-cop',
+    decorations: [],
+    desc: 'Base crumble alla frutta, gelato fragola e limone, sopra glassa alla frutta',
+  },
+  {
+    // Il "crumble alla vaniglia" non è a listino ("Crumble bianco" esiste ma è
+    // spento): si usa il caramello, il più vicino. Se i titolari riaccendono
+    // il bianco dalla dashboard basta cambiare l'id qui sotto.
+    id: 'classicissima',
+    gruppo: 'gelato',
+    name: 'La Classicissima',
+    type: 'gelato',
+    baseId: 'crock',
+    crumbleId: 'caramello',
+    flavors: ['Nocciola', 'Crema'],
+    fillingId: 'nessuna',
+    coveringId: 'panna-sotto-sopra',
+    decorations: ['granella-nocciola'],
+    desc: 'Base crumble al caramello, gelato nocciola e crema, filo di panna montata sopra e sotto, granella di nocciola',
+  },
+  {
+    // La "panna vegan plant based" non è (ancora) fra le coperture del
+    // listino: la torta esce coi bordi a vista, che vegan lo sono di sicuro.
+    // Quando i titolari aggiungeranno la copertura vegan si collega qui.
+    id: 'vegan',
+    gruppo: 'gelato',
+    name: 'La Vegan',
+    type: 'gelato',
+    baseId: 'crock',
+    crumbleId: 'caramello',
+    flavors: ['Pistacchio Salato', 'Nocciola e Gianduia'],
+    fillingId: 'nessuna',
+    coveringId: 'naked',
+    decorations: ['cioccolato-fondente-deco'],
+    desc: 'Base crumble al caramello, gelato pistacchio salato e nocciola variegata alla gianduia, bordi a vista e decorazioni in cioccolato fondente: tutta vegan',
+  },
+  // ---- Semifreddi ----
+  {
+    id: 'nutellona',
+    gruppo: 'semifreddo',
+    name: 'La Nutellona',
+    type: 'semifreddo',
+    baseId: 'crock',
+    crumbleId: 'cacao',
+    flavors: ['Fior di Latte'],
+    fillingId: 'nutella',
+    coveringId: 'nocciola-cop',
+    decorations: ['fantasia'],
+    desc: 'Semifreddo alla panna (fior di latte), inserto alla Nutella, crumble al cacao, copertura alla nocciola e decorazioni Ferrero in base alla disponibilità',
+  },
+  {
+    id: 'cheesecake',
+    gruppo: 'semifreddo',
+    name: 'La Cheesecake',
+    type: 'semifreddo',
+    baseId: 'crock',
+    crumbleId: 'caramello',
+    flavors: ['Cheesecake ai frutti rossi'],
+    fillingId: 'frutti-rossi',
+    coveringId: 'frutta-cop',
+    decorations: ['frutta-fresca'],
+    desc: 'Semifreddo cheesecake, cuore ai frutti rossi, crumble al caramello, copertura di frutta e frutta fresca sopra',
+  },
+  {
+    id: 'biscottona',
+    gruppo: 'semifreddo',
+    name: 'La Biscottona',
+    type: 'semifreddo',
+    baseId: 'crock',
+    crumbleId: 'cereali-cacao',
+    flavors: ['Crema'],
+    fillingId: 'biscotto',
+    coveringId: 'cioccolato-bianco-cop',
+    decorations: ['cioccolato-deco'],
+    desc: 'Semifreddo alla crema, inserto al biscotto, crumble ai cereali e fave di cacao, copertura al cioccolato bianco e decorazioni in cioccolato',
+  },
+  {
+    // Il gusto "mascarpone" non è fra i gusti per torte: si usa il fior di
+    // latte, il più vicino. L'inserto Rocher è reso col variegato nocciola e
+    // gianduia.
+    id: 'rocher',
+    gruppo: 'semifreddo',
+    name: 'La Rocher',
+    type: 'semifreddo',
+    baseId: 'crock',
+    crumbleId: 'cereali-cacao',
+    flavors: ['Fior di Latte'],
+    fillingId: 'cremino',
+    coveringId: 'cioccolato-cop',
+    decorations: ['fantasia'],
+    desc: 'Semifreddo al fior di latte, variegato nocciola e gianduia, crumble ai cereali e fave di cacao, copertura al cioccolato e decorazioni Ferrero Rocher in base alla disponibilità',
+  },
+];

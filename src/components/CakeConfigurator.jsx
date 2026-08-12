@@ -829,6 +829,23 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     });
   };
 
+  // Una "consigliata" (torta già composta, dal passo della forma): applica
+  // tutta la torta e salta dritti a scritta/foto/candelina. I passi vanno
+  // ricalcolati con la TORTA NUOVA, non con quelli correnti: la scelta può far
+  // comparire il passo del crumble (base croccante) o togliere quello della
+  // base, e l'indice di "scritta" si sposta con loro — con l'elenco vecchio si
+  // atterrava sul passo sbagliato.
+  const applicaConsigliata = (patch) => {
+    set(patch);
+    const baseImp = BASE_OBBLIGATA[patch.type] || '';
+    const futuri = STEPS.filter(
+      (s) =>
+        (s !== 'crumble' || patch.baseId === CRUMBLE_BASE_ID) &&
+        (s !== 'base' || baseImp !== patch.baseId)
+    );
+    setStep(Math.max(0, futuri.indexOf('message')));
+  };
+
   // `extraFinali` (opzionale): mappa { idExtra: quantità } con cui far partire
   // l'ordine, usata dalla finestra delle proposte quando il cliente sceglie "No
   // grazie" dopo aver toccato un +/-. Serve perché lo stato React si aggiorna
@@ -1224,7 +1241,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                   {steps[step] === 'type' && <StepType config={config} set={set} />}
                   {steps[step] === 'size' && <StepSize config={config} set={set} />}
                   {steps[step] === 'allergies' && <StepAllergies config={config} set={set} />}
-                  {steps[step] === 'shape' && <StepShape config={config} set={set} />}
+                  {steps[step] === 'shape' && <StepShape config={config} set={set} consigliata={applicaConsigliata} />}
                   {steps[step] === 'base' && <StepBase config={config} set={set} />}
                   {steps[step] === 'crumble' && <StepCrumble config={config} set={set} />}
                   {steps[step] === 'flavors' && <StepFlavors config={config} add={addFlavor} removeAt={removeFlavorAt} />}
@@ -1374,9 +1391,51 @@ function StepType({ config, set }) {
   );
 }
 
-function StepShape({ config, set }) {
-  const { cakeShapes, cakeSizes } = useCakeData();
+function StepShape({ config, set, consigliata }) {
+  const {
+    cakeShapes, cakeSizes, cakeTypes, cakeFlavors, cakeBases, cakeCrumbles,
+    cakeFillings, cakeCoverings, cakeDecorations, torteConsigliate,
+  } = useCakeData();
   const persone = personeOf(cakeSizes.find((s) => s.id === config.sizeId));
+
+  // "Le nostre consigliate": ogni carta si risolve CONTRO IL LISTINO VERO —
+  // gusti per nome, il resto per id. Se un ingrediente non c'è più (spento
+  // dalla dashboard) la carta sparisce: meglio niente che promettere una torta
+  // che il configuratore non sa comporre. Se invece è in conflitto con le
+  // intolleranze dichiarate al passo prima, la carta resta ma sbarrata, con
+  // scritto cosa contiene — stessa regola delle altre scelte.
+  const consigliate = useMemo(() => (torteConsigliate || []).map((t) => {
+    const flavors = (t.flavors || []).map((n) =>
+      cakeFlavors.find((f) => f.name.toLowerCase() === String(n).toLowerCase())
+    );
+    const base = cakeBases.find((b) => b.id === t.baseId);
+    const crumble = t.crumbleId ? cakeCrumbles.find((c) => c.id === t.crumbleId) : null;
+    const filling = cakeFillings.find((f) => f.id === t.fillingId);
+    const covering = cakeCoverings.find((c) => c.id === t.coveringId);
+    const decos = (t.decorations || []).map((id) => cakeDecorations.find((d) => d.id === id));
+    const type = cakeTypes.find((x) => x.id === t.type);
+    if (
+      !type || !base || (t.crumbleId && !crumble) || !filling || !covering ||
+      flavors.some((f) => !f) || decos.some((d) => !d)
+    ) return null;
+    // Il tipo di torta non entra nel controllo: le allergie si dichiarano DOPO
+    // averlo scelto, e non è un ingrediente.
+    const parti = [base, crumble, ...flavors, filling, covering, ...decos].filter(Boolean);
+    const contro = [...new Set(
+      parti.flatMap((p) => (p.allergeni || []).filter((a) => (config.allergies || []).includes(a)))
+    )];
+    const bloccata = parti.some((p) => conflictsAllergies(p, config.allergies, config.diets));
+    return { ...t, _flavors: flavors, bloccata, contro };
+  }).filter(Boolean), [
+    torteConsigliate, cakeTypes, cakeFlavors, cakeBases, cakeCrumbles,
+    cakeFillings, cakeCoverings, cakeDecorations, config.allergies, config.diets,
+  ]);
+
+  const gruppi = [
+    { id: 'gelato', titolo: '🍦 Torte gelato' },
+    { id: 'semifreddo', titolo: '🍰 Semifreddi' },
+  ];
+
   return (
     <>
       <StepHeader stepKey="shape" title="Che forma vuoi?" lead="Tonda, a cuore, quadrata o rettangolare per i buffet più generosi." />
@@ -1400,6 +1459,51 @@ function StepShape({ config, set }) {
           );
         })}
       </div>
+
+      {consigliate.length > 0 && (
+        <div className="consigliate">
+          <h3 className="consigliate-titolo">Se non sai cosa scegliere, ecco le nostre consigliate</h3>
+          <p className="consigliate-sotto">
+            Torte già pensate da noi: toccane una e ti resta solo da decidere scritta, foto e candelina.
+          </p>
+          {gruppi.map((g) => {
+            const lista = consigliate.filter((t) => t.gruppo === g.id);
+            if (!lista.length) return null;
+            return (
+              <div key={g.id} className="consigliate-gruppo">
+                <h4>{g.titolo}</h4>
+                <div className="opt-grid cols-2">
+                  {lista.map((t) => (
+                    <button
+                      key={t.id}
+                      className="opt-card consigliata-card"
+                      disabled={t.bloccata}
+                      style={t.bloccata ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                      onClick={() => !t.bloccata && consigliata({
+                        type: t.type,
+                        baseId: t.baseId,
+                        crumbleId: t.crumbleId || '',
+                        flavors: t._flavors,
+                        fillingId: t.fillingId,
+                        coveringId: t.coveringId,
+                        decorations: [...(t.decorations || [])],
+                        decorationColors: {},
+                      })}
+                    >
+                      <div className="opt-name">{t.name}</div>
+                      <div className="opt-desc">
+                        {t.bloccata
+                          ? (t.contro.length ? `Contiene: ${t.contro.join(', ')}` : 'Non adatta alle preferenze scelte')
+                          : t.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

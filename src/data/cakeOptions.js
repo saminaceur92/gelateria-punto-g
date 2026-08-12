@@ -34,6 +34,8 @@ export const cakeExtras = pick(g.cakeExtras, fallback.cakeExtras);
 export const cakeOccasions = pick(g.cakeOccasions, fallback.cakeOccasions);
 export const cakeAllergens = pick(g.cakeAllergens, fallback.cakeAllergens);
 export const cakeRecipes = pick(g.cakeRecipes, fallback.cakeRecipes);
+// "Le nostre consigliate": statiche come le ricette, non passano dalla build.
+export const torteConsigliate = pick(g.torteConsigliate, fallback.torteConsigliate);
 
 // Base che apre lo step di scelta del tipo di crumble ("Crumble croccante").
 // È l'id della riga in `basi` su Supabase: non va cambiato.
