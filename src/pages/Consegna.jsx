@@ -64,7 +64,7 @@ export default function Consegna() {
               vuoi tu, se ordini su WhatsApp con noi!
             </span>
           </p>
-          <a className="btn btn-primary" href={WA_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn-primary" href={WA_URL} target="_blank" rel="noopener noreferrer" data-ev="whatsapp_consegna">
             <MessageCircle size={18} /> Ordina su WhatsApp
           </a>
         </section>
@@ -73,10 +73,10 @@ export default function Consegna() {
         <section className="consegna-alt">
           <h2>In alternativa, ordina a domicilio con Deliveroo e Glovo!</h2>
           <div className="consegna-alt-bottoni">
-            <a className="btn btn-ghost" href={DELIVEROO_URL} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-ghost" href={DELIVEROO_URL} target="_blank" rel="noopener noreferrer" data-ev="deliveroo_consegna">
               🛵 Ordina su Deliveroo
             </a>
-            <a className="btn btn-ghost" href={GLOVO_URL} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-ghost" href={GLOVO_URL} target="_blank" rel="noopener noreferrer" data-ev="glovo_consegna">
               🛵 Ordina su Glovo
             </a>
           </div>

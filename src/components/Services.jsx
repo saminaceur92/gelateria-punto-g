@@ -15,24 +15,28 @@ const services = [
     title: 'Consegna a domicilio',
     text: 'Scegli la comodità: ordini su WhatsApp o sulle piattaforme partner e il gelato arriva da te.',
     href: '/consegna',
+    ev: 'servizio_consegna',
   },
   {
     icon: <Cake size={26} />,
     title: 'Torte su prenotazione',
     text: 'Compleanno, anniversario o pranzo dei parenti: prenota la torta perfetta, anche CROCK.',
     configuratore: true,
+    ev: 'torta_apre_servizi',
   },
   {
     icon: <Snowflake size={26} />,
     title: 'Pasticceria a freddo',
     text: 'Granite siciliane, pasticcini, semifreddi, ghiaccioli, salame dolce e tante altre leccornie.',
     href: '/galleria',
+    ev: 'servizio_galleria',
   },
   {
     icon: <Sparkles size={26} />,
     title: 'Senza lattosio & Vegan',
     text: 'Intolleranze o scelte di gusto? Tante varianti senza lattosio, senza glutine e 100% vegan.',
     href: '#menu',
+    ev: 'servizio_gusti',
   },
 ];
 
@@ -76,12 +80,13 @@ export default function Services({ onOpenConfigurator }) {
                   <button
                     type="button"
                     className="service-card service-link"
+                    data-ev={s.ev}
                     onClick={() => onOpenConfigurator && onOpenConfigurator()}
                   >
                     {contenuto}
                   </button>
                 ) : (
-                  <a className="service-card service-link" href={s.href}>
+                  <a className="service-card service-link" href={s.href} data-ev={s.ev}>
                     {contenuto}
                   </a>
                 )}

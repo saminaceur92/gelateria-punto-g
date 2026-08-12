@@ -16,6 +16,7 @@ import PaymentResult from './components/PaymentResult';
 import PromemoriaStop from './components/PromemoriaStop';
 import { CakeDataProvider } from './data/CakeDataProvider';
 import { tortaDaToken } from './lib/promemoria';
+import { tracciaUnaVolta, EV } from './lib/analytics';
 
 export default function App() {
   const [cfg, setCfg] = useState({ open: false, initial: undefined });
@@ -33,7 +34,16 @@ export default function App() {
     if (!token) return;
     window.history.replaceState({}, '', window.location.pathname);
     tortaDaToken(token).then((res) => {
-      if (res?.config) setCfg({ open: true, initial: { ...res.config, name: res.nome || '' } });
+      if (res?.config) {
+        setCfg({ open: true, initial: { ...res.config, name: res.nome || '' } });
+        // È l'unico modo di sapere se le mail di compleanno riportano davvero
+        // gente a ordinare: qui il configuratore si apre da solo, senza che
+        // nessuno clicchi una CTA, quindi nessun data-ev può accorgersene.
+        // Senza questa riga la voce resterebbe a zero per sempre in dashboard
+        // e sembrerebbe che il promemoria non funzioni — e in più le chiusure
+        // del configuratore supererebbero le aperture.
+        tracciaUnaVolta(EV.TORTA_APRE_PROMEMORIA);
+      }
     });
   }, []);
 

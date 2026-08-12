@@ -59,7 +59,7 @@ export default function Galleria() {
             vera del profilo Instagram non si puo' prendere da fuori (l'indirizzo
             cambia e Instagram lo blocca), va caricata come file. */}
         <section className="galleria-ig">
-          <a className="galleria-ig-profilo" href={IG_URL} target="_blank" rel="noopener noreferrer">
+          <a className="galleria-ig-profilo" href={IG_URL} target="_blank" rel="noopener noreferrer" data-ev="instagram_galleria">
             <span className="galleria-ig-foto">
               {/* Foto del profilo: basta salvare l'immagine come
                   public/instagram-profilo.jpg e compare qui, senza toccare il
@@ -87,24 +87,24 @@ export default function Galleria() {
             Le novità, i gusti del mese e le torte appena uscite dal laboratorio le pubblichiamo lì,
             praticamente ogni giorno. <strong>Aperti 7 giorni su 7</strong>, orario continuato.
           </p>
-          <a className="btn btn-primary" href={IG_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn-primary" href={IG_URL} target="_blank" rel="noopener noreferrer" data-ev="instagram_galleria">
             <Instagram size={18} /> Seguici su Instagram
           </a>
 
           <div className="galleria-ig-altri">
-            <a className="canale-chip" href={FB_URL} target="_blank" rel="noopener noreferrer">
+            <a className="canale-chip" href={FB_URL} target="_blank" rel="noopener noreferrer" data-ev="facebook_galleria">
               <Facebook size={16} /> Facebook
             </a>
             <span className="canale-sep">Consegna a domicilio:</span>
             {/* WhatsApp per primo: è l'ordine diretto con la gelateria, quello
                 che per loro conta di più fra i modi di farsi consegnare. */}
-            <a className="canale-chip canale-wa" href={WA_URL} target="_blank" rel="noopener noreferrer">
+            <a className="canale-chip canale-wa" href={WA_URL} target="_blank" rel="noopener noreferrer" data-ev="whatsapp_galleria">
               <MessageCircle size={16} /> WhatsApp
             </a>
-            <a className="canale-chip" href={GLOVO_URL} target="_blank" rel="noopener noreferrer">
+            <a className="canale-chip" href={GLOVO_URL} target="_blank" rel="noopener noreferrer" data-ev="glovo_galleria">
               🛵 Glovo
             </a>
-            <a className="canale-chip" href={DELIVEROO_URL} target="_blank" rel="noopener noreferrer">
+            <a className="canale-chip" href={DELIVEROO_URL} target="_blank" rel="noopener noreferrer" data-ev="deliveroo_galleria">
               🛵 Deliveroo
             </a>
           </div>
@@ -116,6 +116,7 @@ export default function Galleria() {
               key={f.id || f.url || i}
               type="button"
               className="galleria-cella"
+              data-ev="foto_aperta"
               onClick={() => setAperta(i)}
               aria-label={f.titolo ? `Ingrandisci: ${f.titolo}` : 'Ingrandisci la foto'}
             >

@@ -5,6 +5,7 @@ import { useCakeData } from '../data/CakeDataProvider';
 import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
+import { traccia, tracciaUnaVolta, EV, EV_PASSO } from '../lib/analytics';
 import { uploadCakePhoto } from '../lib/cakePhoto';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
@@ -506,6 +507,15 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose, showProposte]);
 
+  // Configuratore chiuso: si conta alla chiusura dell'overlay, così valgono
+  // tutte le uscite (✕, Esc, clic fuori, "Torna al sito") con un punto solo e
+  // senza toccare i loro handler. Il pagamento non passa di qui: il redirect a
+  // Stripe scarica la pagina e React non esegue le pulizie.
+  useEffect(() => {
+    if (!open) return undefined;
+    return () => traccia(EV.TORTA_CHIUSA);
+  }, [open]);
+
   // Se cambiano le allergie, rimuovi automaticamente le scelte diventate incompatibili.
   useEffect(() => {
     setConfig((c) => {
@@ -619,6 +629,15 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   useEffect(() => {
     setStep((s) => Math.min(s, steps.length - 1));
   }, [steps.length]);
+
+  // Funnel: si conta il passo che ENTRA IN SCENA, non il click su "Avanti".
+  // I passi effettivi sono 11/12/13 a seconda della torta e chi sceglie una
+  // consigliata salta avanti: contando "Avanti" quel percorso sparirebbe.
+  useEffect(() => {
+    if (!open) return;
+    const evento = EV_PASSO[steps[step]];
+    if (evento) tracciaUnaVolta(evento);
+  }, [open, steps, step]);
 
   // Preavviso minimo: 5 ore di apertura da adesso (sito). In gelateria (staff): da subito.
   const earliest = useMemo(
@@ -1077,6 +1096,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // avvenuto; da lì partono sia la notifica Telegram sia la mail di conferma.
     try {
       sessionStorage.setItem('pg_order_delivery', config.delivery ? '1' : '0');
+      traccia(EV.TORTA_CHECKOUT_AVVIATO);
       // Il server ricalcola il prezzo da `config` (computeOrder): deve ricevere
       // gli extra definitivi, altrimenti Stripe farebbe pagare un altro totale.
       const { data, error } = await supabase.functions.invoke('create-checkout', {
@@ -1088,6 +1108,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error(data?.error || 'Risposta non valida dal server');
     } catch (e) {
+      traccia(EV.TORTA_CHECKOUT_ERRORE);
       setSubmitError(e?.message || 'Errore durante il pagamento. Riprova.');
       setSubmitting(false);
     }
@@ -1199,7 +1220,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                   <small>totale</small>
                 </div>
                 {config.flavors.length > 0 && (
-                  <button type="button" className="allergeni-btn" onClick={() => setShowAllerg(true)}>
+                  <button type="button" className="allergeni-btn" data-ev="torta_allergeni_aperti" onClick={() => setShowAllerg(true)}>
                     <span className="allergeni-btn-i" aria-hidden="true">i</span> Allergeni
                   </button>
                 )}
@@ -1208,6 +1229,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                 <button
                   type="button"
                   className="cfg-btn cfg-btn-back"
+                  data-ev="torta_sorprendimi"
                   onClick={surpriseMe}
                   disabled={!canSurprise}
                   title={canSurprise ? '' : 'Scegli prima il numero di persone'}
@@ -1276,6 +1298,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
               <button
                 type="button"
                 className="cfg-btn cfg-btn-surprise"
+                data-ev="torta_sorprendimi"
                 onClick={surpriseMe}
                 disabled={!canSurprise}
                 title={canSurprise ? '' : 'Scegli prima il numero di persone'}
@@ -1500,6 +1523,7 @@ function StepShape({ config, set, consigliata }) {
                     <button
                       key={t.id}
                       className="opt-card consigliata-card"
+                      data-ev="torta_consigliata"
                       disabled={t.bloccata}
                       style={t.bloccata ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
                       onClick={() => !t.bloccata && consigliata({
@@ -2055,6 +2079,10 @@ function ProposteExtra({ config, set, staff, listino, total, onOrdinaSenza, onOr
   useEffect(() => {
     boxRef.current?.focus();
   }, []);
+  // La proposta è entrata in scena: non è un click, quindi si conta da codice.
+  useEffect(() => {
+    tracciaUnaVolta(EV.TORTA_EXTRA_VISTI);
+  }, []);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onChiudi();
     window.addEventListener('keydown', onKey);
@@ -2146,12 +2174,13 @@ function ProposteExtra({ config, set, staff, listino, total, onOrdinaSenza, onOr
         </div>
 
         <div className="extra-pop-actions">
-          <button type="button" className="extra-pop-skip" onClick={onOrdinaSenza}>
+          <button type="button" className="extra-pop-skip" data-ev="torta_extra_rifiutati" onClick={onOrdinaSenza}>
             No grazie, {staff ? "crea l'ordine" : 'ordina'}
           </button>
           <button
             type="button"
             className="extra-pop-add"
+            data-ev="torta_extra_aggiunti"
             onClick={onOrdinaCon}
             disabled={!scelti.length}
           >
@@ -2356,6 +2385,7 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
           <button
             type="button"
             className={`toggle-pill ${!config.delivery ? 'active' : ''}`}
+            data-ev="torta_ritiro"
             onClick={() => set({ delivery: false })}
           >
             🏪 Ritiro in gelateria
@@ -2363,6 +2393,7 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
           <button
             type="button"
             className={`toggle-pill ${config.delivery ? 'active' : ''}`}
+            data-ev="torta_domicilio"
             onClick={() => set({ delivery: true })}
           >
             🛵 Consegna a domicilio{staff ? '' : ` (+ €${DELIVERY_FEE})`}
@@ -2584,10 +2615,14 @@ function CampoSconto({ config, set, total }) {
     if (!data?.valido) {
       set({ sconto: null });
       setStato({ ok: false, messaggio: data?.motivo || 'Codice non valido.' });
+      // Delle statistiche esce SOLO l'esito: il codice non viaggia mai (alcuni
+      // sono nominativi).
+      traccia(EV.TORTA_SCONTO_KO);
       return;
     }
     set({ sconto: { codice: data.codice, tipo: data.tipo, valore: data.valore, descrizione: data.descrizione } });
     setStato({ ok: true, messaggio: `Codice applicato: −€${Number(data.sconto).toFixed(2)}` });
+    traccia(EV.TORTA_SCONTO_OK);
   }
 
   function togli() {
@@ -2696,9 +2731,9 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
 }
 
 const SOCIALS = [
-  { id: 'ig', label: 'Instagram', href: 'https://www.instagram.com/gelateriapuntogicarpi/', Icon: Instagram },
-  { id: 'fb', label: 'Facebook', href: 'https://www.facebook.com/gelateriapuntogicarpi', Icon: Facebook },
-  { id: 'wa', label: 'WhatsApp', href: 'https://api.whatsapp.com/send?phone=393203306009', Icon: MessageCircle },
+  { id: 'ig', label: 'Instagram', href: 'https://www.instagram.com/gelateriapuntogicarpi/', Icon: Instagram, ev: 'instagram_post_ordine' },
+  { id: 'fb', label: 'Facebook', href: 'https://www.facebook.com/gelateriapuntogicarpi', Icon: Facebook, ev: 'facebook_post_ordine' },
+  { id: 'wa', label: 'WhatsApp', href: 'https://api.whatsapp.com/send?phone=393203306009', Icon: MessageCircle, ev: 'whatsapp_post_ordine' },
 ];
 
 function SuccessView({ name, onClose, staff, delivery }) {
@@ -2718,8 +2753,8 @@ function SuccessView({ name, onClose, staff, delivery }) {
         <div className="cfg-socials">
           <span className="cfg-socials-label">Seguici e taggaci nella tua festa 🎉</span>
           <div className="cfg-socials-row">
-            {SOCIALS.map(({ id, label, href, Icon }) => (
-              <a key={id} className="cfg-social" href={href} target="_blank" rel="noopener noreferrer" aria-label={label}>
+            {SOCIALS.map(({ id, label, href, Icon, ev }) => (
+              <a key={id} className="cfg-social" href={href} target="_blank" rel="noopener noreferrer" aria-label={label} data-ev={ev}>
                 <Icon size={18} /> {label}
               </a>
             ))}

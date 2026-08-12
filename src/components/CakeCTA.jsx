@@ -50,22 +50,22 @@ export default function CakeCTA({ onOpen }) {
 
           <div className="cake-cta-diets">
             <span className="cake-cta-diets-label">Alternative:</span>
-            <button type="button" className="diet-chip" onClick={() => onOpen({ allergies: ['glutine'] })}>
+            <button type="button" className="diet-chip" data-ev="torta_apre_senza_glutine" onClick={() => onOpen({ allergies: ['glutine'] })}>
               ✻ Senza glutine
             </button>
-            <button type="button" className="diet-chip" onClick={() => onOpen({ allergies: ['latte'] })}>
+            <button type="button" className="diet-chip" data-ev="torta_apre_senza_lattosio" onClick={() => onOpen({ allergies: ['latte'] })}>
               ✻ Senza lattosio
             </button>
-            <button type="button" className="diet-chip" onClick={() => onOpen({ allergies: ['latte', 'uova'] })}>
+            <button type="button" className="diet-chip" data-ev="torta_apre_vegana" onClick={() => onOpen({ allergies: ['latte', 'uova'] })}>
               ✻ Vegana
             </button>
           </div>
 
           <div className="cake-cta-actions">
-            <button className="btn btn-primary" onClick={() => onOpen()}>
+            <button className="btn btn-primary" onClick={() => onOpen()} data-ev="torta_apre_cta">
               <Cake size={18} /> Inizia ora
             </button>
-            <a className="btn btn-ghost" href="#contatti">
+            <a className="btn btn-ghost" href="#contatti" data-ev="preferisco_scrivere">
               Preferisco scrivere
             </a>
           </div>

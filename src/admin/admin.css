@@ -244,6 +244,212 @@
 .prom-nota { font-size: .78rem; font-style: italic; }
 .prom-actions { display: flex; gap: .4rem; margin-left: auto; }
 
+/* ───────── Scheda Statistiche ─────────
+   Tutto in CSS: niente librerie di grafici per disegnare trenta barrette. */
+/* Periodo a sinistra, "Aggiorna" spinto a destra */
+.stat-barra { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.stat-barra .ord-filters { margin-bottom: 0; }
+.stat-agg { margin-left: auto; white-space: nowrap; }
+.stat-periodo { margin: 0.6rem 0 1rem; }
+
+/* I cinque numeri grossi: quelli che si guardano in tre secondi */
+.stat-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 0.6rem;
+}
+.stat-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.stat-kpi-num {
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--v-deep);
+  font-variant-numeric: tabular-nums;
+}
+.stat-kpi-lab { font-size: 0.88rem; font-weight: 600; }
+.stat-kpi-hint { font-size: 0.75rem; color: #9a9186; line-height: 1.35; }
+.stat-kpi-sotto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #9a9186;
+}
+/* Verde solo per il meglio, grigio per il peggio: il rosso qui allarmerebbe
+   per niente (una settimana storta capita). */
+.stat-delta { font-weight: 700; color: #8a8078; }
+.stat-delta.su { color: #2f7d4f; }
+.stat-delta.giu { color: #8a8078; }
+
+/* Andamento: una barra per giorno (o per settimana sui 90 giorni) */
+.stat-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  font-size: 0.78rem;
+  color: #7a7166;
+}
+.stat-punto {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 0.3rem;
+}
+.stat-punto-visite { background: var(--v-deep); }
+.stat-punto-contatti { background: var(--v); }
+/* La riga che dice a parole quello che la barra dice in altezza: sul telefono
+   è l'unico modo per leggere il grafico (il "passaci sopra" non esiste). */
+.stat-tip {
+  margin: 0.7rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--v-deep);
+}
+/* Il grafico scorre di lato invece di stringere le colonne all'infinito.
+   Su un telefono da 360px, 30 giorni dentro la card danno colonne da 9px:
+   impossibili da centrare col dito, e la scheda dice "toccane una". Con lo
+   scorrimento restano tutti i giorni e ogni colonna resta toccabile. */
+.stat-grafico-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  margin: 0 -0.2rem;
+  padding: 0 0.2rem;
+}
+.stat-grafico {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 150px;
+  margin-top: 0.4rem;
+  min-width: 100%;
+}
+.stat-col {
+  position: relative;
+  flex: 1 1 0;
+  /* 26px è la larghezza minima sotto cui il dito non centra più la colonna
+     giusta: sotto quella soglia il grafico preferisce scorrere. Su schermi
+     larghi non si nota, perche' le colonne sono gia' piu' larghe di cosi'. */
+  min-width: 26px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: 3px 3px 0 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.stat-col:hover, .stat-col.sel { background: rgba(44, 118, 153, 0.1); }
+.stat-col:focus-visible { outline: 2px solid var(--v-deep); outline-offset: 1px; }
+.stat-col-visite {
+  width: 100%;
+  background: var(--v-deep);
+  border-radius: 3px 3px 0 0;
+}
+/* I contatti sono pochi rispetto alle visite: stessa scala (è la verità), ma
+   davanti e più stretti, così una barretta da 3 click resta visibile. */
+.stat-col-contatti {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 46%;
+  background: var(--v);
+  border-radius: 3px 3px 0 0;
+}
+/* Giorno fuori scala: la colonna è tagliata in cima con una dentellatura, il
+   segno che si usa sui grafici per dire "questa barra continua oltre". Senza,
+   il giorno anomalo sembrerebbe semplicemente il migliore del periodo, che è
+   il tipo di bugia peggiore: credibile. */
+.stat-col-visite.oltre,
+.stat-col-contatti.oltre {
+  border-radius: 0;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 7px), transparent 0),
+    repeating-linear-gradient(115deg, #000 0 4px, transparent 4px 8px);
+  mask-image: linear-gradient(#000 calc(100% - 7px), transparent 0),
+    repeating-linear-gradient(115deg, #000 0 4px, transparent 4px 8px);
+  -webkit-mask-composite: source-over;
+  mask-composite: add;
+}
+.stat-asse {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: #a9a196;
+}
+
+/* Elenchi con la barretta proporzionale dietro al testo */
+.stat-lista { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.3rem; }
+.stat-riga {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.88rem;
+}
+.stat-riga-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(44, 118, 153, 0.13);
+  border-right: 1px solid rgba(44, 118, 153, 0.28);
+}
+.stat-riga-nome { position: relative; flex: 1; min-width: 0; }
+.stat-riga-extra { position: relative; font-size: 0.76rem; color: #7a7166; white-space: nowrap; }
+.stat-riga-num {
+  position: relative;
+  font-weight: 700;
+  color: var(--v-deep);
+  font-variant-numeric: tabular-nums;
+}
+/* Le tre diete: legno, perché sono la riga che fa comprare la merce */
+.stat-riga-forte { border-color: #e2c49c; }
+.stat-riga-forte .stat-riga-fill { background: rgba(192, 137, 76, 0.16); border-right-color: rgba(192, 137, 76, 0.4); }
+.stat-riga-forte .stat-riga-num { color: #9a6a2f; }
+
+.stat-avviso { margin: 0.5rem 0 0; font-size: 0.8rem; max-width: 68ch; }
+
+/* Nessun dato: nei primi giorni è la normalità, non un guasto */
+.stat-vuoto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  padding: 1.6rem 1rem;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: var(--cream);
+}
+.stat-vuoto-ico { font-size: 2rem; line-height: 1; }
+.stat-vuoto strong { font-size: 1rem; }
+.stat-vuoto p { margin: 0; max-width: 48ch; font-size: 0.86rem; line-height: 1.5; color: #7a7166; }
+
+/* Avvertenze in fondo: vanno lette, quindi niente riquadro che le fa saltare */
+.stat-note { display: grid; gap: 0.45rem; padding: 0 0.3rem 0.6rem; line-height: 1.5; }
+.stat-note p { margin: 0; }
+
 /* ───────── Mobile: dashboard responsive ───────── */
 @media (max-width: 640px) {
   /* Top bar: può andare a capo, meno padding, testi più piccoli */
@@ -290,6 +496,18 @@
   .prom-when, .prom-who { min-width: 0; flex-basis: 100%; }
   .prom-actions { margin-left: 0; flex-basis: 100%; }
   .prom-actions .adm-btn { flex: 1; }
+
+  /* Statistiche: i numeri grossi a due colonne (restano leggibili senza
+     diventare una colonnina), grafico più basso e "Aggiorna" a tutta riga. */
+  .stat-agg { margin-left: 0; flex: 1; }
+  .stat-kpis { grid-template-columns: 1fr 1fr; gap: .45rem; }
+  .stat-kpi { padding: .6rem .55rem; }
+  .stat-kpi-num { font-size: 1.55rem; }
+  .stat-grafico { height: 118px; gap: 1px; }
+  /* Riga: nome e numero sulla prima riga, la percentuale va a capo sotto */
+  .stat-riga { padding: .5rem .6rem; flex-wrap: wrap; }
+  .stat-riga-num { order: 2; }
+  .stat-riga-extra { order: 3; flex-basis: 100%; }
 }
 
 /* ── Foto della gallery (scheda "🖼️ Foto della gallery") ─────────── */

@@ -31,10 +31,10 @@ export default function Hero({ onOpenConfigurator }) {
           </motion.p>
 
           <motion.div className="hero-meta" {...fade(0.55)}>
-            <a className="btn btn-primary" href="#menu">
+            <a className="btn btn-primary" href="#menu" data-ev="hero_scopri_gusti">
               Scopri i gusti <Sparkles size={18} />
             </a>
-            <button className="btn btn-ghost" onClick={onOpenConfigurator}>
+            <button className="btn btn-ghost" onClick={onOpenConfigurator} data-ev="torta_apre_hero">
               <Cake size={18} /> Crea la tua torta
             </button>
           </motion.div>

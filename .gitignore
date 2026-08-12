@@ -14,3 +14,7 @@ supabase/.temp
 
 # Foto sorgente originali (non parte del sito)
 immagini gallery/
+
+# Artefatti degli strumenti di sviluppo (non fanno parte del sito)
+.impeccable/
+.playwright-mcp/
