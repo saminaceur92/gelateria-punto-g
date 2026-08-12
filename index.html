@@ -9,8 +9,27 @@
     <!-- iubenda — Privacy Controls & Cookie Solution.
          Va PRIMA di ogni altro script/risorsa di terze parti: è lo script che
          fa il blocco preventivo (la mappa Google non parte finché l'utente non
-         acconsente). Progetto: www.gelateriapuntogi.it (piano Advanced). -->
-    <script type="text/javascript" src="https://embeds.iubenda.com/widgets/22586995-b0e8-4907-a473-1510fa97c231.js"></script>
+         acconsente). Progetto: www.gelateriapuntogi.it (piano Advanced).
+
+         NON si carica in /admin. Non è una scorciatoia per evitare il banner:
+         l'area gestione è uno strumento interno per il personale, e gli unici
+         cookie che usa sono quelli della sessione di accesso, che sono tecnici
+         e per legge non richiedono consenso. Il banner lì non aveva niente da
+         chiedere, e su telefono copriva per intero il modulo del codice: si
+         vedeva solo il bordo del pulsante "Entra".
+
+         Iniettato via JS perché /admin e il sito pubblico sono lo stesso file
+         (rewrite di Vercel), quindi il tag statico non si può rendere
+         condizionale. Caricarlo così lo rende asincrono, e va bene: se arriva
+         tardi gli elementi con suppressedsrc restano fermi più a lungo, cioè
+         si sbaglia dalla parte giusta. -->
+    <script>
+      if (!location.pathname.startsWith('/admin')) {
+        var iub = document.createElement('script');
+        iub.src = 'https://embeds.iubenda.com/widgets/22586995-b0e8-4907-a473-1510fa97c231.js';
+        document.head.appendChild(iub);
+      }
+    </script>
 
     <meta name="description" content="Gelateria Punto Gi a Carpi (MO) – Il gelato artigianale che ti emoziona. Cremoso, fresco ogni giorno, anche senza lattosio e Vegan. Torte, semifreddi e pasticceria a freddo." />
     <meta name="keywords" content="gelateria Carpi, gelato artigianale Carpi, Punto Gi, gelato senza lattosio, gelato vegan, torte gelato Carpi, semifreddo Modena" />
