@@ -4,23 +4,24 @@ import Dashboard from './Dashboard';
 import './admin.css';
 
 /**
- * Accesso al gestionale col CODICE personale.
+ * Accesso al gestionale col CODICE personale — l'unico modo di entrare.
  *
  * Il codice non si verifica qui: si manda alla funzione `staff-login`, che sta
  * sui server di Supabase, e quella risponde aprendo la sessione. Nel browser
  * non c'è niente da aggirare, e nemmeno l'elenco dei codici.
  *
- * È rimasto anche l'ingresso con email e password, ma nascosto: serve solo
- * come porta di servizio finché la funzione non è stata pubblicata (o se un
- * giorno dovesse smettere di rispondere). Toglierlo del tutto rischierebbe di
- * chiudere fuori tutti quanti.
+ * C'era anche un ingresso di servizio con email e password: serviva finché la
+ * funzione non era pubblicata. Ora che lo è — e che la catena codice → sessione
+ * è stata provata da capo a fondo — è stato tolto: due porte per la stessa
+ * stanza sono una porta di troppo da sorvegliare.
+ *
+ * Se un giorno `staff-login` smettesse di rispondere e nessuno riuscisse più a
+ * entrare, la via di rientro è ripristinare questo file dalla cronologia di git
+ * (commit precedente a questo) e ripubblicare: due minuti.
  */
 function Login() {
-  const { signIn, entraColCodice } = useAuth();
+  const { entraColCodice } = useAuth();
   const [pin, setPin] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [conEmail, setConEmail] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -34,75 +35,32 @@ function Login() {
     // Se la sessione si apre, il Gate passa da solo alla dashboard.
   };
 
-  const submitEmail = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    const { error } = await signIn(email.trim(), password);
-    setBusy(false);
-    if (error) setError(error.message);
-  };
-
   return (
     <div className="adm-login">
       <div className="adm-login-card">
         <div className="adm-login-brand"><strong>Punto Gi</strong><span>Area gestione</span></div>
 
-        {!conEmail ? (
-          <form onSubmit={submitCodice}>
-            <h2>Il tuo codice</h2>
-            <p className="adm-muted">
-              Ognuno ha il suo: è quello che firma anche gli ordini che prendi al banco.
-            </p>
-            <input
-              type="password"
-              inputMode="numeric"
-              required
-              minLength={4}
-              placeholder="••••"
-              autoComplete="off"
-              className="adm-pin"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-            />
-            {error && <div className="adm-error">⚠️ {error}</div>}
-            <button type="submit" className="adm-btn adm-btn-primary" disabled={busy || pin.trim().length < 4}>
-              {busy ? 'Attendi…' : 'Entra'}
-            </button>
-            <button type="button" className="adm-link" onClick={() => { setConEmail(true); setError(''); }}>
-              Entra con email e password
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={submitEmail}>
-            <h2>Accedi</h2>
-            <p className="adm-muted">Ingresso di servizio, con email e password.</p>
-            <input
-              type="email"
-              required
-              placeholder="latua@email.com"
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              type="password"
-              required
-              minLength={6}
-              placeholder="Password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {error && <div className="adm-error">⚠️ {error}</div>}
-            <button type="submit" className="adm-btn adm-btn-primary" disabled={busy}>
-              {busy ? 'Attendi…' : 'Entra'}
-            </button>
-            <button type="button" className="adm-link" onClick={() => { setConEmail(false); setError(''); }}>
-              Torna al codice
-            </button>
-          </form>
-        )}
+        <form onSubmit={submitCodice}>
+          <h2>Il tuo codice</h2>
+          <p className="adm-muted">
+            Ognuno ha il suo: è quello che firma anche gli ordini che prendi al banco.
+          </p>
+          <input
+            type="password"
+            inputMode="numeric"
+            required
+            minLength={4}
+            placeholder="••••"
+            autoComplete="off"
+            className="adm-pin"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+          />
+          {error && <div className="adm-error">⚠️ {error}</div>}
+          <button type="submit" className="adm-btn adm-btn-primary" disabled={busy || pin.trim().length < 4}>
+            {busy ? 'Attendi…' : 'Entra'}
+          </button>
+        </form>
       </div>
     </div>
   );

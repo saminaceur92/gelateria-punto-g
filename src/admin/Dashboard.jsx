@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './auth';
 import TableEditor from './TableEditor';
 import OrdersPanel from './OrdersPanel';
-import StaffPanel from './StaffPanel';
 import DocumentiPanel from './DocumentiPanel';
 import GalleryPanel from './GalleryPanel';
 import ChiediCodice from './ChiediCodice';
@@ -33,7 +32,7 @@ const ALLERGENI_OPTIONS = [
 ];
 
 export default function Dashboard() {
-  const { user, signOut, isOwner } = useAuth();
+  const { user, signOut } = useAuth();
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
@@ -312,8 +311,8 @@ export default function Dashboard() {
           newRow: () => ({ nome: '' }),
         },
       },
-      // ── In fondo, appena prima di "Accessi staff": le schede che non sono
-      //    contenuti del menù ma strumenti (documenti, promemoria, orari).
+      // ── In fondo: le schede che non sono contenuti del menù ma strumenti
+      //    (documenti, gallery, codici, promemoria, orari).
       {
         // PDF allergeni caricabile dallo staff + QR Code da stampare.
         key: 'documenti',
@@ -460,21 +459,11 @@ export default function Dashboard() {
             {s.label}
           </button>
         ))}
-        {isOwner && (
-          <button
-            className={`adm-tab ${active === 'staff' ? 'active' : ''}`}
-            onClick={() => setActive('staff')}
-          >
-            👥 Accessi staff
-          </button>
-        )}
       </nav>
 
       <main className="adm-main">
         {active === 'ordini' ? (
           <OrdersPanel key={ordersKey} />
-        ) : active === 'staff' && isOwner ? (
-          <StaffPanel />
         ) : active === 'documenti' ? (
           <DocumentiPanel />
         ) : active === 'gallery' ? (

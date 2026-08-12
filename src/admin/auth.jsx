@@ -91,8 +91,6 @@ export function AuthProvider({ children }) {
       logAction('Accesso col codice', data.nome || null);
       return { error: null };
     },
-    // Ingresso di servizio con email + password (vedi Admin.jsx).
-    signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
     signOut: () => supabase.auth.signOut(),
   };
 
