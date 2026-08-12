@@ -9,7 +9,10 @@ const links = [
   { href: '/allergeni', label: 'Allergeni' },
   { href: '#torte', label: 'Crea la torta' },
   { href: '/consegna', label: 'Ordina a domicilio' },
-  { href: '#gallery', label: 'Gallery' },
+  // /galleria = la pagina con TUTTE le foto. La striscia in fondo alla home
+  // (#gallery) è solo un assaggio: chi cerca "Gallery" nel menu vuole vederle
+  // tutte, non essere portato in fondo alla pagina.
+  { href: '/galleria', label: 'Gallery' },
   { href: '#contatti', label: 'Contatti' },
 ];
 

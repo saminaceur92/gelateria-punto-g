@@ -30,8 +30,9 @@ export default function Footer() {
               <li><a href="#about">Storia</a></li>
               <li><a href="#servizi">Servizi</a></li>
               <li><a href="#menu">Gusti</a></li>
-              <li><a href="#gallery">Gallery</a></li>
+              <li><a href="/galleria">Gallery</a></li>
               <li><a href="#contatti">Contatti</a></li>
+              <li><a href="/consegna">Ordina a domicilio</a></li>
               <li><a href="/allergeni">Allergeni</a></li>
             </ul>
           </div>
