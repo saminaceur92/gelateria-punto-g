@@ -30,7 +30,9 @@
 
 @media (max-width: 900px) { .cake-cta-grid { grid-template-columns: 1fr; } }
 
-.cake-cta h2 em { font-style: italic; color: var(--violet-deep); }
+/* corsivo tolto: e' un h2, quindi Baloo 2, che il corsivo non ce l'ha.
+   L'enfasi la porta il colore, come negli altri titoli del sito. */
+.cake-cta h2 em { color: var(--violet-deep); }
 
 .cake-cta-features {
   display: flex;

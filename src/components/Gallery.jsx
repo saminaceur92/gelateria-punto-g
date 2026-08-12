@@ -51,7 +51,7 @@ export default function Gallery() {
         <div style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto' }}>
           <span className="eyebrow">Gallery</span>
           <h2 style={{ marginTop: '1.2rem' }}>
-            Cose che <em style={{ fontStyle: 'italic', color: 'var(--violet-deep)' }}>amerai</em>
+            Cose che <em style={{ color: 'var(--violet-deep)' }}>amerai</em>
           </h2>
           <p className="lead" style={{ marginTop: '1rem', marginInline: 'auto' }}>
             Ogni vassoio è una piccola opera. Lasciati ispirare e scegli la tua coccola.

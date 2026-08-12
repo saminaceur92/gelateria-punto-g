@@ -44,7 +44,7 @@ export default function Menu() {
         <div className="menu-header">
           <span className="eyebrow">I nostri gusti</span>
           <h2 style={{ marginTop: '1.2rem' }}>
-            Gusti nuovi <em style={{ color: 'var(--violet-deep)', fontStyle: 'italic' }}>ogni mese!</em>
+            Gusti nuovi <em style={{ color: 'var(--violet-deep)' }}>ogni mese!</em>
           </h2>
           <p className="lead" style={{ marginTop: '1rem' }}>
             Una selezione che cambia con le stagioni:
