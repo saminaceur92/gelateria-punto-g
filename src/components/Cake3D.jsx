@@ -455,7 +455,10 @@ function heartFootprint(R) {
   }
   const s = (2 * R) / Math.max(mxx - mnx, mxz - mnz);
   const cx = (mnx + mxx) / 2, cz = (mnz + mxz) / 2;
-  return poly.map(([x, z]) => [(x - cx), (z - cz)]);
+  // ⚠️ `* s` è la riga che porta il contorno alla misura della torta: senza,
+  // il cuore esce grande l'89% e tutto quello che ci si appoggia — ruche,
+  // ghirlande, nastri — finisce DENTRO al dolce.
+  return poly.map(([x, z]) => [(x - cx) * s, (z - cz) * s]);
 }
 
 /** Il poligono del contorno della torta, forma per forma. */
@@ -584,25 +587,6 @@ function ringPts(n, r, startDeg = 0) {
     out.push([Math.cos(a) * r, Math.sin(a) * r, i]);
   }
   return out;
-}
-
-/**
- * Ciuffetto di panna. Prima era una pallina con sopra un cono: la sagoma
- * tornava, ma era liscia, e la panna liscia non esiste — quella che si vede
- * nelle loro torte porta sempre le righe della bocchetta a stella.
- */
-function Dollop({ position, color, s = 1, rotation = 0 }) {
-  return (
-    <mesh
-      castShadow
-      geometry={CREAM_DROP_GEO}
-      position={[position[0], position[1] - 0.03, position[2]]}
-      rotation={[0, rotation, 0]}
-      scale={[0.21, 0.28, 0.21]}
-    >
-      <meshPhysicalMaterial {...softMat(color)} />
-    </mesh>
-  );
 }
 
 /* ============================ decorazioni 3D "a pezzi" ============================ */
@@ -1280,7 +1264,7 @@ function postiPerFiocchi(shape, R, quanti, fuori) {
   const scelti = [];
   for (let k = 0; k < quanti; k++) {
     const { s, avanti } = buoni[Math.floor((k * buoni.length) / quanti)];
-    const spinta = fuori + avanti + 0.035;
+    const spinta = fuori + avanti + 0.02;
     scelti.push({
       ...s,
       i: k,
@@ -1632,13 +1616,14 @@ const RUCHE_LARGHEZZA = 0.15;
 const CIUFFO_DOPPIO = 0.2625;
 const CIUFFO_BASE = 0.22;
 
+
 /**
  * RUCHE su tutto il fianco: cordoni verticali attaccati uno all'altro, dal
  * vassoio al bordo di sopra. Quanti ne servono lo dice il giro della torta —
  * con un numero fisso, sui formati grandi si sarebbero allontanati fino a
  * sembrare righe sparse invece di un rivestimento.
  */
-function RucheDiPanna({ shape, R, yBase, h, colore }) {
+function RucheDiPanna({ shape, R, yBase, h, colore, fuori = 0 }) {
   const larghezza = RUCHE_LARGHEZZA;
   const geo = useMemo(() => rucheGeo(h / larghezza), [h]);
   useEffect(() => () => geo.dispose(), [geo]);
@@ -1649,7 +1634,7 @@ function RucheDiPanna({ shape, R, yBase, h, colore }) {
         // È la differenza fra la panna e una fila di tubi di plastica
         const w = larghezza * (0.94 + rnd(i, 21) * 0.13);
         return {
-          position: [x, yBase, z],
+          position: [x + Math.cos(ang) * fuori, yBase, z + Math.sin(ang) * fuori],
           rotation: [0, Math.PI / 2 - ang + (rnd(i, 22) - 0.5) * 0.5, 0],
           // in altezza variano pochissimo: il filo di cime disuguali è quello
           // che si vede in una torta fatta a mano
@@ -1657,7 +1642,7 @@ function RucheDiPanna({ shape, R, yBase, h, colore }) {
           color: colore(i),
         };
       }),
-    [shape, R, yBase, colore]
+    [shape, R, yBase, colore, fuori]
   );
   return (
     <Pieces items={items} geometry={geo} order="YXZ">
@@ -1671,20 +1656,20 @@ function RucheDiPanna({ shape, R, yBase, h, colore }) {
  * il giro. `s` è la larghezza del ciuffo; il passo è appena più stretto, così
  * si toccano e la fila risulta piena invece che a palline distanziate.
  */
-function GhirlandaDiPanna({ shape, R, inset = 1, y, s, colore }) {
+function GhirlandaDiPanna({ shape, R, inset = 1, y, s, colore, fuori = 0 }) {
   const items = useMemo(
     () =>
-      decoSpots(shape, R, quantiInFila(shape, R, inset, s * 0.72), inset).map(({ x, z, i }) => {
+      decoSpots(shape, R, quantiInFila(shape, R, inset, s * 0.72), inset).map(({ x, z, i, ang }) => {
         const w = s * (0.92 + rnd(i, 11) * 0.16);
         // più larghi che alti: tirati su, sembravano meringhe a punta
         return {
-          position: [x, y, z],
+          position: [x + Math.cos(ang) * fuori, y, z + Math.sin(ang) * fuori],
           rotation: [0, rnd(i, 9) * 6.28, 0],
           scale: [w, s * (0.82 + rnd(i, 12) * 0.16), w],
           color: colore(i),
         };
       }),
-    [shape, R, inset, y, s, colore]
+    [shape, R, inset, y, s, colore, fuori]
   );
   return (
     <Pieces items={items} geometry={CREAM_DROP_GEO} order="YXZ">
@@ -2128,15 +2113,17 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // pur non essendo un guscio intero.
   // Dove si annodano i fiocchi. Due numeri, non uno solo: il contorno che
   // seguono (`fiancoBase`) e di quanto stanno in fuori rispetto a quello
-  // (`fiancoFuori`), per restare DAVANTI alla panna invece che finirci dietro.
-  // Comanda la panna che sporge di più: le ruche verticali sul fianco o la
-  // ghirlanda alla base di "sotto e sopra".
+  // (`fiancoFuori`).
+  //
+  // Il nastro dev'essere APPOGGIATO alla torta, non sospeso: quindi segue la
+  // parete che ha davvero accanto all'altezza del nodo — il guscio di panna se
+  // c'è, altrimenti il gelato — e si scosta solo di quanto serve a non finire
+  // dietro alle ruche. Su "sotto e sopra" la ghirlanda sta alla BASE, cioè
+  // sotto il nodo: tenerne conto qui spingeva il fiocco a mezz'aria, staccato
+  // dalla parete. Lì si tengono corti i nastri (vedi la banda qui sotto).
   const pannaACiuffi = coverIsCream && covering?.id === 'panna';
-  const fiancoBase = wrapFull || pannaSottoSopra ? wrapR : R;
-  const fiancoFuori = Math.max(
-    pannaACiuffi ? RUCHE_LARGHEZZA * 0.5 : 0,
-    pannaSottoSopra ? CIUFFO_BASE * 0.55 : 0
-  );
+  const fiancoBase = wrapFull ? wrapR : R;
+  const fiancoFuori = pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0;
   // Il fiocco dev'essere CONTENUTO nel fianco. Era questo a farlo sembrare
   // rotto, su ogni forma: le asole salgono ~0.2 sopra il nodo e i nastri
   // scendono, e con le misure fisse di prima il fiocco era più alto del fianco
@@ -2144,10 +2131,13 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // di sopra le taglia) e i nastri finivano sul vassoio.
   // Quindi: nodo a due terzi d'altezza, nastri che arrivano quasi alla base, e
   // se il fianco è basso si rimpicciolisce tutto invece di sbordare.
-  const fiancoAlt = bodyTop - stackBottom;
-  const nodoY = stackBottom + fiancoAlt * 0.62;
+  // La banda libera del fianco: da sopra la ghirlanda della base (se c'è) fino
+  // al bordo. Su "sotto e sopra" i nastri finivano dentro i ciuffi in basso.
+  const fiancoGiu = stackBottom + (pannaSottoSopra ? CIUFFO_BASE * 0.95 : 0);
+  const fiancoAlt = bodyTop - fiancoGiu;
+  const nodoY = fiancoGiu + fiancoAlt * 0.62;
   const bowS = Math.min(1, (bodyTop - nodoY) / 0.2);
-  const nastroLen = Math.max(0.06, (nodoY - stackBottom) * 0.8);
+  const nastroLen = Math.max(0.06, (nodoY - fiancoGiu) * 0.8);
 
   // ---- L'ANELLO di ciuffi sul bordo di sopra: c'è solo se c'è la panna ----
   // UNA fila sola, sempre la stessa — che arrivi dalla copertura fatta col
