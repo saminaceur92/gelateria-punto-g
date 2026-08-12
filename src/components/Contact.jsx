@@ -45,6 +45,7 @@ export default function Contact() {
                   href="https://goo.gl/maps/s96Pk7NbEPJhneC66"
                   target="_blank"
                   rel="noopener noreferrer"
+                  data-ev="mappa_contatti"
                 >
                   Via Remesina Interna 46<br />41012 Carpi (MO)
                 </a>
@@ -55,7 +56,7 @@ export default function Contact() {
               <span className="icon"><Phone size={20} /></span>
               <div>
                 <h4>Whatsappaci</h4>
-                <a href="https://api.whatsapp.com/send?phone=393203306009" target="_blank" rel="noopener noreferrer">
+                <a href="https://api.whatsapp.com/send?phone=393203306009" target="_blank" rel="noopener noreferrer" data-ev="whatsapp_contatti">
                   320 330 6009
                 </a>
               </div>
@@ -65,7 +66,7 @@ export default function Contact() {
               <span className="icon"><Instagram size={20} /></span>
               <div>
                 <h4>Seguici</h4>
-                <a href="https://www.instagram.com/gelateriapuntogicarpi/" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.instagram.com/gelateriapuntogicarpi/" target="_blank" rel="noopener noreferrer" data-ev="instagram_contatti">
                   @gelateriapuntogicarpi
                 </a>
               </div>
@@ -89,6 +90,7 @@ export default function Contact() {
               rel="noopener noreferrer"
               className="btn btn-accent"
               style={{ alignSelf: 'flex-start' }}
+              data-ev="whatsapp_contatti"
             >
               Scrivici su WhatsApp
             </a>

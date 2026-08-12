@@ -8,6 +8,7 @@ import GalleryPanel from './GalleryPanel';
 import ChiediCodice from './ChiediCodice';
 import CodiciPanel from './CodiciPanel';
 import PromemoriaPanel from './PromemoriaPanel';
+import StatistichePanel from './StatistichePanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 import { playPing } from '../lib/ping';
@@ -413,6 +414,13 @@ export default function Dashboard() {
         custom: true,
       },
       {
+        // Quante persone arrivano sul sito, da dove, quante ci scrivono e a
+        // che punto si ferma chi sta ordinando una torta.
+        key: 'statistiche',
+        label: '📊 Statistiche',
+        custom: true,
+      },
+      {
         key: 'orari',
         label: '🕒 Orari',
         props: {
@@ -477,6 +485,8 @@ export default function Dashboard() {
           <CodiciPanel />
         ) : active === 'promemoria' ? (
           <PromemoriaPanel />
+        ) : active === 'statistiche' ? (
+          <StatistichePanel />
         ) : (
           <TableEditor key={current.key} {...current.props} />
         )}

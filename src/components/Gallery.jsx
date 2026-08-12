@@ -65,9 +65,13 @@ export default function Gallery() {
             <figure className="gallery-shot" key={i} aria-hidden={i >= nelNastro.length ? 'true' : undefined}>
               {/* Toccare la foto la apre ingrandita: prima il tocco non faceva
                   nulla (anzi, su telefono bloccava il nastro). */}
+              {/* foto_aperta si conta qui e non dentro Lightbox: quel componente
+                  lo usa anche il configuratore torte per la foto della copertura,
+                  e quelle aperture non sono foto della gallery. */}
               <button
                 type="button"
                 className="gallery-shot-btn"
+                data-ev="foto_aperta"
                 onClick={() => setAperta(i % nelNastro.length)}
                 aria-label="Ingrandisci la foto"
                 tabIndex={i >= nelNastro.length ? -1 : 0}
@@ -80,7 +84,7 @@ export default function Gallery() {
       </div>
 
       <div className="container" style={{ textAlign: 'center', marginTop: '2rem' }}>
-        <a className="btn btn-ghost" href="/galleria">
+        <a className="btn btn-ghost" href="/galleria" data-ev="galleria_vedi_tutte">
           Vedi tutte le foto <ArrowRight size={16} />
         </a>
       </div>

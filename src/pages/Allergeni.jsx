@@ -217,7 +217,7 @@ export default function Allergeni() {
         {/* Download PDF ufficiale */}
         <div style={{ marginTop: '3rem', textAlign: 'center' }}>
           <a href={pdfUrl(doc)} target="_blank" rel="noopener noreferrer"
-            className="btn btn-primary" style={{ display: 'inline-flex' }}>
+            className="btn btn-primary" style={{ display: 'inline-flex' }} data-ev="allergeni_pdf">
             <Download size={18} /> Scarica il documento ufficiale (PDF)
           </a>
           <p style={{ fontSize: '0.82rem', color: 'var(--grey)', marginTop: '1rem', maxWidth: 560, marginInline: 'auto' }}>

@@ -1,9 +1,20 @@
+import { useEffect } from 'react';
 import { CheckCircle2, XCircle } from 'lucide-react';
+import { tracciaUnaVolta, EV } from '../lib/analytics';
 
 // Overlay mostrato al ritorno da Stripe Checkout (?pagamento=ok | annullato).
 export default function PaymentResult({ result, delivery = false, onClose }) {
-  if (!result) return null;
   const ok = result === 'ok';
+
+  // Esito del pagamento: non è un click, e l'effetto deve stare PRIMA
+  // dell'uscita anticipata qui sotto (le hook si chiamano sempre, sempre nello
+  // stesso ordine). Una volta sola per caricamento: il componente può rimontare.
+  useEffect(() => {
+    if (!result) return;
+    tracciaUnaVolta(ok ? EV.TORTA_PAGAMENTO_OK : EV.TORTA_PAGAMENTO_ANNULLATO);
+  }, [result, ok]);
+
+  if (!result) return null;
 
   return (
     <div
