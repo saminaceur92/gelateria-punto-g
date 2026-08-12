@@ -33,7 +33,7 @@ export const GELATERIA = {
  * Cambiala quando cambia il LAYOUT del documento: entra nell'impronta, così
  * dopo un aggiornamento del sito il gestionale segnala che conviene rigenerare.
  */
-const VERSIONE_DOC = 2;
+const VERSIONE_DOC = 3;
 
 /* ───────── Allergeni e categorie ───────── */
 
@@ -72,6 +72,97 @@ const DIETE = [
   { key: 'senza_lattosio', sigla: 'SL', label: 'Senza lattosio', colore: '#2c7699' },
   { key: 'senza_zucchero', sigla: 'SZ', label: 'Senza zuccheri aggiunti', colore: '#6b4f9e' },
 ];
+
+/* ───────── Evidenza degli allergeni nelle liste ingredienti ───────── */
+
+/**
+ * Nelle liste ingredienti le parole-allergene vanno in GRASSETTO E
+ * SOTTOLINEATE, come nel quaderno impaginato a mano dai titolari — ed è il
+ * modo in cui il Reg. 1169/2011 chiede di farle risaltare. L'elenco copre i
+ * 14 allergeni di legge e i derivati che hanno un nome tutto loro (panna,
+ * burro, mascarpone, tuorlo…): sono le parole che chi ha un'allergia cerca
+ * con gli occhi.
+ */
+const PAROLE_ALLERGENE = new Set([
+  // latte e derivati
+  'latte', 'lattosio', 'latticello', 'panna', 'burro', 'yogurt', 'quark',
+  'mascarpone', 'formaggio', 'caseina', 'caseinati',
+  // uova
+  'uova', 'uovo', 'albume', 'tuorlo',
+  // cereali con glutine
+  'glutine', 'grano', 'frumento', 'orzo', 'segale', 'avena', 'farro', 'kamut',
+  // soia
+  'soia',
+  // arachidi e frutta a guscio
+  'arachidi', 'arachide', 'mandorle', 'mandorla', 'nocciole', 'nocciola',
+  'noci', 'noce', 'pistacchi', 'pistacchio', 'anacardi', 'macadamia', 'pecan',
+  'gianduia', 'nutella',
+  // gli altri di legge
+  'sesamo', 'lupini', 'lupino', 'sedano', 'senape', 'solfiti', 'solforosa',
+  'pesce', 'crostacei', 'molluschi',
+  // composti che portano glutine e latte (così li scrive il quaderno a mano)
+  'wafer', 'wafers',
+]);
+
+/**
+ * La parola `i` della lista `nude` va evidenziata? Le eccezioni sono i falsi
+ * amici: il burro DI CACAO non è latte, il latte DI COCCO nemmeno, la NOCE di
+ * cocco e la noce moscata non sono frutta a guscio, il grano SARACENO non ha
+ * glutine, e "senza lattosio / senza glutine" è una promessa, non un
+ * ingrediente.
+ */
+function daEvidenziare(parola, nude, i) {
+  const w = parola.toLowerCase();
+  if (!PAROLE_ALLERGENE.has(w)) {
+    // "anidride solforosa": anche "anidride", se la parola dopo è quella
+    return w === 'anidride' && nude[i + 1] === 'solforosa';
+  }
+  if (nude[i - 1] === 'senza') return false;
+  if (w === 'burro' && nude[i + 1] === 'di' && nude[i + 2] === 'cacao') return false;
+  if (w === 'latte' && nude[i + 1] === 'di' && nude[i + 2] === 'cocco') return false;
+  if ((w === 'noce' || w === 'noci')
+    && ((nude[i + 1] === 'di' && nude[i + 2] === 'cocco') || nude[i + 1] === 'moscata')) return false;
+  if (w === 'grano' && nude[i + 1] === 'saraceno') return false;
+  return true;
+}
+
+/**
+ * Manda a capo un testo come `pdf.spezza`, ma ogni riga esce come elenco di
+ * segmenti { t, ev }: quelli con `ev` vanno scritti in grassetto e
+ * sottolineati. L'andata a capo tiene conto che il grassetto è più largo,
+ * così le righe non sbordano dalla colonna.
+ */
+function righeConEvidenza(pdf, testo, maxLarghezza, dim) {
+  const limite = maxLarghezza * 0.985;
+  const atomi = String(testo).split(/\s+/).filter(Boolean);
+  // la parola "nuda" di ogni atomo (senza punteggiatura), per i controlli
+  // sulla parola prima e dopo
+  const nude = atomi.map((a) => {
+    const m = a.toLowerCase().match(/[a-zà-ÿ]+/);
+    return m ? m[0] : '';
+  });
+  const spazioW = pdf.larghezzaTesto(' ', dim);
+  const righe = [];
+  let riga = [];
+  let wRiga = 0;
+  atomi.forEach((atomo, i) => {
+    const seg = atomo.split(/([A-Za-zÀ-ÿ]+)/).filter(Boolean).map((p) => ({
+      t: p,
+      ev: /[A-Za-zÀ-ÿ]/.test(p) && daEvidenziare(p, nude, i),
+    }));
+    const wAtomo = seg.reduce((s, x) => s + pdf.larghezzaTesto(x.t, dim, x.ev ? 'b' : 'n'), 0);
+    if (riga.length && wRiga + spazioW + wAtomo > limite) {
+      righe.push(riga);
+      riga = [];
+      wRiga = 0;
+    }
+    if (riga.length) { riga.push({ t: ' ', ev: false }); wRiga += spazioW; }
+    riga.push(...seg);
+    wRiga += wAtomo;
+  });
+  if (riga.length) righe.push(riga);
+  return righe;
+}
 
 /* ───────── Colori del documento (gli stessi del sito) ───────── */
 
@@ -640,9 +731,16 @@ export function generaQuaderno(dati, { quando = new Date() } = {}) {
     const dieteVoce = Array.isArray(voce.diete) ? voce.diete : [];
     const righeNome = pdf.spezza(voce.nome || '—', larghNome, 8.8, 'b');
     // Gli ingredienti si scrivono per intero: sono il dato di sicurezza.
+    // Le parole-allergene escono in grassetto e sottolineate (vedi
+    // righeConEvidenza), come nel quaderno impaginato a mano.
     // La descrizione (testo di vetrina) compare solo quando non ci sono
     // ingredienti, così la riga non resta spoglia ma non ruba spazio a loro.
-    const righeIngr = voce.ingredienti ? tronca(pdf.spezza(voce.ingredienti, larghNome, 6.7), 8) : [];
+    const tutteIngr = voce.ingredienti ? righeConEvidenza(pdf, voce.ingredienti, larghNome, 6.7) : [];
+    const righeIngr = tutteIngr.slice(0, 8);
+    if (tutteIngr.length > righeIngr.length) {
+      // un testo troncato deve vedersi che è troncato
+      righeIngr[righeIngr.length - 1] = [...righeIngr[righeIngr.length - 1], { t: '…', ev: false }];
+    }
     const righeDesc = !righeIngr.length && voce.descrizione
       ? tronca(pdf.spezza(voce.descrizione, larghNome, 6.8, 'i'), 3)
       : [];
@@ -670,7 +768,18 @@ export function generaQuaderno(dati, { quando = new Date() } = {}) {
     let ty = y + 13;
     righeNome.forEach((r) => { pdf.testo(r, M + 9, ty, { dim: 8.8, font: 'b', colore: INCHIOSTRO }); ty += 10.4; });
     righeDesc.forEach((r) => { pdf.testo(r, M + 9, ty + 1, { dim: 6.8, font: 'i', colore: GRIGIO }); ty += 8.2; });
-    righeIngr.forEach((r) => { pdf.testo(r, M + 9, ty + 1.5, { dim: 6.7, colore: '#5f574d' }); ty += 8.4; });
+    righeIngr.forEach((segmenti) => {
+      let tx = M + 9;
+      segmenti.forEach((s) => {
+        const font = s.ev ? 'b' : 'n';
+        const w = pdf.larghezzaTesto(s.t, 6.7, font);
+        pdf.testo(s.t, tx, ty + 1.5, { dim: 6.7, font, colore: s.ev ? INCHIOSTRO : '#5f574d' });
+        // la sottolineatura: una riga sottile appena sotto la base del testo
+        if (s.ev) pdf.linea(tx, ty + 3, tx + w, ty + 3, { colore: INCHIOSTRO, spessore: 0.5 });
+        tx += w;
+      });
+      ty += 8.4;
+    });
 
     // Pallini (o l'avviso, se nessuno ha ancora dichiarato gli allergeni)
     const cy = y + 12;
