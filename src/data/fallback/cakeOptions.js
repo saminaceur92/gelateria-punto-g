@@ -362,4 +362,39 @@ export const cakeRecipes = [
     covering: 'panna',
     decoration: 'zuccherini',
   },
+  // --- Ricette pensate per le torte grandi e per le forme squadrate. ---
+  // Le due rettangolari dichiarano la forma: sulle torte piccole (sotto le
+  // 15 persone) il configuratore la sostituisce da solo, come per tutte.
+  {
+    name: 'Drip cake al cioccolato',
+    shape: 'rettangolare',
+    flavors: ['Cioccolato', 'Fior di Latte', 'Nocciola'],
+    filling: 'nutella',
+    covering: 'panna-spatolata',
+    decoration: 'drip',
+  },
+  {
+    name: 'Maxi festa',
+    shape: 'rettangolare',
+    flavors: ['Fragola', 'Limone', 'Fior di Latte'],
+    filling: 'frutti-rossi',
+    covering: 'panna-spatolata',
+    decoration: 'colorate',
+  },
+  {
+    name: 'Rustica del bosco',
+    shape: 'quadrata',
+    flavors: ['Fior di Latte', 'Nocciola'],
+    filling: 'granella',
+    covering: 'naked',
+    decoration: 'frutta-fresca',
+  },
+  {
+    name: 'Arcobaleno di panna',
+    shape: 'quadrata',
+    flavors: ['Fior di Latte', 'Cioccolato'],
+    filling: 'nessuna',
+    covering: 'panna-spatolata',
+    decoration: 'panna-colorata',
+  },
 ];
