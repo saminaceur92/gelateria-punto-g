@@ -235,10 +235,13 @@ export const cakeAllergens = [
 // Ricette suggerite ("Sorprendimi!")
 // Usano solo gusti e id ancora in listino: se un nome cambia, il configuratore
 // completa da solo la ricetta con altri gusti disponibili.
+// La FORMA la dichiara solo chi ce l'ha nel tema (le ricette col cuore):
+// per le altre la pesca il configuratore, alla pari fra le forme in listino.
+// Quando era scritta qui su tutte — 13 tonde su 16 — quadrata e rettangolare
+// non uscivano MAI.
 export const cakeRecipes = [
   {
     name: 'Estate piena',
-    shape: 'tonda',
     flavors: ['Limone', 'Fragola'],
     filling: 'frutti-rossi',
     covering: 'frutta-cop',
@@ -246,7 +249,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Amanti del cioccolato',
-    shape: 'tonda',
     flavors: ['Cioccolato', 'Nocciola'],
     filling: 'nutella',
     covering: 'cioccolato-cop',
@@ -262,7 +264,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Classica della domenica',
-    shape: 'tonda',
     flavors: ['Crema', 'Nocciola'],
     filling: 'cremino',
     covering: 'panna-sotto-sopra',
@@ -270,7 +271,6 @@ export const cakeRecipes = [
   },
   {
     name: 'La firma Punto Gi',
-    shape: 'tonda',
     flavors: ['Pistacchio', 'Bacio'],
     filling: 'pistacchio',
     covering: 'pistacchio-cop',
@@ -278,7 +278,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Festa dei bambini',
-    shape: 'tonda',
     flavors: ['Nutella', 'Stracciatella'],
     filling: 'kinder',
     covering: 'panna',
@@ -286,7 +285,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Merenda golosa',
-    shape: 'tonda',
     flavors: ['Duplo', 'Nocciola'],
     filling: 'biscotto',
     covering: 'nocciola-cop',
@@ -294,7 +292,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Fresca al limone',
-    shape: 'tonda',
     flavors: ['Limone', 'Fior di Latte'],
     filling: 'frutti-rossi',
     covering: 'panna-sopra',
@@ -302,7 +299,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Caffè e cioccolato',
-    shape: 'tonda',
     flavors: ['Caffè', 'Cioccolato'],
     filling: 'cremino',
     covering: 'cioccolato-cop',
@@ -318,7 +314,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Caramello croccante',
-    shape: 'tonda',
     flavors: ['Caramello Salato', 'Fior di Latte'],
     filling: 'caramello',
     covering: 'panna-sotto-sopra',
@@ -326,7 +321,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Elegante in bianco',
-    shape: 'tonda',
     flavors: ['Fior di Latte', 'Crema'],
     filling: 'granella',
     covering: 'cioccolato-bianco-cop',
@@ -334,7 +328,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Doppio pistacchio',
-    shape: 'tonda',
     flavors: ['Pistacchio', 'Punto Gi'],
     filling: 'granella-pistacchi',
     covering: 'pistacchio-cop',
@@ -350,7 +343,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Tre cioccolati',
-    shape: 'tonda',
     flavors: ['Cioccolato', 'Bacio', 'Pino Pinguino'],
     filling: 'nutella',
     covering: 'cioccolato-cop',
@@ -358,7 +350,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Tutta frutta',
-    shape: 'tonda',
     flavors: ['Fragola', 'Limone', 'Fior di Latte'],
     filling: 'frutti-rossi',
     covering: 'frutta-cop',
@@ -366,7 +357,6 @@ export const cakeRecipes = [
   },
   {
     name: 'Compleanno a colori',
-    shape: 'tonda',
     flavors: ['Crema', 'Stracciatella'],
     filling: 'cremino',
     covering: 'panna',

@@ -798,17 +798,30 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const decorationColors = colori.length
       ? { [deco.id]: colori[Math.floor(Math.random() * colori.length)] }
       : {};
-    // Anche la FORMA fa parte della sorpresa: le ricette la dichiarano e finora
-    // veniva ignorata (la ricetta "Romantica" non ha mai prodotto un cuore).
-    // La rettangolare resta però riservata alle torte grandi.
+    // Anche la FORMA fa parte della sorpresa. La dichiarano solo le ricette
+    // che ce l'hanno nel tema ("Romantica", "Cuore di fragola"… restano
+    // cuori); per le altre si pesca alla pari fra le forme in listino — il
+    // cuore escluso, che la sua parte l'ha già dalle ricette a tema. Quando
+    // la forma era scritta su tutte le ricette (13 tonde su 16), quadrata e
+    // rettangolare non uscivano MAI ("mi escono maggiormente tonde e cuore").
+    // La rettangolare resta riservata alle torte grandi.
     const size = cakeSizes.find((s) => s.id === config.sizeId);
-    const shapeOk =
+    const rettOk = personeOf(size) >= RECT_MIN_PERSONE;
+    const dichiarata =
       recipe.shape &&
       cakeShapes.some((s) => s.id === recipe.shape) &&
-      (recipe.shape !== 'rettangolare' || personeOf(size) >= RECT_MIN_PERSONE);
+      (recipe.shape !== 'rettangolare' || rettOk);
+    const altreForme = cakeShapes.filter(
+      (s) => s.id !== 'cuore' && (s.id !== 'rettangolare' || rettOk)
+    );
+    const formaSorpresa = dichiarata
+      ? recipe.shape
+      : altreForme.length
+        ? altreForme[Math.floor(Math.random() * altreForme.length)].id
+        : config.shape;
     set({
       flavors,
-      ...(shapeOk ? { shape: recipe.shape } : {}),
+      shape: formaSorpresa,
       fillingId: conflictsAllergies(filling, config.allergies, config.diets) ? 'nessuna' : recipe.filling,
       coveringId: conflictsAllergies(covering, config.allergies, config.diets) ? config.coveringId : recipe.covering,
       decorations,
