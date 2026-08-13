@@ -22,9 +22,22 @@ function conTutti(categorie) {
   const altre = categorie.filter((c) => c.id !== BASI);
   const gusti = categorie.filter((c) => !NON_GUSTI.includes(c.id)).flatMap((c) => c.flavors);
   if (!gusti.length) return [...basi, ...altre];
+  // Dentro "Tutti i Gusti" le basi stanno IN CIMA, in un blocco loro con la
+  // sua intestazione: chi scorre l'elenco le incontra per prime e capisce che
+  // sono il punto di partenza, non un gusto da coppetta. Il numero sulla
+  // pillola resta quello dei soli gusti: le basi non si contano.
+  const elencoBasi = basi.flatMap((c) => c.flavors);
+  const conBasi = elencoBasi.length
+    ? [
+      { titolo: 'Le nostre basi', nota: 'Ogni gusto parte da una di queste.' },
+      ...elencoBasi,
+      { titolo: 'I gusti' },
+      ...gusti,
+    ]
+    : gusti;
   return [
     ...basi,
-    { id: TUTTI, name: 'Tutti i Gusti', description: '', flavors: gusti },
+    { id: TUTTI, name: 'Tutti i Gusti', description: '', conta: gusti.length, flavors: conBasi },
     ...altre,
   ];
 }
@@ -77,7 +90,7 @@ export default function Menu() {
               onClick={() => setActive(c.id)}
             >
               {c.name}
-              <span className="count">{c.flavors.length}</span>
+              <span className="count">{c.conta ?? c.flavors.length}</span>
             </button>
           ))}
         </div>
@@ -100,6 +113,16 @@ export default function Menu() {
             transition={{ duration: 0.4 }}
           >
             {current.flavors.map((f, i) => {
+              // Intestazione di blocco (basi / gusti): occupa tutta la riga
+              // della griglia, non è una scheda.
+              if (f.titolo) {
+                return (
+                  <div key={`gruppo-${f.titolo}`} className="flavor-gruppo">
+                    <span className="flavor-gruppo-nome">{f.titolo}</span>
+                    {f.nota && <span className="flavor-gruppo-nota">{f.nota}</span>}
+                  </div>
+                );
+              }
               // La descrizione la scrivono i titolari dalla dashboard e per molti
               // gusti manca: se è vuota non stampiamo nulla, così la scheda resta
               // compatta come prima (niente righe o spazi a vuoto).

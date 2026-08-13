@@ -1019,6 +1019,36 @@ p {
   gap: 0.8rem;
 }
 
+/* Intestazione di blocco dentro "Tutti i Gusti" (prima le basi, poi i
+   gusti): prende tutta la riga della griglia, cosi' i due gruppi restano
+   separati anche quando le colonne cambiano numero. */
+.flavor-gruppo {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.6rem;
+  margin: 1.4rem 0 0.2rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid rgba(50, 40, 31, 0.12);
+}
+/* Il primo blocco apre l'elenco: sopra non ha niente da separare. */
+.flavor-gruppo:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.flavor-gruppo-nome {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--violet-deep);
+}
+.flavor-gruppo-nota {
+  font-size: 0.85rem;
+  color: var(--grey);
+}
+
 .flavor {
   padding: 1.2rem 1.3rem;
   background: var(--cream);
