@@ -7,12 +7,26 @@ import { fetchMenu } from '../data/live';
 // Restano fuori le basi (Base Bianca, Vegan, Frutta: non si ordinano da sole) e
 // le "Altre Leccornie" (pasticcini, salame dolce, torte…), che gusti non sono.
 const TUTTI = 'tutti';
-const NON_GUSTI = ['base', 'leccornie'];
+const BASI = 'base';
+const NON_GUSTI = [BASI, 'leccornie'];
 
+/**
+ * Le BASI aprono la fila, staccate dal resto (vedi .menu-tab-base nel CSS).
+ * Sono un'altra cosa dai gusti: non si ordinano in coppetta, sono il punto di
+ * partenza da cui ogni gusto nasce — ed è l'ordine in cui compaiono anche nel
+ * quaderno degli allergeni, dove "Le nostre basi" è la prima sezione. In mezzo
+ * alle altre pillole sembravano invece un gusto come gli altri.
+ */
 function conTutti(categorie) {
+  const basi = categorie.filter((c) => c.id === BASI);
+  const altre = categorie.filter((c) => c.id !== BASI);
   const gusti = categorie.filter((c) => !NON_GUSTI.includes(c.id)).flatMap((c) => c.flavors);
-  if (!gusti.length) return categorie;
-  return [{ id: TUTTI, name: 'Tutti i Gusti', description: '', flavors: gusti }, ...categorie];
+  if (!gusti.length) return [...basi, ...altre];
+  return [
+    ...basi,
+    { id: TUTTI, name: 'Tutti i Gusti', description: '', flavors: gusti },
+    ...altre,
+  ];
 }
 
 export default function Menu() {
@@ -59,7 +73,7 @@ export default function Menu() {
               key={c.id}
               role="tab"
               aria-selected={active === c.id}
-              className={`menu-tab ${active === c.id ? 'active' : ''}`}
+              className={`menu-tab ${c.id === BASI ? 'menu-tab-base ' : ''}${active === c.id ? 'active' : ''}`}
               onClick={() => setActive(c.id)}
             >
               {c.name}

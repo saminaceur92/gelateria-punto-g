@@ -964,6 +964,23 @@ p {
 
 .menu-tab:hover { border-color: var(--violet-deep); }
 
+/* Le BASI aprono la fila e restano staccate dalle altre pillole: non sono un
+   gusto da coppetta, sono il punto di partenza da cui i gusti nascono. Basta
+   uno stacco — il filetto compare solo da 900px in su, dove la fila sta su una
+   riga sola: se le pillole vanno a capo si ritroverebbe a meta' del vuoto. */
+.menu-tab-base { margin-right: 1.2rem; position: relative; }
+
+@media (min-width: 900px) {
+  .menu-tab-base::after {
+    content: '';
+    position: absolute;
+    right: -0.9rem;
+    top: 25%;
+    height: 50%;
+    border-left: 1.5px solid rgba(50, 40, 31, 0.16);
+  }
+}
+
 .menu-tab.active {
   background: var(--violet-deep);
   color: var(--cream);
