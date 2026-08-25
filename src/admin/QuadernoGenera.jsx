@@ -22,6 +22,7 @@ const NOMI_TABELLE = {
   extra: 'Extra',
   quaderno_testi: 'Testi del quaderno',
   additivi: 'Additivi (E-xxx)',
+  parole_evidenza: 'Parole in grassetto',
 };
 
 export default function QuadernoGenera({ doc, onPubblicato }) {

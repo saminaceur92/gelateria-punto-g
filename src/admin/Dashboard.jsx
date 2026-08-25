@@ -32,6 +32,13 @@ const ALLERGENI_OPTIONS = [
   { value: 'Solfiti', emoji: '🍷' },
 ];
 
+// Gli stessi 7, ma per una tendina: il `select` di TableEditor mostra `label`,
+// non `emoji`, quindi qui l'emoji va dentro all'etichetta.
+const ALLERGENE_SELECT = ALLERGENI_OPTIONS.map((a) => ({
+  value: a.value,
+  label: `${a.emoji} ${a.value}`,
+}));
+
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [cats, setCats] = useState([]);
@@ -412,6 +419,31 @@ export default function Dashboard() {
           // Codice provvisorio diverso a ogni aggiunta: anche qui i doppioni non
           // sono ammessi, e con "E000" fisso il secondo additivo non entrava.
           newRow: () => ({ id: uuid(), codice: `E${900 + Math.floor(Math.random() * 100)}`, nome: 'Nuovo additivo', descrizione: '', attivo: true, ordine: 1000 }),
+        },
+      },
+      {
+        // Quali parole vanno in grassetto+sottolineato dentro alle liste
+        // ingredienti del quaderno. Il nucleo di legge sta nel codice
+        // (src/lib/evidenza.js): qui si AGGIUNGE quello che gli manca.
+        key: 'parole',
+        label: '🔤 Parole in grassetto',
+        props: {
+          table: 'parole_evidenza',
+          title: 'Parole in grassetto nel quaderno',
+          subtitle: 'Nel quaderno degli allergeni le parole che indicano un allergene escono in grassetto e sottolineate. Il programma ne riconosce già una cinquantina da solo (latte, panna, uova, soia, frumento, nocciole, frutta a guscio, base bianca…): qui aggiungi quelle che gli mancano. UNA RIGA = UNA PAROLA, oppure una frase con le parole separate da spazi ("pan di spagna"). Per il singolare e il plurale fai due righe: scrivere "cialda/cialde" o "biscotto, biscotti" in una riga sola non funziona, perché il programma cercherebbe quelle parole una di seguito all\'altra. ⚠️ Le parole che il programma riconosce già non si possono spegnere da qui, per nessuna via: così una svista non può togliere il grassetto a un allergene vero.',
+          fields: [
+            { key: 'parola', label: 'Parola o frase', type: 'text', placeholder: 'crumble · pan di spagna · lecitina di soia' },
+            { key: 'tipo', label: 'Cosa deve fare', type: 'select', options: [
+              { value: 'evidenzia', label: 'Mettila in grassetto' },
+              { value: 'eccezione', label: 'NON metterla in grassetto (eccezione)' },
+            ] },
+            { key: 'allergene', label: 'Quale allergene', type: 'select', options: ALLERGENE_SELECT },
+            { key: 'nota', label: 'Nota (non finisce nel PDF)', type: 'text', placeholder: 'perché l\'hai messa, cosa c\'è da controllare…' },
+            // `attivo` NON va fra i campi: l'interruttore verde a sinistra
+            // della riga lo gestisce già da solo (e salva subito).
+            { key: 'ordine', label: 'Ordine', type: 'number' },
+          ],
+          newRow: () => ({ id: uuid(), parola: '', tipo: 'evidenzia', allergene: '', nota: '', attivo: true, ordine: 100 }),
         },
       },
       {
