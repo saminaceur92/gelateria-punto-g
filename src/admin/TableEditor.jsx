@@ -129,15 +129,6 @@ function messaggioErrore(msg = '') {
       ? `Manca un dato obbligatorio: "${campo}". Compilalo e riprova.`
       : 'Manca un dato obbligatorio: compila i campi vuoti e riprova.';
   }
-  // Scheda "Parole in grassetto": un'eccezione di una parola sola toglierebbe
-  // il grassetto a quell'allergene in tutto il quaderno, e il database la
-  // rifiuta. Il messaggio di Postgres però non si capisce.
-  if (/parole_evidenza_eccezione_di_due_parole/i.test(msg)) {
-    return 'Un’eccezione deve essere una frase di almeno due parole (per esempio "farina di riso", non "farina"): una parola sola toglierebbe il grassetto a quell’allergene in tutto il quaderno.';
-  }
-  if (/parole_evidenza_tipo_valido/i.test(msg)) {
-    return 'Scegli cosa deve fare la parola: metterla in grassetto oppure fare eccezione.';
-  }
   if (/does not exist|schema cache/i.test(msg)) return msg; // ha già il suo messaggio
   return msg;
 }
@@ -149,7 +140,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const excludeKey = excludeIds.join('|');
-  const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.parola || r.giorno || r.etichetta || 'voce';
+  const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.giorno || r.etichetta || 'voce';
 
   // La riga si legge male se i campi sono tutti in fila: li dividiamo in fasce
   // — dati, foto, gruppi di spunte (allergeni presenti / tracce), sì/no.
