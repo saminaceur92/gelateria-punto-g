@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { nuovoPdf, ripulisci } from './pdf';
+import { costruisciVocabolario, segmenta } from './evidenza';
 
 /**
  * Quaderno Ingredienti e Allergeni generato dai dati del gestionale.
@@ -33,7 +34,7 @@ export const GELATERIA = {
  * Cambiala quando cambia il LAYOUT del documento: entra nell'impronta, così
  * dopo un aggiornamento del sito il gestionale segnala che conviene rigenerare.
  */
-const VERSIONE_DOC = 4;
+const VERSIONE_DOC = 5;
 
 /* ───────── Allergeni e categorie ───────── */
 
@@ -80,61 +81,16 @@ const DIETE = [
 /**
  * Nelle liste ingredienti le parole-allergene vanno in GRASSETTO E
  * SOTTOLINEATE, come nel quaderno impaginato a mano dai titolari — ed è il
- * modo in cui il Reg. 1169/2011 chiede di farle risaltare. L'elenco copre i
- * 14 allergeni di legge e i derivati che hanno un nome tutto loro (panna,
- * burro, mascarpone, tuorlo…): sono le parole che chi ha un'allergia cerca
- * con gli occhi.
- */
-const PAROLE_ALLERGENE = new Set([
-  // latte e derivati
-  'latte', 'lattosio', 'latticello', 'panna', 'burro', 'yogurt', 'quark',
-  'mascarpone', 'formaggio', 'caseina', 'caseinati',
-  // uova
-  'uova', 'uovo', 'albume', 'tuorlo',
-  // cereali con glutine
-  'glutine', 'grano', 'frumento', 'orzo', 'segale', 'avena', 'farro', 'kamut',
-  // soia
-  'soia',
-  // arachidi e frutta a guscio
-  'arachidi', 'arachide', 'mandorle', 'mandorla', 'nocciole', 'nocciola',
-  'noci', 'noce', 'pistacchi', 'pistacchio', 'anacardi', 'macadamia', 'pecan',
-  'gianduia', 'nutella',
-  // gli altri di legge
-  'sesamo', 'lupini', 'lupino', 'sedano', 'senape', 'solfiti', 'solforosa',
-  'pesce', 'crostacei', 'molluschi',
-  // composti che portano glutine e latte (così li scrive il quaderno a mano)
-  'wafer', 'wafers',
-]);
-
-/**
- * La parola `i` della lista `nude` va evidenziata? Le eccezioni sono i falsi
- * amici: il burro DI CACAO non è latte, il latte DI COCCO nemmeno, la NOCE di
- * cocco e la noce moscata non sono frutta a guscio, il grano SARACENO non ha
- * glutine, e "senza lattosio / senza glutine" è una promessa, non un
- * ingrediente.
+ * modo in cui il Reg. 1169/2011 chiede di farle risaltare (art. 21, che lascia
+ * libera la scelta dello stile: grassetto e sottolineato sono più del minimo).
  *
- * Caso a parte: "BASE BIANCA". È la base di latte con cui partono quasi tutti
- * i gusti in crema (latte intero, panna, latte in polvere) — quindi è a tutti
- * gli effetti un ingrediente con allergene, e i titolari la vogliono in
- * grassetto e sottolineata come gli altri. Vale per la coppia di parole
- * "base bianca" intera; "base frutta", "base vegan" e "base acqua" no.
+ * Quali parole sono "parole-allergene" lo decide src/lib/evidenza.js: un
+ * nucleo cablato nel codice più le parole aggiunte dai titolari nella scheda
+ * "Parole in grassetto". Qui resta solo l'impaginazione.
+ *
+ * Maiuscole e minuscole NON si toccano: il maiuscolo che si vede nel quaderno
+ * è quello scritto dai titolari nel campo Ingredienti.
  */
-function daEvidenziare(parola, nude, i) {
-  const w = parola.toLowerCase();
-  if (w === 'base' && nude[i + 1] === 'bianca') return true;
-  if (w === 'bianca' && nude[i - 1] === 'base') return true;
-  if (!PAROLE_ALLERGENE.has(w)) {
-    // "anidride solforosa": anche "anidride", se la parola dopo è quella
-    return w === 'anidride' && nude[i + 1] === 'solforosa';
-  }
-  if (nude[i - 1] === 'senza') return false;
-  if (w === 'burro' && nude[i + 1] === 'di' && nude[i + 2] === 'cacao') return false;
-  if (w === 'latte' && nude[i + 1] === 'di' && nude[i + 2] === 'cocco') return false;
-  if ((w === 'noce' || w === 'noci')
-    && ((nude[i + 1] === 'di' && nude[i + 2] === 'cocco') || nude[i + 1] === 'moscata')) return false;
-  if (w === 'grano' && nude[i + 1] === 'saraceno') return false;
-  return true;
-}
 
 /**
  * Manda a capo un testo come `pdf.spezza`, ma ogni riga esce come elenco di
@@ -142,33 +98,43 @@ function daEvidenziare(parola, nude, i) {
  * sottolineati. L'andata a capo tiene conto che il grassetto è più largo,
  * così le righe non sbordano dalla colonna.
  */
-function righeConEvidenza(pdf, testo, maxLarghezza, dim) {
+function righeConEvidenza(pdf, testo, maxLarghezza, dim, vocab) {
   const limite = maxLarghezza * 0.985;
-  const atomi = String(testo).split(/\s+/).filter(Boolean);
-  // la parola "nuda" di ogni atomo (senza punteggiatura), per i controlli
-  // sulla parola prima e dopo
-  const nude = atomi.map((a) => {
-    const m = a.toLowerCase().match(/[a-zà-ÿ]+/);
-    return m ? m[0] : '';
+
+  // Prima si decide COSA va in grassetto (sul testo intero, perché le frasi
+  // come "frutta a guscio" non devono spezzarsi), poi si manda a capo.
+  const segmenti = segmenta(testo, vocab);
+
+  // Rimette insieme i segmenti in "parole grafiche": si va a capo solo negli
+  // spazi, mai in mezzo a una parola.
+  const gruppi = [];
+  let gruppo = [];
+  segmenti.forEach((s) => {
+    s.t.split(/(\s+)/).forEach((p) => {
+      if (p === '') return;
+      if (/^\s+$/.test(p)) {
+        if (gruppo.length) { gruppi.push(gruppo); gruppo = []; }
+      } else {
+        gruppo.push({ t: p, ev: s.ev });
+      }
+    });
   });
+  if (gruppo.length) gruppi.push(gruppo);
+
   const spazioW = pdf.larghezzaTesto(' ', dim);
   const righe = [];
   let riga = [];
   let wRiga = 0;
-  atomi.forEach((atomo, i) => {
-    const seg = atomo.split(/([A-Za-zÀ-ÿ]+)/).filter(Boolean).map((p) => ({
-      t: p,
-      ev: /[A-Za-zÀ-ÿ]/.test(p) && daEvidenziare(p, nude, i),
-    }));
-    const wAtomo = seg.reduce((s, x) => s + pdf.larghezzaTesto(x.t, dim, x.ev ? 'b' : 'n'), 0);
-    if (riga.length && wRiga + spazioW + wAtomo > limite) {
+  gruppi.forEach((g) => {
+    const wG = g.reduce((somma, x) => somma + pdf.larghezzaTesto(x.t, dim, x.ev ? 'b' : 'n'), 0);
+    if (riga.length && wRiga + spazioW + wG > limite) {
       righe.push(riga);
       riga = [];
       wRiga = 0;
     }
     if (riga.length) { riga.push({ t: ' ', ev: false }); wRiga += spazioW; }
-    riga.push(...seg);
-    wRiga += wAtomo;
+    riga.push(...g);
+    wRiga += wG;
   });
   if (riga.length) righe.push(riga);
   return righe;
@@ -245,6 +211,28 @@ async function leggiTabella(tabella) {
     return data || [];
   } catch {
     return null;
+  }
+}
+
+/**
+ * Come `leggiTabella`, ma distingue due casi che non vanno confusi:
+ *   assente  -> la tabella non esiste (migrazione non ancora eseguita): si va
+ *               avanti tranquillamente, il quaderno esce col solo nucleo.
+ *   fallita  -> la lettura non è riuscita per altro (rete, sessione scaduta,
+ *               permessi cambiati): NON si va avanti. Il quaderno uscirebbe
+ *               con meno parole in grassetto senza dirlo a nessuno, ed è
+ *               esattamente il tipo di errore invisibile che questo documento
+ *               non si può permettere.
+ */
+async function leggiTabellaConEsito(tabella) {
+  if (!supabase) return { righe: null, assente: true };
+  try {
+    const { data, error } = await supabase.from(tabella).select('*');
+    if (!error) return { righe: data || [], assente: false };
+    const spia = `${error.message || ''} ${error.code || ''}`;
+    return { righe: null, assente: /does not exist|schema cache|PGRST205/i.test(spia), messaggio: error.message };
+  } catch (e) {
+    return { righe: null, assente: false, messaggio: e?.message || 'lettura non riuscita' };
   }
 }
 
@@ -331,9 +319,31 @@ export async function raccogliDati() {
     descrizione: ripulisci(r.descrizione || ''),
   })).filter((a) => a.codice);
 
+  // Parole che i titolari hanno aggiunto dalla scheda "Parole in grassetto".
+  // Tabella opzionale: se manca, il quaderno usa solo il nucleo cablato in
+  // evidenza.js e continua a evidenziare esattamente come prima.
+  const esitoParole = await leggiTabellaConEsito('parole_evidenza');
+  if (esitoParole.righe === null) {
+    if (esitoParole.assente) {
+      mancanti.push('parole_evidenza');
+    } else {
+      return {
+        errore: `Non riesco a leggere le parole in grassetto (${esitoParole.messaggio || 'lettura non riuscita'}). `
+          + 'Non genero il quaderno: uscirebbe con meno allergeni in grassetto senza avvisare nessuno. Riprova fra poco.',
+      };
+    }
+  }
+  const paroleEvidenza = ordinaPer((esitoParole.righe || []).filter((r) => r.attivo !== false), 'parola')
+    .map((r) => ({
+      parola: ripulisci(r.parola || ''),
+      tipo: chiave(r.tipo) === 'eccezione' ? 'eccezione' : 'evidenzia',
+      allergene: ripulisci(r.allergene || ''),
+    }))
+    .filter((p) => p.parola);
+
   const logo = await logoPerPdf();
 
-  return { gusti, sezioniTorta, testi, additivi, logo, mancanti, errore: null };
+  return { gusti, sezioniTorta, testi, additivi, paroleEvidenza, logo, mancanti, errore: null };
 }
 
 /**
@@ -350,6 +360,11 @@ export function improntaDati(dati) {
     (dati.sezioniTorta || []).map((s) => [s.titolo, s.voci.map(voce)]),
     (dati.testi || []).map((t) => [t.chiave, t.posizione, t.titolo, t.testo]),
     (dati.additivi || []).map((a) => [a.codice, a.nome, a.descrizione]),
+    // Senza questa riga, chi aggiunge una parola dalla scheda "Parole in
+    // grassetto" non vedrebbe accendersi l'avviso "il quaderno è da
+    // rigenerare": crederebbe di aver sistemato il PDF, e online resterebbe
+    // quello vecchio.
+    (dati.paroleEvidenza || []).map((p) => [p.parola, p.tipo, p.allergene]),
   ]);
   let a = 0x811c9dc5;
   let b = 0x01000193;
@@ -378,6 +393,9 @@ export function nomeFile(quando = new Date()) {
  */
 export function generaQuaderno(dati, { quando = new Date() } = {}) {
   const pdf = nuovoPdf();
+  // Nucleo cablato + parole aggiunte dai titolari. Se la tabella manca resta
+  // il solo nucleo: il quaderno non evidenzia mai meno di prima.
+  const vocab = costruisciVocabolario(dati?.paroleEvidenza || []);
   const M = 42;
   const LARG = pdf.larghezza - M * 2;
   const FONDO = pdf.altezza - 58; // sotto questa quota si va a pagina nuova
@@ -747,7 +765,7 @@ export function generaQuaderno(dati, { quando = new Date() } = {}) {
     // righeConEvidenza), come nel quaderno impaginato a mano.
     // La descrizione (testo di vetrina) compare solo quando non ci sono
     // ingredienti, così la riga non resta spoglia ma non ruba spazio a loro.
-    const tutteIngr = voce.ingredienti ? righeConEvidenza(pdf, voce.ingredienti, larghNome, 6.7) : [];
+    const tutteIngr = voce.ingredienti ? righeConEvidenza(pdf, voce.ingredienti, larghNome, 6.7, vocab) : [];
     const righeIngr = tutteIngr.slice(0, 8);
     if (tutteIngr.length > righeIngr.length) {
       // un testo troncato deve vedersi che è troncato
