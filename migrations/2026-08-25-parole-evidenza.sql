@@ -78,57 +78,23 @@ create policy "parole_evidenza_write_auth" on public.parole_evidenza
 
 
 -- ============================================================
--- Contenuto iniziale.
+-- NESSUN CONTENUTO PRECARICATO — è voluto.
 --
--- Sono le parole trovate NEI VOSTRI TESTI degli ingredienti che indicano un
--- allergene ma che il programma non riconosceva. Le prime sono già accese
--- perché sono prodotti da forno, quindi farina, quindi glutine, comunque
--- siano fatti. Le ultime sono SPENTE apposta: dipendono dalla ricetta e le
--- deve confermare il laboratorio prima di accenderle dal gestionale.
+-- Una prima versione di questo script inseriva una ventina di parole
+-- (crumble, biscotti, pan di spagna, frutta a guscio…) scelte guardando i
+-- vostri testi degli ingredienti. È stato tolto: decidere quali parole sono
+-- allergene non è una scelta da fare al posto dei titolari, nemmeno quando
+-- sembra ovvia. Il quaderno deve continuare a evidenziare ESATTAMENTE quello
+-- che evidenziava prima, e tutto ciò che si aggiunge lo si aggiunge dalla
+-- scheda "Parole in grassetto" del gestionale.
 --
--- NB: "frutta a guscio", "siero di latte", "anidride solforosa" e
--- "base bianca" non stanno qui: sono già nel nucleo, nel codice.
+-- Quindi: dopo questo script la scheda è VUOTA e il quaderno esce identico a
+-- prima. Le righe si aggiungono a mano, dal gestionale, una alla volta.
+--
+-- (Se sul vostro database sono rimaste le righe della prima versione, sono
+-- tutte spente e non hanno effetto: si tolgono dal gestionale col cestino,
+-- oppure eseguendo migrations/2026-08-25-parole-evidenza-svuota.sql.)
 -- ============================================================
-
-insert into public.parole_evidenza (parola, tipo, allergene, nota, attivo, ordine)
-select v.parola, v.tipo, v.allergene, v.nota, v.attivo, v.ordine
-  from (values
-    -- ── da evidenziare, accese ──────────────────────────────
-    ('crumble',      'evidenzia', 'Glutine', 'Biscotto sbriciolato: contiene farina.',            true,  10),
-    ('biscotti',     'evidenzia', 'Glutine', '',                                                  true,  20),
-    ('biscotto',     'evidenzia', 'Glutine', '',                                                  true,  30),
-    ('cialde',       'evidenzia', 'Glutine', '',                                                  true,  40),
-    ('cialda',       'evidenzia', 'Glutine', '',                                                  true,  50),
-    ('pan di spagna','evidenzia', 'Glutine', 'Farina e uova: si cerca come frase intera.',         true,  60),
-    ('frolla',       'evidenzia', 'Glutine', '',                                                  true,  70),
-    ('cannoli',      'evidenzia', 'Glutine', '',                                                  true,  80),
-    ('cannolo',      'evidenzia', 'Glutine', '',                                                  true,  90),
-    ('tartellette',  'evidenzia', 'Glutine', '',                                                  true, 100),
-    ('lecitina di soia', 'evidenzia', 'Soia', 'Come frase: la lecitina da sola può essere di girasole.', true, 110),
-
-    -- ── eccezioni: queste frasi NON vanno in grassetto ──────
-    ('farina di riso',       'eccezione', 'Glutine', 'Senza glutine: è nella Base Vegan.',    true, 200),
-    ('farina di mais',       'eccezione', 'Glutine', 'Senza glutine.',                        true, 210),
-    ('amido di mais',        'eccezione', 'Glutine', 'Senza glutine.',                        true, 220),
-    ('cereali senza glutine','eccezione', 'Glutine', 'È scritto nel crumble ai cereali.',      true, 230),
-
-    -- ── spente: da confermare col laboratorio prima di usarle ──
-    ('farina',   'evidenzia', 'Glutine',        'SPENTA. Accendila solo se usate farine di grano: esistono anche farine senza glutine (riso, mais), per quelle ci sono già le eccezioni qui sopra.', false, 300),
-    ('amido',    'evidenzia', 'Glutine',        'SPENTA. L''amido può essere di mais (senza glutine) o di frumento.',                    false, 310),
-    ('cereali',  'evidenzia', 'Glutine',        'SPENTA. Solo i cereali CON glutine sono allergene.',                                    false, 320),
-    ('kikere',   'evidenzia', 'Glutine',        'SPENTA. Compare nei Pasticcini Semifreddo: accendila se la ricetta ha farina.',          false, 330),
-    ('bavaresi', 'evidenzia', 'Latte',          'SPENTA. Da confermare: dipende da come le fate.',                                       false, 340),
-    ('lecitina', 'evidenzia', 'Soia',           'SPENTA. Da sola può essere di girasole: meglio la frase "lecitina di soia", già accesa.', false, 350)
-  ) as v(parola, tipo, allergene, nota, attivo, ordine)
--- Il confronto è sulla SOLA parola, non sulla coppia (parola, tipo): se in
--- gestionale una riga viene spostata da "eccezione" a "evidenzia" (o
--- viceversa), rieseguire lo script non deve ricrearne una seconda copia col
--- tipo di partenza — si ritroverebbero due righe contraddittorie sulla stessa
--- parola, e l'eccezione avrebbe la meglio.
- where not exists (
-   select 1 from public.parole_evidenza p
-    where lower(p.parola) = lower(v.parola)
- );
 
 
 -- Controllo finale: quante ne sono accese, divise per tipo.
