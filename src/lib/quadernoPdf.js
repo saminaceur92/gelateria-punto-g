@@ -33,7 +33,7 @@ export const GELATERIA = {
  * Cambiala quando cambia il LAYOUT del documento: entra nell'impronta, così
  * dopo un aggiornamento del sito il gestionale segnala che conviene rigenerare.
  */
-const VERSIONE_DOC = 3;
+const VERSIONE_DOC = 4;
 
 /* ───────── Allergeni e categorie ───────── */
 
@@ -54,8 +54,10 @@ const CATEGORIE = [
   { key: 'leccornie', titolo: 'Altre Leccornie', nota: 'Pasticcini, torte, salame dolce e le altre specialità del banco.' },
 ];
 
-// Le tabelle del configuratore torte: stesso significato della colonna
-// `allergeni` (allergeni presenti), nessuna colonna per le tracce.
+// Le tabelle del configuratore torte: la colonna `allergeni` sono gli
+// allergeni presenti; `allergeni_tracce` (per ora solo basi e crumble,
+// migrazione 2026-08-25) le possibili tracce. Dove la colonna non c'è, la
+// voce esce senza tracce.
 const TABELLE_TORTA = [
   { tabella: 'tipi_torta', titolo: 'Tipi di torta' },
   { tabella: 'basi', titolo: 'Basi della torta' },
@@ -110,9 +112,17 @@ const PAROLE_ALLERGENE = new Set([
  * cocco e la noce moscata non sono frutta a guscio, il grano SARACENO non ha
  * glutine, e "senza lattosio / senza glutine" è una promessa, non un
  * ingrediente.
+ *
+ * Caso a parte: "BASE BIANCA". È la base di latte con cui partono quasi tutti
+ * i gusti in crema (latte intero, panna, latte in polvere) — quindi è a tutti
+ * gli effetti un ingrediente con allergene, e i titolari la vogliono in
+ * grassetto e sottolineata come gli altri. Vale per la coppia di parole
+ * "base bianca" intera; "base frutta", "base vegan" e "base acqua" no.
  */
 function daEvidenziare(parola, nude, i) {
   const w = parola.toLowerCase();
+  if (w === 'base' && nude[i + 1] === 'bianca') return true;
+  if (w === 'bianca' && nude[i - 1] === 'base') return true;
   if (!PAROLE_ALLERGENE.has(w)) {
     // "anidride solforosa": anche "anidride", se la parola dopo è quella
     return w === 'anidride' && nude[i + 1] === 'solforosa';
@@ -293,7 +303,9 @@ export async function raccogliDati() {
         descrizione: ripulisci(r.descrizione || ''),
         ingredienti: '',
         certi: elenco(r.allergeni),
-        tracce: [],
+        // `allergeni_tracce` c'è solo dove la migrazione 2026-08-25 l'ha
+        // aggiunta (basi, crumble): altrove `elenco` di undefined è [].
+        tracce: elenco(r.allergeni_tracce),
         diete: [],
       }))
       .filter((v) => v.nome);
@@ -889,7 +901,7 @@ export function generaQuaderno(dati, { quando = new Date() } = {}) {
     pdf.testo('TORTE SU MISURA — COMPONENTI', M, y, { dim: 8, font: 'b', colore: '#c0894c', spaziatura: 1.2 });
     y += 12;
     pdf.spezza(
-      "Elementi che il cliente compone nel configuratore delle torte. Per questi la scheda riporta solo gli allergeni presenti: valgono comunque le tracce indicate nell'avviso in prima pagina.",
+      "Elementi che il cliente compone nel configuratore delle torte. Dove non sono indicate possibili tracce, valgono comunque quelle dell'avviso in prima pagina.",
       LARG, 7.8,
     ).forEach((r) => { pdf.testo(r, M, y, { dim: 7.8, colore: GRIGIO }); y += 10; });
     y -= 6;
