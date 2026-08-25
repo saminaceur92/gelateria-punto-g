@@ -129,14 +129,18 @@ export default function Dashboard() {
         props: {
           table: 'basi',
           title: 'Basi delle torte',
+          subtitle: 'Come nella scheda "Gusti e allergeni": gli allergeni PRESENTI spengono la base nel configuratore a chi li ha dichiarati; le possibili TRACCE non la spengono, ma compaiono nel quaderno allergeni.',
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
-            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+            // Due riquadri come per i gusti (azzurro = presenti, ambra = tracce).
+            // La colonna `allergeni_tracce` arriva con la migrazione 2026-08-25.
+            { key: 'allergeni', label: '⚠️ Allergeni presenti', type: 'checkboxes', options: ALLERGENI_OPTIONS, tone: 'certo' },
+            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'checkboxes', options: ALLERGENI_OPTIONS, tone: 'traccia' },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuova base', descrizione: '', supplemento: 0, colore: '#e8d2a8', allergeni: '' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuova base', descrizione: '', supplemento: 0, colore: '#e8d2a8', allergeni: '', allergeni_tracce: '' }),
         },
       },
       {
@@ -145,15 +149,18 @@ export default function Dashboard() {
         props: {
           table: 'crumble',
           title: 'Tipi di crumble',
-          subtitle: 'Compaiono nel configuratore solo a chi sceglie la base "Crumble croccante": aggiungi o disattiva i tipi che hai in laboratorio.',
+          subtitle: 'Compaiono nel configuratore solo a chi sceglie la base "Crumble croccante": aggiungi o disattiva i tipi che hai in laboratorio. Allergeni come nei gusti: i PRESENTI spengono il crumble a chi li ha dichiarati, le possibili TRACCE compaiono solo nel quaderno allergeni.',
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
-            { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
+            // Due riquadri come per i gusti (azzurro = presenti, ambra = tracce).
+            // La colonna `allergeni_tracce` arriva con la migrazione 2026-08-25.
+            { key: 'allergeni', label: '⚠️ Allergeni presenti', type: 'checkboxes', options: ALLERGENI_OPTIONS, tone: 'certo' },
+            { key: 'allergeni_tracce', label: 'Possibili tracce', type: 'checkboxes', options: ALLERGENI_OPTIONS, tone: 'traccia' },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuovo crumble', descrizione: '', supplemento: 0, colore: '#b88c5a', allergeni: '' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuovo crumble', descrizione: '', supplemento: 0, colore: '#b88c5a', allergeni: '', allergeni_tracce: '' }),
         },
       },
       {
