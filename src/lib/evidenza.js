@@ -50,11 +50,17 @@
  * I 14 allergeni di legge e i derivati che hanno un nome tutto loro (panna,
  * burro, mascarpone, tuorlo…): sono le parole che chi ha un'allergia cerca con
  * gli occhi. Le voci di più parole sono frasi e vengono cercate come tali.
+ *
+ * ⚠️ QUESTO ELENCO NON SI TOCCA senza che lo chiedano i titolari.
+ * È esattamente quello che il quaderno evidenziava prima che la scheda
+ * "Parole in grassetto" esistesse: aggiungere una parola qui vuol dire
+ * decidere al posto loro cosa è un allergene, e non è una decisione nostra.
+ * Tutto quello che va aggiunto si aggiunge DALLA SCHEDA, non da qui.
  */
 export const NUCLEO = [
   // latte e derivati
   'latte', 'lattosio', 'latticello', 'panna', 'burro', 'yogurt', 'quark',
-  'mascarpone', 'formaggio', 'caseina', 'caseinati', 'siero di latte',
+  'mascarpone', 'formaggio', 'caseina', 'caseinati',
   // uova
   'uova', 'uovo', 'albume', 'tuorlo',
   // cereali con glutine
@@ -65,9 +71,6 @@ export const NUCLEO = [
   'arachidi', 'arachide', 'mandorle', 'mandorla', 'nocciole', 'nocciola',
   'noci', 'noce', 'pistacchi', 'pistacchio', 'anacardi', 'macadamia', 'pecan',
   'gianduia', 'nutella',
-  // la dicitura ufficiale dell'Allegato II: è di due parole, e da sola
-  // "frutta" non vuol dire niente
-  'frutta a guscio',
   // gli altri di legge
   'sesamo', 'lupini', 'lupino', 'sedano', 'senape', 'solfiti', 'solforosa',
   'anidride solforosa',
