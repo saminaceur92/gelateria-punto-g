@@ -66,20 +66,20 @@ export default function Footer() {
           <div>
             <h5>Note legali</h5>
             <ul className="footer-links">
-              {/* Documenti iubenda: la classe iubenda-embed li apre nel riquadro
+              {/* Documenti iubenda: iubenda-noiframe tiene il link testuale nostro (senza, il loader lo sostituisce con un badge iframe col marchio iubenda); iubenda-embed lo apre nel riquadro
                   sovrapposto invece di mandare l'utente fuori dal sito. */}
               <li>
-                <a href="https://www.iubenda.com/privacy-policy/38165264" className="iubenda-embed" title="Privacy Policy" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.iubenda.com/privacy-policy/38165264" className="iubenda-embed iubenda-noiframe" title="Privacy Policy">
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="https://www.iubenda.com/privacy-policy/38165264/cookie-policy" className="iubenda-embed" title="Cookie Policy" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.iubenda.com/privacy-policy/38165264/cookie-policy" className="iubenda-embed iubenda-noiframe" title="Cookie Policy">
                   Cookie Policy
                 </a>
               </li>
               <li>
-                <a href="https://www.iubenda.com/termini-e-condizioni/38165264" className="iubenda-embed" title="Termini e Condizioni" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.iubenda.com/termini-e-condizioni/38165264" className="iubenda-embed iubenda-noiframe" title="Termini e Condizioni">
                   Termini e Condizioni
                 </a>
               </li>
