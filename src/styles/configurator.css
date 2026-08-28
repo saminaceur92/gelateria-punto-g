@@ -1435,13 +1435,14 @@
   animation: extraPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .extra-pop:focus { outline: none; }
-/* Nastro caldo in cima: si vede subito che è una proposta, non un passo. */
+/* Filo caldo in cima: si vede che è una proposta, non un passo. Sottile e in
+   tinta piena — la fascia spessa sfumata gridava troppo. */
 .extra-pop::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 5px;
-  background: linear-gradient(90deg, var(--orange), var(--violet-deep));
+  height: 2px;
+  background: var(--orange);
 }
 
 @keyframes extraPopFade { from { opacity: 0; } to { opacity: 1; } }
@@ -1682,13 +1683,15 @@
 .deco-color-block {
   padding: 0.75rem 0.85rem;
   background: #fff;
-  border: 1.5px solid rgba(42,26,62,0.08);
-  border-left: 3px solid var(--orange); /* finché manca il colore: attenzione */
+  /* Finché manca il colore il bordo è tutto caldo: richiama l'attenzione
+     senza la linguetta laterale. */
+  border: 1.5px solid var(--orange);
   border-radius: var(--radius-sm);
   transition: border-color 0.25s ease;
 }
 /* Colore scelto: il bordino passa dall'arancio "manca qualcosa" al viola. */
-.deco-color-block.done { border-left-color: var(--violet-deep); }
+/* Colore scelto: il bordo passa dal caldo "manca qualcosa" all'azzurro. */
+.deco-color-block.done { border-color: rgba(42, 26, 62, 0.12); }
 
 .deco-color-title {
   display: flex;
@@ -1779,8 +1782,8 @@
   padding: 0.95rem 1.1rem;
   border-radius: var(--radius-sm);
   background: rgba(192, 137, 76, 0.12);
+  /* Bordo uniforme: l'avviso lo segnalano già il fondo caldo e l'icona. */
   border: 1.5px solid rgba(192, 137, 76, 0.5);
-  border-left-width: 5px;
 }
 .cfg-avviso-ico { font-size: 1.15rem; line-height: 1.35; flex: none; }
 .cfg-avviso strong {

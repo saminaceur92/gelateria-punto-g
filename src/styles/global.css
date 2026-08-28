@@ -238,7 +238,9 @@ p {
   right: 0;
   z-index: 100;
   padding-block: 1.1rem;
-  transition: background 0.4s ease, backdrop-filter 0.4s ease, padding 0.3s ease, box-shadow 0.4s ease;
+  /* Niente padding in transizione: animarlo rimisura il layout a ogni frame
+     durante lo scroll. Le altre proprietà sono compositabili e restano. */
+  transition: background 0.4s ease, backdrop-filter 0.4s ease, box-shadow 0.4s ease;
 }
 
 .nav.scrolled {
@@ -416,12 +418,11 @@ p {
   font-size: clamp(2.6rem, 7vw, 6rem);
 }
 
+/* Azzurro pieno del brand: il gradiente sul testo si leggeva peggio e non
+   aggiungeva significato. L'enfasi la danno già peso e dimensione. */
 .hero h1 .accent {
   font-style: normal;
-  background: linear-gradient(135deg, var(--violet) 0%, var(--violet-deep) 60%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--violet-deep);
   display: inline-block;
 }
 
