@@ -66,20 +66,20 @@ export default function Footer() {
           <div>
             <h5>Note legali</h5>
             <ul className="footer-links">
-              {/* Documenti iubenda: iubenda-noiframe tiene il link testuale nostro (senza, il loader lo sostituisce con un badge iframe col marchio iubenda); iubenda-embed lo apre nel riquadro
+              {/* Documenti iubenda: iubenda-noiframe tiene il link testuale nostro. Niente iubenda-white qui: applica lo stile bianco loro, che nel footer scuro stona. La classe completa che il controllo di iubenda cerca sta nel blocco per i crawler in index.html (senza, il loader lo sostituisce con un badge iframe col marchio iubenda); iubenda-embed lo apre nel riquadro
                   sovrapposto invece di mandare l'utente fuori dal sito. */}
               <li>
-                <a href="https://www.iubenda.com/privacy-policy/38165264" className="iubenda-embed iubenda-noiframe" title="Privacy Policy">
+                <a href="https://www.iubenda.com/privacy-policy/38165264" className="iubenda-noiframe iubenda-embed" title="Privacy Policy">
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="https://www.iubenda.com/privacy-policy/38165264/cookie-policy" className="iubenda-embed iubenda-noiframe" title="Cookie Policy">
+                <a href="https://www.iubenda.com/privacy-policy/38165264/cookie-policy" className="iubenda-noiframe iubenda-embed" title="Cookie Policy">
                   Cookie Policy
                 </a>
               </li>
               <li>
-                <a href="https://www.iubenda.com/termini-e-condizioni/38165264" className="iubenda-embed iubenda-noiframe" title="Termini e Condizioni">
+                <a href="https://www.iubenda.com/termini-e-condizioni/38165264" className="iubenda-noiframe iubenda-embed" title="Termini e Condizioni">
                   Termini e Condizioni
                 </a>
               </li>
