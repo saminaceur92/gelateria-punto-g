@@ -105,13 +105,13 @@
 
 /* Gruppi di spunte (allergeni presenti / possibili tracce): riquadro a tutta
    larghezza, con colore diverso per non confonderli tra loro. */
-.adm-group { flex-basis: 100%; display: flex; flex-direction: column; gap: .4rem; border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; padding: .55rem .7rem; background: #fcfbf8; }
+.adm-group { flex-basis: 100%; display: flex; flex-direction: column; gap: .4rem; border: 1px solid var(--line); border-radius: 10px; padding: .55rem .7rem; background: #fcfbf8; }
 .adm-group .adm-flabel { font-size: .7rem; font-weight: 700; letter-spacing: .06em; }
-.adm-group.tone-certo { border-left-color: var(--v-deep); background: rgba(44,118,153,.05); }
+.adm-group.tone-certo { border-color: var(--v-deep); background: rgba(44,118,153,.05); }
 .adm-group.tone-certo .adm-flabel { color: var(--v-deep); }
-.adm-group.tone-traccia { border-left-color: #c0894c; background: rgba(192,137,76,.06); }
+.adm-group.tone-traccia { border-color: #c0894c; background: rgba(192,137,76,.06); }
 .adm-group.tone-traccia .adm-flabel { color: #9a6a2f; }
-.adm-group.tone-neutro { border-left-color: var(--line); }
+.adm-group.tone-neutro { border-color: var(--line); }
 .adm-group .adm-checks { gap: .35rem .9rem; }
 
 /* Riga finale con tutti i sì/no (vegan, senza glutine, per torte, …) */
@@ -155,7 +155,7 @@
 .ord-sort select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 8px; font-size: .82rem; }
 .ord-reload { font-size: 1rem; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .2rem .5rem; cursor: pointer; }
 .ord-list { display: flex; flex-direction: column; gap: .7rem; }
-.ord-card { border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; border-left-width: 4px; }
+.ord-card { border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; }
 .ord-card.scaduto { background: #fdf4f4; }
 .ord-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .ord-who strong { display: block; }
@@ -213,16 +213,16 @@
 .doc-actions .adm-btn { text-decoration: none; }
 
 /* Quaderno generato dai dati del gestionale */
-.qg-stato { display: flex; align-items: flex-start; gap: .7rem; border: 1px solid var(--line); border-left-width: 4px; border-radius: 12px; padding: .75rem .9rem; background: #fff; }
+.qg-stato { display: flex; align-items: flex-start; gap: .7rem; border: 1px solid var(--line); border-radius: 12px; padding: .75rem .9rem; background: #fff; }
 .qg-stato div { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
 .qg-stato strong { font-size: .92rem; }
 .qg-stato span:not(.qg-punto) { font-size: .84rem; color: #777; }
 .qg-punto { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: .3rem; }
-.qg-ok { border-left-color: #3f9e6b; background: #f4fbf6; }
+.qg-ok { border-color: #3f9e6b; background: #f4fbf6; }
 .qg-ok .qg-punto { background: #3f9e6b; }
-.qg-vecchio { border-left-color: #d98324; background: #fdf6ec; }
+.qg-vecchio { border-color: #d98324; background: #fdf6ec; }
 .qg-vecchio .qg-punto { background: #d98324; animation: badgePulse 1.8s ease-in-out infinite; }
-.qg-manuale, .qg-mai, .qg-ignoto { border-left-color: #b9b1a3; background: var(--cream); }
+.qg-manuale, .qg-mai, .qg-ignoto { border-color: #b9b1a3; background: var(--cream); }
 .qg-manuale .qg-punto, .qg-mai .qg-punto, .qg-ignoto .qg-punto { background: #b9b1a3; }
 .qg-conteggio { font-size: .84rem; margin: .8rem 0 0; max-width: 68ch; }
 .qg-azioni { margin-top: 1rem; }

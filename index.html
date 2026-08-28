@@ -28,6 +28,19 @@
         var iub = document.createElement('script');
         iub.src = 'https://embeds.iubenda.com/widgets/22586995-b0e8-4907-a473-1510fa97c231.js';
         document.head.appendChild(iub);
+
+        // Loader dei documenti: trasforma i link "iubenda-embed" del footer
+        // (privacy, cookie, termini) in riquadri sovrapposti invece di portare
+        // il visitatore fuori dal sito. Serve anche perche iubenda riconosca
+        // i Termini come integrati. Stessa regola: niente in /admin.
+        // Va agganciato DOPO il load: i link stanno nel footer disegnato da
+        // React, e se iubenda.js parte prima non trova niente da agganciare
+        // (e i documenti si aprirebbero fuori dal sito invece che nel riquadro).
+        window.addEventListener("load", function () {
+          var iubDoc = document.createElement("script");
+          iubDoc.src = "https://cdn.iubenda.com/iubenda.js";
+          document.head.appendChild(iubDoc);
+        });
       }
     </script>
 
