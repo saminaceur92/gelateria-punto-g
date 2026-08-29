@@ -812,7 +812,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         });
       }
       // Anche "dove si mangia" va risposto: i titolari lo vogliono per ogni ordine.
-      case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim()) && config.inLocale !== null;
+      case 'details': return config.name.trim() && phoneOk(config.phone) && emailOk(config.email) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim()) && config.inLocale !== null;
       default: return true;
     }
   }, [step, steps, config, staff, earliestISO, cakeSizes]);
@@ -1029,7 +1029,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.email ? `*Email:* ${config.email}` : '',
       config.notes ? `*Note:* ${config.notes}` : '',
       ``,
-      staff ? '' : `💰 *Importo pagato:* €${totale.toFixed(2)}`,
+      staff ? `💰 *Importo da pagare:* €${totale.toFixed(2)}` : `💰 *Importo pagato:* €${totale.toFixed(2)}`,
       ``,
       staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
@@ -2239,11 +2239,9 @@ function ProposteExtra({ config, set, staff, listino, total, onOrdinaSenza, onOr
               ? `Extra aggiunti: €${totaleExtra.toFixed(2)}`
               : 'Niente di aggiunto, per ora.'}
           </span>
-          {!staff && (
-            <span className="extra-pop-total-order">
-              Totale ordine <strong>€{total.toFixed(2)}</strong>
-            </span>
-          )}
+          <span className="extra-pop-total-order">
+            Totale ordine <strong>€{total.toFixed(2)}</strong>
+          </span>
         </div>
 
         <div className="extra-pop-actions">
@@ -2282,7 +2280,7 @@ function StepMessage({ config, set, staff }) {
       <StepHeader stepKey="message" title="Scritta, foto e candelina" lead="Una frase importante? Aggiungi anche una foto: la stampiamo su cialda alimentare e la posiamo sulla torta." />
 
       <div className="cfg-field">
-        <label>Foto da stampare (opzionale{staff ? '' : ', +€5'})</label>
+        <label>Foto da stampare (opzionale, +€5)</label>
         <PhotoUploader
           value={config.photo}
           onChange={(p) => set({ photo: p })}
@@ -2348,7 +2346,7 @@ function StepMessage({ config, set, staff }) {
             className={`toggle-pill ${config.candle ? 'active' : ''}`}
             onClick={() => set({ candle: true })}
           >
-            Aggiungi candelina{staff ? '' : ' (in regalo)'}
+            Aggiungi candelina (in regalo)
           </button>
         </div>
       </div>
@@ -2431,13 +2429,13 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
       </div>
 
       <div className="cfg-field">
-        <label>Email {staff ? '(facoltativa)' : '*'}</label>
+        <label>Email *</label>
         <input
           type="email"
           placeholder="nome@esempio.it"
           value={config.email}
           onChange={(e) => set({ email: e.target.value })}
-          required={!staff}
+          required
         />
         <p className="hint" style={emailInvalid ? { color: '#b03a3a' } : undefined}>
           {emailInvalid ? "Inserisci un'email valida." : 'Ti invieremo qui la conferma dell’ordine.'}
@@ -2469,7 +2467,7 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
             data-ev="torta_domicilio"
             onClick={() => set({ delivery: true })}
           >
-            🛵 Consegna a domicilio{staff ? '' : ` (+ €${DELIVERY_FEE})`}
+            🛵 Consegna a domicilio (+ €{DELIVERY_FEE})
           </button>
         </div>
       </div>
@@ -2662,7 +2660,7 @@ function RiepilogoBarra({ config, total, staff, steps, step }) {
         <span className="riepilogo-barra-tit">
           {aperto ? '▼' : '▲'} La tua torta{n > 0 ? ` · ${n} ${n === 1 ? 'scelta' : 'scelte'}` : ''}
         </span>
-        {!staff && <span className="riepilogo-barra-prezzo">€{total.toFixed(2)}</span>}
+        <span className="riepilogo-barra-prezzo">€{total.toFixed(2)}</span>
       </button>
       {aperto && (
         <div className="riepilogo-sheet" role="dialog" aria-label="Riepilogo della tua torta">
@@ -2807,18 +2805,16 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
           {config.notes && (<><dt>Note</dt><dd>{config.notes}</dd></>)}
         </dl>
       </div>
-      {!staff && (
-        <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(124,183,215,0.2)' }}>
-          {sconto > 0 && (
-            <p style={{ margin: '0 0 0.3rem', fontSize: '0.9rem', color: 'var(--grey)' }}>
-              Prezzo pieno €{total.toFixed(2)} — codice <strong>{config.sconto?.codice}</strong>: −€{sconto.toFixed(2)}
-            </p>
-          )}
-          <p style={{ margin: 0, fontSize: '1rem', color: 'var(--ink)' }}>
-            <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{(total - sconto).toFixed(2)}</strong>
+      <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(124,183,215,0.2)' }}>
+        {sconto > 0 && (
+          <p style={{ margin: '0 0 0.3rem', fontSize: '0.9rem', color: 'var(--grey)' }}>
+            Prezzo pieno €{total.toFixed(2)} — codice <strong>{config.sconto?.codice}</strong>: −€{sconto.toFixed(2)}
           </p>
-        </div>
-      )}
+        )}
+        <p style={{ margin: 0, fontSize: '1rem', color: 'var(--ink)' }}>
+          <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{(total - sconto).toFixed(2)}</strong>
+        </p>
+      </div>
 
       {/* Il codice sconto si mette alla fine, quando il prezzo è già sotto agli
           occhi: è lì che uno si ricorda di averne uno. */}

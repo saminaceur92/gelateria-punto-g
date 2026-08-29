@@ -1286,9 +1286,6 @@
 
 /* Modalità staff (gelateria): configuratore senza prezzi/pagamento.
    Il conteggio combinazioni resta, i prezzi spariscono. */
-.cfg-staff .opt-meta,
-.cfg-staff .price,
-.cfg-staff .price-tag,
 .cfg-staff .combo-counter { display: none; }
 
 /* Messaggio di errore in fase di conferma ordine */
