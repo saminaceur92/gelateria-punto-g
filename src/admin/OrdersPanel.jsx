@@ -83,7 +83,18 @@ export default function OrdersPanel() {
         setTimeout(() => setAlertOrder((a) => (a && a.id === o.id ? null : a)), 9000);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ordini' }, (payload) => {
-        setOrders((os) => os.map((x) => (x.id === payload.new.id ? payload.new : x)));
+        // Alcuni aggiornamenti automatici (esito mail, retry, stato) possono
+        // arrivare come payload parziali. Fondiamo i dati invece di sostituire
+        // l'intero ordine, così dettagli e foto cialda non spariscono dalla UI.
+        setOrders((os) => os.map((x) => {
+          if (x.id !== payload.new.id) return x;
+          const next = { ...x, ...payload.new };
+          next.dettagli = {
+            ...(x.dettagli || {}),
+            ...(payload.new.dettagli || {}),
+          };
+          return next;
+        }));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'ordini' }, (payload) => {
         setOrders((os) => os.filter((x) => x.id !== payload.old.id));
@@ -275,7 +286,13 @@ export default function OrdersPanel() {
                     )}
                     {/* La stessa foto caricata per la cialda arriva su Telegram. */}
                     {fotoCialda && (
-                      <a className="adm-btn" href={linkDownloadFoto(fotoCialda, o.cliente_nome)} title="Scarica la foto caricata per la cialda">
+                      <a
+                        className="adm-btn"
+                        href={linkDownloadFoto(fotoCialda, o.cliente_nome)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Scarica la foto caricata per la cialda"
+                      >
                         ⬇ Scarica foto cialda
                       </a>
                     )}
