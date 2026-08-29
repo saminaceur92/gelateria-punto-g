@@ -126,7 +126,10 @@ declare
   v_nome text; v_slug text; v_caption text;
 begin
   v_url_cialda := nullif(new.dettagli->>'fotoCialdaUrl', '');
-  v_url_torta := nullif(new.immagine, '');
+  v_url_torta := coalesce(
+    nullif(new.dettagli->>'tortaConfigurataUrl', ''),
+    case when new.immagine ~* '^https?://' then new.immagine else null end
+  );
   if (v_url_cialda is null or v_url_cialda !~* '^https?://')
      and (v_url_torta is null or v_url_torta !~* '^https?://') then
     return new;
@@ -241,6 +244,80 @@ begin
   return msg;
 end $function$;
 
+-- ── 3. Conferma email anche per gli ordini creati in gelateria ─────
+-- Ripristina la funzione e il trigger della migrazione 2026-07-26. Il sito
+-- salva gli stessi `email_params` sia dal checkout sia dalla dashboard: qui
+-- non c'è alcuna distinzione, se l'email è valida la conferma deve partire.
+alter table public.ordini add column if not exists email_params    jsonb;
+alter table public.ordini add column if not exists email_req       bigint;
+alter table public.ordini add column if not exists email_ok        boolean;
+alter table public.ordini add column if not exists email_tentativi integer not null default 0;
+
+create or replace function public.invia_mail_ordine(p_params jsonb)
+returns bigint
+language plpgsql
+security definer
+set search_path = public, net
+as $$
+declare
+  v_service text; v_template text; v_user text; v_access text; v_req bigint;
+begin
+  if p_params is null or coalesce(p_params->>'email', '') not like '%@%' then return null; end if;
+
+  select value into v_service  from public.app_config where key = 'emailjs_service_id';
+  select value into v_template from public.app_config where key = 'emailjs_template_conferma';
+  select value into v_user     from public.app_config where key = 'emailjs_public_key';
+  select value into v_access   from public.app_config where key = 'emailjs_private_key';
+  if coalesce(v_service, '') = '' or coalesce(v_template, '') = ''
+     or coalesce(v_user, '') = '' or coalesce(v_access, '') = '' then
+    return null;
+  end if;
+
+  select net.http_post(
+    url  := 'https://api.emailjs.com/api/v1.0/email/send',
+    body := jsonb_build_object(
+      'service_id',      v_service,
+      'template_id',     v_template,
+      'user_id',         v_user,
+      'accessToken',     v_access,
+      'template_params', p_params
+    ),
+    timeout_milliseconds := 20000
+  ) into v_req;
+  return v_req;
+exception when others then
+  return null;
+end $$;
+
+create or replace function public.notify_order_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_req bigint;
+begin
+  if new.email_params is null then return new; end if;
+  v_req := public.invia_mail_ordine(new.email_params);
+  if v_req is not null then
+    update public.ordini
+       set email_req = v_req, email_ok = false, email_tentativi = 1
+     where id = new.id;
+  end if;
+  return new;
+exception when others then
+  return new;
+end $$;
+
+-- Queste funzioni lavorano solo tramite il trigger: non sono RPC pubbliche.
+revoke execute on function public.invia_mail_ordine(jsonb) from public, anon, authenticated;
+revoke execute on function public.notify_order_email() from public, anon, authenticated;
+
+drop trigger if exists notify_order_email_trg on public.ordini;
+create trigger notify_order_email_trg
+  after insert on public.ordini
+  for each row execute function public.notify_order_email();
+
 -- ── Controllo finale ─────────────────────────────────────────
 -- Le prime due righe devono dire "ok": se una dice "MANCA", inserisci la
 -- chiave a mano (vedi in cima) — finché manca, arriva solo il testo.
@@ -252,6 +329,17 @@ select 'telegram_chat_id',
 union all
 select 'trigger foto',
        case when exists (select 1 from pg_trigger where tgname = 'zz_telegram_foto_ordine_trg') then 'ok' else 'MANCA' end
+union all
+select 'trigger email',
+       case when exists (select 1 from pg_trigger where tgname = 'notify_order_email_trg') then 'ok' else 'MANCA' end
+union all
+select 'config EmailJS',
+       case when
+         coalesce((select value from public.app_config where key = 'emailjs_service_id'), '') <> '' and
+         coalesce((select value from public.app_config where key = 'emailjs_template_conferma'), '') <> '' and
+         coalesce((select value from public.app_config where key = 'emailjs_public_key'), '') <> '' and
+         coalesce((select value from public.app_config where key = 'emailjs_private_key'), '') <> ''
+       then 'ok' else 'MANCA' end
 union all
 select 'riga "Dove si mangia"',
        case when public.order_telegram_msg('*Dove si mangia:* a casa', 'x') like '%🍽️ Dove si mangia:%' then 'ok' else 'MANCA' end;

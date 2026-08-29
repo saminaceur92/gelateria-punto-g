@@ -48,6 +48,11 @@ async function carica(dataUrl, path) {
       upsert: false,
     });
     if (error) {
+      // Il primo tentativo può essere arrivato a Storage anche se la risposta
+      // si è persa: al retry il file risulta già esistente ed è comunque valido.
+      if (/already exists|asset.*exists/i.test(error.message || '')) {
+        return supabase.storage.from(BUCKET_TORTE).getPublicUrl(path).data?.publicUrl || null;
+      }
       console.warn('[foto torta] non caricata:', error.message);
       return null;
     }
@@ -56,6 +61,13 @@ async function carica(dataUrl, path) {
     console.warn('[foto torta] errore:', e && e.message);
     return null;
   }
+}
+
+/** Un errore di rete momentaneo non deve far perdere la foto all'ordine. */
+async function caricaConRiprova(dataUrl, path) {
+  const prima = await carica(dataUrl, path);
+  if (prima || !dataUrl) return prima;
+  return carica(dataUrl, path);
 }
 
 /**
@@ -70,8 +82,8 @@ export async function uploadCakePhotos({ customer, preview }) {
   const cartella = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   const id = uuid();
   const [urlCustomer, urlPreview] = await Promise.all([
-    carica(customer, `${cartella}/${id}-cialda.jpg`),
-    carica(preview, `${cartella}/${id}-anteprima.jpg`),
+    caricaConRiprova(customer, `${cartella}/${id}-cialda.jpg`),
+    caricaConRiprova(preview, `${cartella}/${id}-anteprima.jpg`),
   ]);
   return { customer: urlCustomer, preview: urlPreview };
 }

@@ -1082,6 +1082,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         // Foto caricata dal cliente per la cialda: solo questa viene scaricata
         // dalla dashboard e inviata su Telegram.
         fotoCialdaUrl: foto.customer || null,
+        // URL pubblico del render finale: Telegram non può leggere l'eventuale
+        // data URL di ripiego conservato nella colonna `immagine`.
+        tortaConfigurataUrl: foto.preview || null,
         scrittaStile: scritta?.name || null,
         // COMPATIBILITÀ: il gestionale, le notifiche Telegram e il link "Rifai
         // questa torta" leggono ancora la decorazione singola. Ci mettiamo la
