@@ -176,8 +176,11 @@
 .ord-lab .adm-btn-save { margin-top: .4rem; }
 .ord-row { display: flex; gap: 1rem; align-items: flex-start; }
 .ord-img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #faf7fb; flex-shrink: 0; }
+/* La miniatura è un link alla foto grande (dal 29-08): il link prende il posto
+   della foto nella riga, la foto dentro resta com'era. */
+.ord-img-link { display: block; flex-shrink: 0; }
 .ord-body { flex: 1; min-width: 0; }
-@media (max-width: 560px) { .ord-row { flex-direction: column; } .ord-img { width: 100%; height: 160px; } }
+@media (max-width: 560px) { .ord-row { flex-direction: column; } .ord-img-link { width: 100%; } .ord-img { width: 100%; height: 160px; } }
 
 /* ───────── Scheda PDF + QR allergeni ───────── */
 .doc-wrap { display: flex; flex-direction: column; gap: 1.2rem; }

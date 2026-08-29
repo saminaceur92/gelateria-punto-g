@@ -67,11 +67,13 @@ export default function App() {
       <main>
         <Hero onOpenConfigurator={openCfg} />
         <Marquee />
+        {/* Il configuratore è il cuore del sito: la sua sezione sta subito
+            dopo la prima schermata, prima della storia (Lucia, 29-08). */}
+        <CakeCTA onOpen={openCfg} />
         <About />
         <Stats />
         <Services onOpenConfigurator={openCfg} />
         <Menu />
-        <CakeCTA onOpen={openCfg} />
         <Gallery />
         <Contact />
       </main>

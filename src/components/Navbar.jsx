@@ -7,12 +7,14 @@ import { Menu as MenuIcon, X } from 'lucide-react';
 // scrive l'attributo. La stessa lista serve il menu grande e quello del
 // telefono, quindi una voce cliccata da un menu o dall'altro finisce sotto la
 // stessa chiave: è voluto, l'elenco EV non distingue i due menu per i link.
+// L'ordine segue quello delle sezioni in pagina: la torta viene subito dopo la
+// prima schermata, quindi è la prima voce.
 const links = [
+  { href: '#torte', label: 'Crea la torta', ev: 'nav_torte' },
   { href: '#about', label: 'La nostra storia' },
   { href: '#servizi', label: 'Servizi' },
   { href: '#menu', label: 'Gusti', ev: 'nav_gusti' },
   { href: '/allergeni', label: 'Allergeni', ev: 'allergeni_navbar' },
-  { href: '#torte', label: 'Crea la torta', ev: 'nav_torte' },
   { href: '/consegna', label: 'Ordina a domicilio', ev: 'nav_consegna' },
   // /galleria = la pagina con TUTTE le foto. La striscia in fondo alla home
   // (#gallery) è solo un assaggio: chi cerca "Gallery" nel menu vuole vederle
@@ -85,28 +87,34 @@ export default function Navbar({ onOpenConfigurator }) {
             transition={{ duration: 0.35 }}
           >
             <button
+              className="mobile-menu-close"
               aria-label="Chiudi menu"
               onClick={() => setOpen(false)}
-              style={{ position: 'absolute', top: 24, right: 24, color: 'var(--cream)' }}
             >
-              <X size={32} />
+              <X size={30} />
             </button>
-            {links.map((l) => (
-              <a key={l.href} href={l.href} data-ev={l.ev} onClick={() => setOpen(false)}>
-                {l.label}
+            {/* Le voci stanno in un blocco a parte, centrato con i margini
+                automatici: quando sono più alte dello schermo (telefoni bassi,
+                caratteri grandi) il blocco scorre invece di finire tagliato
+                sopra e sotto — vedi .mobile-menu in global.css. */}
+            <nav className="mobile-menu-nav" aria-label="Menu">
+              {links.map((l) => (
+                <a key={l.href} href={l.href} data-ev={l.ev} onClick={() => setOpen(false)}>
+                  {l.label}
+                </a>
+              ))}
+              <a
+                className="cta"
+                href="#torte"
+                data-ev="torta_apre_menu_mobile"
+                onClick={() => {
+                  setOpen(false);
+                  if (onOpenConfigurator) setTimeout(onOpenConfigurator, 350);
+                }}
+              >
+                Crea la tua torta
               </a>
-            ))}
-            <a
-              className="cta"
-              href="#torte"
-              data-ev="torta_apre_menu_mobile"
-              onClick={() => {
-                setOpen(false);
-                if (onOpenConfigurator) setTimeout(onOpenConfigurator, 350);
-              }}
-            >
-              Crea la tua torta
-            </a>
+            </nav>
           </motion.div>
         )}
       </AnimatePresence>

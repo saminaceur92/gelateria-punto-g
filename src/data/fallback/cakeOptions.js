@@ -149,6 +149,17 @@ export const cakeCoverings = [
   { id: 'panna-spatolata', name: 'Panna montata SPATOLATA INTORNO', desc: 'Panna liscia, spianata col coltello tutt’intorno alla torta', priceDelta: 2, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sopra', name: 'Panna montata SOLO SOPRA', desc: 'Filo di panna solo sopra alla torta, con intorno un nastro trasparente non edibile', priceDelta: 0, color: '#fff8e6', allergeni: ['latte'] },
   { id: 'panna-sotto-sopra', name: 'Panna montata SOTTO E SOPRA', desc: 'Filo di panna sul bordo inferiore e superiore della torta', priceDelta: 1, color: '#fff8e6', allergeni: ['latte'] },
+  // Panna VEGETALE: le gemelle vegane delle quattro coperture di panna qui
+  // sopra, stesso id + "-veg". Nel configuratore compaiono AL POSTO loro a chi
+  // sceglie Vegan o evita il latte (vedi conPannaVeg in CakeConfigurator) e la
+  // torta 3D le disegna identiche (vedi senzaVeg in Cake3D): cambia
+  // l'ingrediente, non l'aspetto. Stesso prezzo delle versioni con latte,
+  // modificabile dalla dashboard. Gli allergeni della panna vegetale (es. soia)
+  // li confermano i titolari dalla scheda Coperture: qui non si indovina.
+  { id: 'panna-veg', name: 'Panna VEGETALE a CIUFFI INTORNO', desc: 'Ciuffi di panna vegetale al sapore di vaniglia tutt’intorno alla torta e ghirlanda sul bordo', priceDelta: 2, color: '#fff8e6', allergeni: [], vegan: true },
+  { id: 'panna-spatolata-veg', name: 'Panna VEGETALE SPATOLATA INTORNO', desc: 'Panna vegetale al sapore di vaniglia, liscia e spianata col coltello tutt’intorno alla torta', priceDelta: 2, color: '#fff8e6', allergeni: [], vegan: true },
+  { id: 'panna-sopra-veg', name: 'Panna VEGETALE SOLO SOPRA', desc: 'Filo di panna vegetale al sapore di vaniglia solo sopra alla torta, con intorno un nastro trasparente non edibile', priceDelta: 0, color: '#fff8e6', allergeni: [], vegan: true },
+  { id: 'panna-sotto-sopra-veg', name: 'Panna VEGETALE SOTTO E SOPRA', desc: 'Filo di panna vegetale al sapore di vaniglia sul bordo inferiore e superiore della torta', priceDelta: 1, color: '#fff8e6', allergeni: [], vegan: true },
   { id: 'cioccolato-cop', name: 'Copertura morbida al cioccolato', desc: 'Copertura morbida al cioccolato al latte', priceDelta: 2, color: '#6b4226', allergeni: ['latte', 'soia', 'frutta a guscio'] },
   { id: 'pistacchio-cop', name: 'Copertura al pistacchio', desc: 'Effetto wow', priceDelta: 4, color: '#7ea15a', allergeni: ['frutta a guscio'], vegan: true },
   { id: 'frutta-cop', name: 'Copertura di frutta', desc: 'Fresca, di stagione', priceDelta: 3, color: '#e84a6e', allergeni: [], vegan: true },
@@ -204,6 +215,11 @@ export const cakeDecorations = [
   { id: 'frutta-fresca', name: 'Frutta fresca', desc: 'Ribes, more, lamponi…', emoji: '🫐', priceDelta: 4, allergeni: [], colorChoice: false, colors: [], vegan: true },
   { id: 'panna-deco', name: 'Panna montata', desc: 'Panna montata spatolata intorno e decorazione con ciuffi', emoji: '🍦', priceDelta: 2, allergeni: ['latte'], colorChoice: false, colors: [] },
   { id: 'panna-colorata', name: 'Panna montata colorata', desc: 'Colore a scelta tra rosa, rossa, azzurra, blu, verde, nera, gialla e arcobaleno', emoji: '🎨', priceDelta: 2, allergeni: ['latte'], colorChoice: true, colors: COLORI_PANNA },
+  // Panna VEGETALE: gemelle vegane delle due decorazioni di panna, stesso id +
+  // "-veg" (stessa regola delle coperture: compaiono al posto loro a chi
+  // sceglie Vegan o evita il latte, e nel 3D sono identiche).
+  { id: 'panna-deco-veg', name: 'Panna VEGETALE montata', desc: 'Panna vegetale al sapore di vaniglia, spatolata intorno e decorazione con ciuffi', emoji: '🍦', priceDelta: 2, allergeni: [], colorChoice: false, colors: [], vegan: true },
+  { id: 'panna-colorata-veg', name: 'Panna VEGETALE montata colorata', desc: 'Panna vegetale al sapore di vaniglia, colore a scelta tra rosa, rossa, azzurra, blu, verde, nera, gialla e arcobaleno', emoji: '🎨', priceDelta: 2, allergeni: [], colorChoice: true, colors: COLORI_PANNA, vegan: true },
   { id: 'fantasia', name: 'Fantasia del gelataio', desc: 'Renderemo bella la torta per il tuo evento usando la nostra fantasia e il nostro estro', emoji: '✨', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
   { id: 'colorate', name: 'Decorazioni colorate e divertenti', desc: 'Lasciati stupire dalle nostre decorazioni colorate e simpatiche!', emoji: '🎉', priceDelta: 3, allergeni: [], colorChoice: false, colors: [] },
 ];

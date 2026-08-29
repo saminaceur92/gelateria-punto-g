@@ -22,6 +22,12 @@ const COPERTURE_PANNA = new Set([
 // quando la copertura non è di panna.
 const DECORAZIONI_PANNA = new Set(['panna-deco', 'panna-colorata']);
 
+// Panna VEGETALE: coperture e decorazioni di panna hanno una gemella vegana
+// con lo stesso id più "-veg". Si disegna e si descrive come quella con latte
+// (dicendo che è vegetale): qui si toglie il suffisso e si ragiona sull'id di
+// sempre. Stessa regola in Cake3D.
+const senzaVeg = (id) => String(id || '').replace(/-veg$/, '');
+
 // Decorazioni che NON si disegnano sulla torta: dipendono da cosa c'è in
 // gelateria quel giorno e da come decide di decorare il gelataio. Disegnarle
 // sarebbe una promessa (l'immagine finisce nell'ordine e il laboratorio si
@@ -47,19 +53,26 @@ function descriviCopertura(covering) {
   if (!covering) return '';
   // Naked cake: non è una copertura, gli strati restano a vista.
   if (covering.id === 'naked') return 'a strati nudi, senza copertura';
-  const testo = TESTO_COPERTURA[covering.id] || String(covering.name || '').toLowerCase();
+  // Panna vegetale: stesso testo della gemella con latte, con "vegetale" dentro.
+  const base = senzaVeg(covering.id);
+  let testo = TESTO_COPERTURA[base];
+  if (testo && base !== covering.id) testo = testo.replace('panna montata', 'panna vegetale montata');
+  if (!testo) testo = String(covering.name || '').toLowerCase();
   return testo ? `coperto da ${testo}` : '';
 }
 
 // Riga della panna decorativa: i ciuffi (e la panna colorata) della
 // DECORAZIONE, che c'è solo se scelta — mai di serie.
 function descriviPannaDeco(decorationId, colore, coveringId) {
-  if (!DECORAZIONI_PANNA.has(decorationId)) return '';
-  if (decorationId === 'panna-deco') return 'con ciuffi di panna montata';
+  const id = senzaVeg(decorationId);
+  if (!DECORAZIONI_PANNA.has(id)) return '';
+  // La gemella vegetale si descrive uguale, dicendo che è vegetale.
+  const panna = id !== decorationId ? 'panna vegetale' : 'panna';
+  if (id === 'panna-deco') return `con ciuffi di ${panna} montata`;
   const tinta = colore ? ` ${colore}` : '';
-  return COPERTURE_PANNA.has(coveringId)
-    ? `con la panna colorata${tinta} e ciuffi in tinta`
-    : `con panna colorata${tinta} intorno e ciuffi in tinta`;
+  return COPERTURE_PANNA.has(senzaVeg(coveringId))
+    ? `con la ${panna} colorata${tinta} e ciuffi in tinta`
+    : `con ${panna} colorata${tinta} intorno e ciuffi in tinta`;
 }
 
 /* ===== decorazioni: una o più, ognuna col suo colore ===== */
@@ -140,7 +153,7 @@ function elencoItaliano(voci) {
  */
 function descriviDecorazioni(decorazioni, colori) {
   const voci = decorazioni
-    .filter((d) => !DECORAZIONI_PANNA.has(d.id) && !DECORAZIONI_SU_DISPONIBILITA.has(d.id))
+    .filter((d) => !DECORAZIONI_PANNA.has(senzaVeg(d.id)) && !DECORAZIONI_SU_DISPONIBILITA.has(d.id))
     .map((d) => {
       const nome = String(d.name || '').trim().toLowerCase();
       if (!nome) return '';

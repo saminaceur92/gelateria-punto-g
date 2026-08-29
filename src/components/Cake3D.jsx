@@ -22,7 +22,7 @@
  */
 
 import { Suspense, useMemo, useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { Canvas, useLoader, useFrame } from '@react-three/fiber';
+import { Canvas, useLoader, useFrame, useThree } from '@react-three/fiber';
 import {
   OrbitControls,
   ContactShadows,
@@ -32,6 +32,7 @@ import {
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three-stdlib';
 import { messageFontStyle } from '../lib/messageFont';
+import { registraCattura, rimuoviCattura } from '../lib/cakeSnapshot';
 
 /* ============================ utilità colore ============================ */
 
@@ -1685,6 +1686,15 @@ const CREAM_RING_COVERINGS = new Set(['panna', 'panna-sopra', 'panna-sotto-sopra
  */
 const CREAM_DECORATIONS = new Set(['panna-deco', 'panna-colorata']);
 
+/**
+ * Panna VEGETALE: le coperture e le decorazioni di panna hanno una gemella
+ * vegana con lo stesso id più il suffisso "-veg" ('panna-veg',
+ * 'panna-colorata-veg'…). Si disegna IDENTICA alla versione con latte — cambia
+ * l'ingrediente, non l'aspetto — quindi qui si toglie il suffisso e tutto il
+ * resto ragiona sull'id di sempre.
+ */
+const senzaVeg = (id) => String(id || '').replace(/-veg$/, '');
+
 /** Decorazione "drip cake": le colature che scendono dal bordo. */
 const DRIP_ID = 'drip';
 
@@ -2025,7 +2035,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   }, [decoKey]);
   // stringa dei colori scelti: serve solo come dipendenza stabile per i useMemo
   const colorKey = decoIds.map((id) => decoColors[id] || '').join('|');
-  const creamIds = decoIds.filter((id) => CREAM_DECORATIONS.has(id));
+  const creamIds = decoIds.filter((id) => CREAM_DECORATIONS.has(senzaVeg(id)));
   // "Drip cake": le colature lungo il bordo. Prima venivano da sole con ogni
   // copertura lucida; è uno stile preciso, quindi ora si sceglie.
   const hasDrip = decoIds.includes(DRIP_ID);
@@ -2034,15 +2044,18 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // La panna NON è di serie: c'è solo se la si sceglie, come copertura o come
   // decorazione. (Per un giorno ogni torta usciva con due file di ciuffi
   // standard: no — chi vuole la torta pulita la deve poter avere pulita.)
-  const coverIsCream = !!useCover && CREAM_COVERINGS.has(covering?.id);
+  // id della copertura senza il suffisso "-veg": la panna vegetale si disegna
+  // come quella con latte.
+  const coverId = senzaVeg(covering?.id);
+  const coverIsCream = !!useCover && CREAM_COVERINGS.has(coverId);
   // La decorazione di panna porta con sé la panna spatolata intorno alla torta
   // (è proprio quello che dicono le loro descrizioni), ma solo se la copertura
   // scelta non è già di panna: in quel caso comanda la copertura.
   const creamDecoWrap = creamIds.length > 0 && !coverIsCream;
-  const wrapFull = (coverIsCream && CREAM_WRAP_FULL.has(covering.id)) || creamDecoWrap;
+  const wrapFull = (coverIsCream && CREAM_WRAP_FULL.has(coverId)) || creamDecoWrap;
   // "Sotto e sopra" è composta soltanto dalle ghirlande a ciuffi: serve qui per
   // sapere quanto sporge il bordo, ma non genera fasce lisce sul fianco.
-  const pannaSottoSopra = coverIsCream && covering?.id === 'panna-sotto-sopra';
+  const pannaSottoSopra = coverIsCream && coverId === 'panna-sotto-sopra';
   // panna aggiunta dalla decorazione su una torta senza copertura: ci vuole
   // anche la superficie superiore, altrimenti resterebbe il gusto scoperto
   const extraCreamCap = creamDecoWrap && !useCover;
@@ -2050,7 +2063,8 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // Panna montata colorata: il colore scelto tinge TUTTA la panna — copertura
   // sopra, fianchi e ciuffi. Toni pastello, da panna vera. Se la prop non arriva
   // o il colore non è riconosciuto, resta la panna bianca.
-  const creamChoice = decoIds.includes('panna-colorata') ? decoColors['panna-colorata'] || '' : '';
+  const pannaColorataId = decoIds.find((id) => senzaVeg(id) === 'panna-colorata');
+  const creamChoice = pannaColorataId ? decoColors[pannaColorataId] || '' : '';
   const creamRainbow = isRainbowChoice(creamChoice);
   const creamHex = creamColorFromChoice(creamChoice);
   const creamColor = creamHex || (coverIsCream ? coverColor : '#fff8e6');
@@ -2217,7 +2231,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // dietro alle ruche. Su "sotto e sopra" la ghirlanda sta alla BASE, cioè
   // sotto il nodo: tenerne conto qui spingeva il fiocco a mezz'aria, staccato
   // dalla parete. Lì si tengono corti i nastri (vedi la banda qui sotto).
-  const pannaACiuffi = coverIsCream && covering?.id === 'panna';
+  const pannaACiuffi = coverIsCream && coverId === 'panna';
   const fiancoBase = wrapFull ? wrapR : R;
   const fiancoFuori = pannaACiuffi ? RUCHE_LARGHEZZA * 0.45 : 0;
   // Il fiocco dev'essere CONTENUTO nel fianco. Era questo a farlo sembrare
@@ -2243,7 +2257,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // posizione sul bordo (Lucia: "voglio sia uguale"). E se la copertura ha già
   // il suo anello, la decorazione non aggiunge niente: al massimo il colore,
   // con la panna colorata.
-  const coverRing = coverIsCream && CREAM_RING_COVERINGS.has(covering.id);
+  const coverRing = coverIsCream && CREAM_RING_COVERINGS.has(coverId);
   const decoRing = creamIds.length > 0 && !coverRing;
   const hasRing = coverRing || decoRing;
   // dove sta l'anello (in frazione di R) e quanto è largo il suo ciuffo
@@ -2382,7 +2396,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
               "Panna INTORNO" aggiunge le ruche verticali su tutto il fianco;
               "Sotto e sopra" aggiunge la ghirlanda alla base. Le due file in
               alto sono già standard per tutte le torte. ---- */}
-      {coverIsCream && covering?.id === 'panna' && (
+      {coverIsCream && coverId === 'panna' && (
         <>
           {/* le ruche partono da dentro il vassoio: il taglio netto in fondo
               resta nascosto e la panna sembra scendere fino al piatto */}
@@ -2396,7 +2410,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         </>
       )}
 
-      {coverIsCream && covering?.id === 'panna-sotto-sopra' && (
+      {coverIsCream && coverId === 'panna-sotto-sopra' && (
         <GhirlandaDiPanna
           shape={shape}
           R={wrapR}
@@ -2562,6 +2576,47 @@ function Scene({ spin = true, ...props }) {
   );
 }
 
+/**
+ * Ponte per la foto in alta risoluzione (vedi src/lib/cakeSnapshot.js).
+ * Sta DENTRO al <Canvas> perché solo lì si arriva a renderer, scena e camera.
+ * La cattura ridisegna la scena con il canvas ingrandito (stesse proporzioni,
+ * lato lungo a `maxPx`), la copia su un canvas 2D con lo sfondo — il WebGL è
+ * trasparente e un JPEG trasparente viene nero — poi rimette tutto com'era e
+ * ridisegna il fotogramma normale. Sullo schermo non si vede niente.
+ */
+function CaptureBridge() {
+  const { gl, scene, camera } = useThree();
+  useEffect(() => {
+    const el = gl.domElement;
+    registraCattura(el, ({ maxPx, sfondo }) => {
+      const size = gl.getSize(new THREE.Vector2()); // misura "logica" (CSS)
+      const dpr = gl.getPixelRatio();
+      const fattore = maxPx / Math.max(size.x, size.y);
+      try {
+        gl.setPixelRatio(1);
+        gl.setSize(Math.round(size.x * fattore), Math.round(size.y * fattore), false);
+        gl.render(scene, camera);
+        const out = document.createElement('canvas');
+        out.width = el.width;
+        out.height = el.height;
+        const ctx = out.getContext('2d');
+        if (sfondo) {
+          ctx.fillStyle = sfondo;
+          ctx.fillRect(0, 0, out.width, out.height);
+        }
+        ctx.drawImage(el, 0, 0);
+        return out;
+      } finally {
+        gl.setPixelRatio(dpr);
+        gl.setSize(size.x, size.y, false);
+        gl.render(scene, camera);
+      }
+    });
+    return () => rimuoviCattura(el);
+  }, [gl, scene, camera]);
+  return null;
+}
+
 export default function Cake3D(props) {
   const [spin, setSpin] = useState(true);
   const stage = useRef(null);
@@ -2594,6 +2649,7 @@ export default function Cake3D(props) {
         <Suspense fallback={null}>
           <Scene {...props} spin={spin} />
         </Suspense>
+        <CaptureBridge />
       </Canvas>
       <button
         type="button"

@@ -30,13 +30,20 @@ export default function Hero({ onOpenConfigurator }) {
             <strong style={{ color: 'var(--violet-deep)' }}>Vegan</strong>.
           </motion.p>
 
+          {/* Il configuratore è il cuore del sito: il suo pulsante è il primo
+              e il più grande, con sotto il perché vale la pena. "Scopri i
+              gusti" resta, ma in secondo piano. */}
           <motion.div className="hero-meta" {...fade(0.55)}>
-            <a className="btn btn-primary" href="#menu" data-ev="hero_scopri_gusti">
+            <button className="btn btn-primary btn-hero-cake" onClick={onOpenConfigurator} data-ev="torta_apre_hero">
+              <span className="btn-hero-cake-icon" aria-hidden="true"><Cake size={22} /></span>
+              <span className="btn-hero-cake-text">
+                <strong>Crea la tua torta</strong>
+                <small>con il nostro simulatore, comodamente da casa</small>
+              </span>
+            </button>
+            <a className="btn btn-ghost" href="#menu" data-ev="hero_scopri_gusti">
               Scopri i gusti <Sparkles size={18} />
             </a>
-            <button className="btn btn-ghost" onClick={onOpenConfigurator} data-ev="torta_apre_hero">
-              <Cake size={18} /> Crea la tua torta
-            </button>
           </motion.div>
 
           <motion.div className="hero-stats" {...fade(0.75)}>

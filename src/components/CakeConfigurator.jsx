@@ -6,7 +6,8 @@ import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { traccia, tracciaUnaVolta, EV, EV_PASSO } from '../lib/analytics';
-import { uploadCakePhoto } from '../lib/cakePhoto';
+import { uploadCakePhotos } from '../lib/cakePhoto';
+import { catturaTorta3D, ridimensiona, SFONDO_FOTO } from '../lib/cakeSnapshot';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
 
@@ -211,6 +212,44 @@ const conflictsAllergies = (item, allergies, diets) => {
   return false;
 };
 
+// ── Panna VEGETALE ──
+// Le coperture e le decorazioni di panna hanno una gemella vegana con lo
+// stesso id più "-veg" (righe in `coperture` e `decorazioni`, vedi la
+// migrazione 2026-08-29-panna-vegetale.sql). Non stanno in lista tutte e due:
+// a chi ha scelto Vegan o evita il latte si mostra la vegetale AL POSTO di
+// quella con latte, agli altri solo quella con latte. Stesso posto in lista,
+// stesso aspetto nella torta 3D (che toglie il suffisso, vedi Cake3D).
+const SUFFISSO_VEG = '-veg';
+const isVeg = (id) => String(id || '').endsWith(SUFFISSO_VEG);
+const vuolePannaVeg = (allergies, diets) =>
+  (diets || []).includes(DIETA_VEGAN) || (allergies || []).includes('latte');
+/** La gemella vegetale di un'opzione, se esiste ed è compatibile; altrimenti null. */
+const gemellaVeg = (item, list, allergies, diets) => {
+  if (!item || isVeg(item.id)) return null;
+  const g = (list || []).find((x) => x.id === item.id + SUFFISSO_VEG);
+  return g && !conflictsAllergies(g, allergies, diets) ? g : null;
+};
+/**
+ * Le opzioni da mostrare in un passo: le gemelle vegetali compaiono solo a chi
+ * le vuole (o se una è già scelta, per non nasconderla sotto i suoi occhi), e
+ * quando compaiono nascondono l'originale con latte.
+ */
+const conPannaVeg = (list, allergies, diets, sceltiIds) => {
+  const veg = vuolePannaVeg(allergies, diets);
+  const scelti = new Set(sceltiIds || []);
+  const ids = new Set((list || []).map((x) => x.id));
+  return (list || []).filter((x) => {
+    if (isVeg(x.id)) return veg || scelti.has(x.id);
+    return !(veg && ids.has(x.id + SUFFISSO_VEG));
+  });
+};
+
+// Dove verrà mangiata la torta (passo "I tuoi dati"): true = in un locale,
+// false = a casa, null = non ancora risposto. In chiaro per riepilogo, mail e
+// Telegram.
+const testoDoveSiMangia = (v) =>
+  (v === true ? 'in un locale (ristorante, pizzeria…)' : v === false ? 'a casa' : '');
+
 const emailOk = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((s || '').trim());
 
 // Telefono valido: 10 cifre (es. 348 5556677), con prefisso +39 / 0039 opzionale.
@@ -329,6 +368,7 @@ function makeInitialConfig(cake, initial = {}) {
     pickupTime: '',
     delivery: false,      // consegna a domicilio (+€4) invece del ritiro
     deliveryAddress: '',  // indirizzo di consegna
+    inLocale: null,       // dove si mangia: true = in un locale, false = a casa, null = da rispondere
     name: '',
     phone: '',
     email: '',
@@ -530,16 +570,32 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       const filling = cakeFillings.find((f) => f.id === c.fillingId);
       if (conflictsAllergies(filling, c.allergies, c.diets)) patch.fillingId = 'nessuna';
       const covering = cakeCoverings.find((cc) => cc.id === c.coveringId);
-      if (conflictsAllergies(covering, c.allergies, c.diets)) patch.coveringId = '';
-      // Decorazioni in conflitto: si tolgono dalla lista (con il loro colore),
-      // le altre restano scelte.
-      const decorations = (c.decorations || []).filter(
-        (id) => !conflictsAllergies(cakeDecorations.find((d) => d.id === id), c.allergies, c.diets)
-      );
-      if (decorations.length !== (c.decorations || []).length) {
+      if (conflictsAllergies(covering, c.allergies, c.diets)) {
+        // Panna con latte a chi ora evita il latte: si passa alla gemella
+        // vegetale (stesso aspetto) invece di lasciarlo senza copertura.
+        patch.coveringId = gemellaVeg(covering, cakeCoverings, c.allergies, c.diets)?.id || '';
+      }
+      // Decorazioni in conflitto: se hanno la gemella vegetale si scambiano
+      // (il colore scelto passa alla gemella), altrimenti si tolgono dalla
+      // lista con il loro colore; le altre restano scelte.
+      const decorations = [];
+      const colori = { ...(c.decorationColors || {}) };
+      let cambiate = false;
+      for (const id of c.decorations || []) {
+        const d = cakeDecorations.find((x) => x.id === id);
+        if (!conflictsAllergies(d, c.allergies, c.diets)) { decorations.push(id); continue; }
+        cambiate = true;
+        const g = gemellaVeg(d, cakeDecorations, c.allergies, c.diets);
+        if (g) {
+          decorations.push(g.id);
+          if (colori[id] !== undefined) colori[g.id] = colori[id];
+        }
+        delete colori[id];
+      }
+      if (cambiate) {
         patch.decorations = decorations;
         patch.decorationColors = Object.fromEntries(
-          Object.entries(c.decorationColors || {}).filter(([id]) => decorations.includes(id))
+          Object.entries(colori).filter(([id]) => decorations.includes(id))
         );
       }
       // Extra in conflitto: si tolgono dalla lista degli extra scelti.
@@ -755,7 +811,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
           return !colors.length || !!matchColor(colors, (config.decorationColors || {})[d.id]);
         });
       }
-      case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim());
+      // Anche "dove si mangia" va risposto: i titolari lo vogliono per ogni ordine.
+      case 'details': return config.name.trim() && phoneOk(config.phone) && (staff || emailOk(config.email)) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim()) && config.inLocale !== null;
       default: return true;
     }
   }, [step, steps, config, staff, earliestISO, cakeSizes]);
@@ -808,7 +865,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // La decorazione: le ricette ne dichiarano UNA sola, quindi la lista che ne
     // esce ne ha una. Se è incompatibile con le allergie (o non è più a menù)
     // si resta senza decorazioni.
-    const deco = cakeDecorations.find((d) => d.id === recipe.decoration);
+    // Se è di panna con latte e il cliente evita il latte, vale la gemella vegetale.
+    const decoRicetta = cakeDecorations.find((d) => d.id === recipe.decoration);
+    const deco = decoRicetta && conflictsAllergies(decoRicetta, config.allergies, config.diets)
+      ? gemellaVeg(decoRicetta, cakeDecorations, config.allergies, config.diets)
+      : decoRicetta;
     const decorations = deco && !conflictsAllergies(deco, config.allergies, config.diets) ? [deco.id] : [];
     // Se la decorazione vuole un colore, ne scegliamo uno fra quelli davvero
     // disponibili: altrimenti "Sorprendimi" lascerebbe il passo a metà, con la
@@ -842,7 +903,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       flavors,
       shape: formaSorpresa,
       fillingId: conflictsAllergies(filling, config.allergies, config.diets) ? 'nessuna' : recipe.filling,
-      coveringId: conflictsAllergies(covering, config.allergies, config.diets) ? config.coveringId : recipe.covering,
+      // Copertura di panna con latte a chi evita il latte: la gemella vegetale
+      // (stesso aspetto); se non c'è, resta quella già scelta.
+      coveringId: conflictsAllergies(covering, config.allergies, config.diets)
+        ? gemellaVeg(covering, cakeCoverings, config.allergies, config.diets)?.id || config.coveringId
+        : recipe.covering,
       decorations,
       decorationColors,
     });
@@ -924,6 +989,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // lavoro in laboratorio (e come si consegna), quindi viaggiano con l'ordine.
     const dietLine = (config.diets || []).map((id) => DIETE.find((d) => d.id === id)?.name || id).join(', ').toUpperCase();
     const noteConsegna = [config.surprise && 'è una sorpresa', config.gift && 'è un regalo'].filter(Boolean).join(' · ');
+    // Dove verrà mangiata (a casa / in un locale): i titolari lo vogliono per
+    // ogni ordine, quindi viaggia con l'ordine come la sorpresa/regalo.
+    const doveSiMangia = testoDoveSiMangia(config.inLocale);
 
     const msg = [
       staff ? `🎂 *Nuovo ordine in gelateria — Punto Gi*` : `🎂 *Nuova richiesta torta — Punto Gi*`,
@@ -933,7 +1001,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
       `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
-      `*Base:* ${base?.name}${base?.desc ? ` (${base.desc})` : ''}`,
+      // Con la base croccante la descrizione ("scegli sotto il gusto del
+      // crumble") è un'istruzione per chi ordina, non per il laboratorio — e la
+      // riga sotto dice già quale crumble. Per le altre basi resta.
+      `*Base:* ${base?.name}${base?.desc && base.id !== CRUMBLE_BASE_ID ? ` (${base.desc})` : ''}`,
       crumble ? `*Tipo di crumble:* ${crumble.name}` : '',
       `*Strati / Gusti:* ${config.flavors.map((f) => f.name).join(', ')}`,
       filling && filling.id !== 'nessuna' ? `*Farcitura:* ${filling.name}` : '',
@@ -952,6 +1023,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         : `*Da ritirare:* ${config.pickupDate}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}`,
       config.delivery ? `*Indirizzo:* ${config.deliveryAddress}` : '',
       config.delivery ? `*Sovrapprezzo consegna:* €${DELIVERY_FEE}` : '',
+      doveSiMangia ? `*Dove si mangia:* ${doveSiMangia}` : '',
       `*Cliente:* ${config.name}`,
       `*Telefono:* ${config.phone}`,
       config.email ? `*Email:* ${config.email}` : '',
@@ -962,27 +1034,34 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
 
-    // Cattura l'immagine 3D della torta configurata (ridotta, per la dashboard)
-    let immagine = null;
+    // Foto della torta 3D, in DUE misure: alta risoluzione (lato lungo 2048 px)
+    // per Telegram e per "Scarica foto" in dashboard, e una miniatura per la
+    // lista ordini. Il WebGL è trasparente: catturaTorta3D la stende già su
+    // sfondo crema, così il JPEG non viene nero.
+    let immagine = null;   // miniatura (data URL): finisce in `immagine`
+    let immagineHd = null; // alta risoluzione (data URL): va solo su Storage
     try {
       const canvas = document.querySelector('.cfg-preview canvas');
-      if (canvas) {
-        const max = 380;
-        const scale = Math.min(1, max / Math.max(canvas.width, canvas.height));
-        const off = document.createElement('canvas');
-        off.width = Math.round(canvas.width * scale);
-        off.height = Math.round(canvas.height * scale);
-        off.getContext('2d').drawImage(canvas, 0, 0, off.width, off.height);
-        immagine = off.toDataURL('image/jpeg', 0.72);
+      const grande = catturaTorta3D(canvas, { maxPx: 2048 });
+      if (grande) {
+        immagineHd = grande.toDataURL('image/jpeg', 0.9);
+        immagine = ridimensiona(grande, 480).toDataURL('image/jpeg', 0.8);
+      } else if (canvas) {
+        // 3D non ancora registrato: cattura semplice del canvas com'è a schermo
+        immagine = ridimensiona(canvas, 480, SFONDO_FOTO).toDataURL('image/jpeg', 0.8);
       }
     } catch {
       /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
     }
 
-    // La foto va su Storage: nella riga ordine ci finisce solo il link, così
-    // passa anche dai metadata di Stripe (campi da 500 caratteri) e arriva in
-    // dashboard pure sugli ordini pagati dal sito.
-    const immagineUrl = await uploadCakePhoto(immagine);
+    // Le foto vanno su Storage: nella riga ordine ci finiscono solo i link, così
+    // passano anche dai metadata di Stripe (campi da 500 caratteri) e arrivano
+    // in dashboard pure sugli ordini pagati dal sito. La miniatura sta in
+    // `immagine` (la colonna che dashboard e Telegram leggono da sempre),
+    // l'alta risoluzione in `dettagli.immagineHd`: è jsonb, quindi nessuna
+    // colonna nuova e il webhook Stripe non può rompersi.
+    const foto = await uploadCakePhotos({ hd: immagineHd, thumb: immagine });
+    const immagineUrl = foto.thumb || foto.hd;
 
     // Riga ordine. Per gli ordini pagati la salva il webhook (imposta lì il
     // totale); lo staff invece salva subito qui.
@@ -1007,6 +1086,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       dettagli: {
         ...dettagli,
         conFoto: !!photo,
+        // Foto della torta 3D in alta risoluzione (link su Storage): la
+        // dashboard ci mette "Scarica foto" e Telegram la manda come immagine.
+        immagineHd: foto.hd || null,
         scrittaStile: scritta?.name || null,
         // COMPATIBILITÀ: il gestionale, le notifiche Telegram e il link "Rifai
         // questa torta" leggono ancora la decorazione singola. Ci mettiamo la
@@ -1052,6 +1134,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       noteConsegna ? `Attenzione: ${noteConsegna}` : '',
       config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
       quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
+      doveSiMangia ? `Dove si mangia: ${doveSiMangia}` : '',
       config.notes ? `Note: ${config.notes}` : '',
     ].filter(Boolean).join(' · ');
     const emailParams = config.email ? {
@@ -1538,11 +1621,7 @@ function StepShape({ config, set, consigliata }) {
                       })}
                     >
                       <div className="opt-name">{t.name}</div>
-                      <div className="opt-desc">
-                        {t.bloccata
-                          ? (t.contro.length ? `Contiene: ${t.contro.join(', ')}` : 'Non adatta alle preferenze scelte')
-                          : t.desc}
-                      </div>
+                        <div className="opt-desc">{t.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -1773,7 +1852,7 @@ function StepFilling({ config, set }) {
                 )}
                 {f.name}
               </div>
-              <div className="opt-desc">{blocked ? `Contiene: ${f.allergeni.join(', ')}` : f.desc}</div>
+              <div className="opt-desc">{f.desc}</div>
               <div className="opt-meta">{f.priceDelta > 0 ? `+ €${f.priceDelta}` : 'inclusa'}</div>
             </button>
           );
@@ -1785,6 +1864,8 @@ function StepFilling({ config, set }) {
 
 function StepCovering({ config, set }) {
   const { cakeCoverings } = useCakeData();
+  // Panna vegetale al posto di quella con latte, per chi la vuole (vedi conPannaVeg).
+  const lista = conPannaVeg(cakeCoverings, config.allergies, config.diets, [config.coveringId]);
   // Foto di esempio aperta a tutto schermo (null = chiusa). È la foto vera
   // caricata dai titolari nella scheda Coperture della dashboard.
   const [fotoAperta, setFotoAperta] = useState(null);
@@ -1796,7 +1877,7 @@ function StepCovering({ config, set }) {
         lead="Quello che vede l'occhio prima del primo morso. Lucida, soffice, fiammeggiata… o nuda."
       />
       <div className="opt-grid cols-2">
-        {cakeCoverings.map((c) => {
+        {lista.map((c) => {
           const blocked = conflictsAllergies(c, config.allergies, config.diets);
           const scelta = config.coveringId === c.id;
           return (
@@ -1816,7 +1897,7 @@ function StepCovering({ config, set }) {
                   )}
                   {c.name}
                 </div>
-                <div className="opt-desc">{blocked ? `Contiene: ${c.allergeni.join(', ')}` : c.desc}</div>
+                <div className="opt-desc">{c.desc}</div>
                 <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'inclusa'}</div>
               </button>
               {/* Il collegamento compare solo sulla copertura SCELTA, e solo se
@@ -1863,7 +1944,7 @@ function StepBase({ config, set }) {
                 <span className="opt-dot" style={{ background: b.color }} />
                 {b.name}
               </div>
-              <div className="opt-desc">{blocked ? `Contiene: ${b.allergeni.join(', ')}` : b.desc}</div>
+              <div className="opt-desc">{b.desc}</div>
               <div className="opt-meta">{b.priceDelta > 0 ? `+ €${b.priceDelta}` : 'inclusa'}</div>
             </button>
           );
@@ -1901,7 +1982,7 @@ function StepCrumble({ config, set }) {
                 )}
                 {c.name}
               </div>
-              <div className="opt-desc">{blocked ? `Contiene: ${(c.allergeni || []).join(', ')}` : c.desc}</div>
+              <div className="opt-desc">{c.desc}</div>
               <div className="opt-meta">{c.priceDelta > 0 ? `+ €${c.priceDelta}` : 'incluso'}</div>
             </button>
           );
@@ -1916,8 +1997,9 @@ function StepCrumble({ config, set }) {
 // svuota tutto ed è selezionata quando non c'è nessuna decorazione.
 function StepDecoration({ config, set }) {
   const { cakeDecorations } = useCakeData();
-  const disponibili = cakeDecorations;
   const scelte = config.decorations || [];
+  // Panna vegetale al posto di quella con latte, per chi la vuole (vedi conPannaVeg).
+  const disponibili = conPannaVeg(cakeDecorations, config.allergies, config.diets, scelte);
   const colori = config.decorationColors || {};
   const pieno = scelte.length >= MAX_DECORAZIONI;
 
@@ -1992,11 +2074,9 @@ function StepDecoration({ config, set }) {
                 <span style={{ fontSize: '1.2rem' }}>{d.emoji}</span> {d.name}
               </div>
               <div className="opt-desc">
-                {blocked
-                  ? `Contiene: ${(d.allergeni || []).join(', ')}`
-                  : maxed
-                    ? `Puoi scegliere fino a ${MAX_DECORAZIONI} decorazioni`
-                    : d.desc}
+                {maxed && !blocked
+                  ? `Puoi scegliere fino a ${MAX_DECORAZIONI} decorazioni`
+                  : d.desc}
               </div>
               <div className="opt-meta">{d.priceDelta > 0 ? `+ €${d.priceDelta}` : 'inclusa'}</div>
             </button>
@@ -2422,6 +2502,28 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
         </div>
       )}
 
+      {/* Dove verrà mangiata: i titolari lo vogliono sapere per ogni ordine.
+          Va risposto, come il ritiro/consegna: senza, "Avanti" resta spento. */}
+      <div className="cfg-field">
+        <label>Dove verrà mangiata la torta? *</label>
+        <div className="toggle-row">
+          <button
+            type="button"
+            className={`toggle-pill ${config.inLocale === false ? 'active' : ''}`}
+            onClick={() => set({ inLocale: false })}
+          >
+            🏠 A casa
+          </button>
+          <button
+            type="button"
+            className={`toggle-pill ${config.inLocale === true ? 'active' : ''}`}
+            onClick={() => set({ inLocale: true })}
+          >
+            🍽️ In un locale (ristorante, pizzeria…)
+          </button>
+        </div>
+      </div>
+
       <div className="cfg-field-row">
         <div className="cfg-field">
           <label>{config.delivery ? 'Giorno di consegna *' : 'Giorno di ritiro *'}</label>
@@ -2528,6 +2630,7 @@ function vociRiepilogo(config, cake, steps, step) {
   if (config.pickupDate) {
     push('details', config.delivery ? 'Consegna' : 'Ritiro', `${config.pickupDate}${config.pickupTime ? ` alle ${config.pickupTime}` : ''}`);
   }
+  push('details', 'Si mangia', testoDoveSiMangia(config.inLocale));
   return v;
 }
 
@@ -2705,6 +2808,7 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
           )}
           <dt>{config.delivery ? 'Consegna' : 'Ritiro'}</dt><dd>{config.pickupDate || '—'}{config.pickupTime ? ` alle ${config.pickupTime}` : ''}</dd>
           {config.delivery && (<><dt>Indirizzo</dt><dd>{config.deliveryAddress || '—'}</dd></>)}
+          {config.inLocale !== null && (<><dt>Si mangia</dt><dd>{testoDoveSiMangia(config.inLocale)}</dd></>)}
           <dt>Cliente</dt><dd>{config.name}</dd>
           <dt>Tel</dt><dd>{config.phone}</dd>
           {config.notes && (<><dt>Note</dt><dd>{config.notes}</dd></>)}
