@@ -32,6 +32,50 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([bytes], { type: mime });
 }
 
+// Il bucket accetta file fino a 2 MB. Le fotografie del telefono possono
+// superare quel limite anche dopo il primo ridimensionamento: le comprimiamo
+// conservando una risoluzione adatta alla stampa sulla cialda.
+async function dataUrlToUploadBlob(dataUrl) {
+  const originale = dataUrlToBlob(dataUrl);
+  if (!originale || originale.size <= 1_850_000) return originale;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.naturalWidth;
+      let height = img.naturalHeight;
+      let quality = 0.82;
+      const canvas = document.createElement('canvas');
+
+      const tenta = () => {
+        canvas.width = Math.max(1, Math.round(width));
+        canvas.height = Math.max(1, Math.round(height));
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(originale); return; }
+          if (blob.size <= 1_850_000 || (quality <= 0.55 && Math.max(width, height) <= 1100)) {
+            resolve(blob);
+            return;
+          }
+          if (quality > 0.56) quality -= 0.1;
+          else {
+            width *= 0.85;
+            height *= 0.85;
+          }
+          tenta();
+        }, 'image/jpeg', quality);
+      };
+
+      tenta();
+    };
+    img.onerror = () => resolve(originale);
+    img.src = dataUrl;
+  });
+}
+
 const uuid = () => (window.crypto?.randomUUID
   ? window.crypto.randomUUID()
   : `${Date.now()}-${Math.floor(Math.random() * 1e9)}`);
@@ -40,7 +84,7 @@ const uuid = () => (window.crypto?.randomUUID
 async function carica(dataUrl, path) {
   if (!supabase || !dataUrl || !String(dataUrl).startsWith('data:image')) return null;
   try {
-    const blob = dataUrlToBlob(dataUrl);
+    const blob = await dataUrlToUploadBlob(dataUrl);
     if (!blob || !blob.size) return null;
     const { error } = await supabase.storage.from(BUCKET_TORTE).upload(path, blob, {
       contentType: 'image/jpeg',

@@ -253,6 +253,11 @@ alter table public.ordini add column if not exists email_req       bigint;
 alter table public.ordini add column if not exists email_ok        boolean;
 alter table public.ordini add column if not exists email_tentativi integer not null default 0;
 
+-- Template di conferma già usato dagli ordini effettuati dal sito.
+insert into public.app_config (key, value)
+values ('emailjs_template_conferma', 'template_wornujj')
+on conflict (key) do update set value = excluded.value;
+
 create or replace function public.invia_mail_ordine(p_params jsonb)
 returns bigint
 language plpgsql
@@ -317,6 +322,51 @@ drop trigger if exists notify_order_email_trg on public.ordini;
 create trigger notify_order_email_trg
   after insert on public.ordini
   for each row execute function public.notify_order_email();
+
+-- Verifica la risposta asincrona di EmailJS e riprova fino a tre volte.
+create or replace function public.retry_mail_conferma()
+returns void
+language plpgsql
+security definer
+set search_path = public, net
+as $$
+declare r record; st int; err text; v_req bigint;
+begin
+  for r in
+    select id, email_params, email_req, email_tentativi
+    from public.ordini
+    where email_params is not null
+      and email_ok is not true
+      and email_tentativi < 3
+      and created_at > now() - interval '6 hours'
+    order by created_at
+  loop
+    if r.email_req is not null then
+      select status_code, error_msg into st, err
+      from net._http_response where id = r.email_req;
+      if st between 200 and 299 then
+        update public.ordini set email_ok = true where id = r.id;
+        continue;
+      elsif st is null and err is null then
+        continue;
+      end if;
+    end if;
+
+    v_req := public.invia_mail_ordine(r.email_params);
+    update public.ordini
+       set email_req = coalesce(v_req, email_req),
+           email_tentativi = r.email_tentativi + 1
+     where id = r.id;
+  end loop;
+end $$;
+
+revoke execute on function public.retry_mail_conferma() from public, anon, authenticated;
+
+do $$ begin
+  perform cron.unschedule('retry-mail-conferma');
+exception when others then null;
+end $$;
+select cron.schedule('retry-mail-conferma', '*/2 * * * *', $$ select public.retry_mail_conferma(); $$);
 
 -- ── Controllo finale ─────────────────────────────────────────
 -- Le prime due righe devono dire "ok": se una dice "MANCA", inserisci la
