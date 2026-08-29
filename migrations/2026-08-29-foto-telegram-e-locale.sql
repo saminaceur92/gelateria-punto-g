@@ -12,8 +12,8 @@
 --     mail e su Telegram.
 --
 -- Qui:
---   1. la notifica Telegram riceve ANCHE la foto per la cialda (sendPhoto),
---      con nella didascalia il link per scaricarla in alta risoluzione;
+--   1. la notifica Telegram riceve DUE immagini: la foto per la cialda, con
+--      il link per scaricarla, e subito dopo l'anteprima della torta finita;
 --   2. il messaggio di testo mette l'emoji davanti a "Dove si mangia:".
 --
 -- Il trigger che oggi manda il TESTO su Telegram (`notify_new_order_trg`,
@@ -110,13 +110,11 @@ begin
   end;
 end $$;
 
--- ── 1b. La foto cialda su Telegram, appena l'ordine è salvato ──────
--- Manda esclusivamente la foto caricata dal cliente con una
--- didascalia corta: chi è il cliente e il link per scaricarla. Il riepilogo
--- completo arriva già dal messaggio di testo di sempre.
--- Salta senza fare nulla se manca la foto, se non è un link (un data URL di
--- ripiego non lo si può mandare) o se mancano le credenziali. E non blocca
--- MAI il salvataggio dell'ordine.
+-- ── 1b. Le due foto su Telegram, appena l'ordine è salvato ──────────
+-- Prima manda la foto caricata per la cialda, col link per scaricarla; poi
+-- manda l'anteprima della torta finita (`immagine`, la stessa della dashboard).
+-- Se una delle due manca o non è un URL pubblico, manda comunque l'altra.
+-- Nessun errore Telegram deve mai bloccare il salvataggio dell'ordine.
 create or replace function public.telegram_foto_ordine()
 returns trigger
 language plpgsql
@@ -124,45 +122,76 @@ security definer
 set search_path = public, extensions, net
 as $$
 declare
-  v_token text; v_chat text; v_url text; v_nome text; v_slug text; v_caption text;
+  v_token text; v_chat text; v_url_cialda text; v_url_torta text;
+  v_nome text; v_slug text; v_caption text;
 begin
-  v_url := nullif(new.dettagli->>'fotoCialdaUrl', '');
-  if v_url is null or v_url !~* '^https?://' then return new; end if;
+  v_url_cialda := nullif(new.dettagli->>'fotoCialdaUrl', '');
+  v_url_torta := nullif(new.immagine, '');
+  if (v_url_cialda is null or v_url_cialda !~* '^https?://')
+     and (v_url_torta is null or v_url_torta !~* '^https?://') then
+    return new;
+  end if;
 
   select value into v_token from public.app_config where key = 'telegram_bot_token';
   select value into v_chat  from public.app_config where key = 'telegram_chat_id';
   if coalesce(v_token, '') = '' or coalesce(v_chat, '') = '' then return new; end if;
 
   v_nome := coalesce(nullif(btrim(new.cliente_nome), ''), 'cliente');
-  -- nome del file scaricato: torta-mario-rossi.jpg (come in dashboard)
-  begin
-    v_slug := btrim(regexp_replace(lower(unaccent(v_nome)), '[^a-z0-9]+', '-', 'g'), '-');
-  exception when others then
-    v_slug := btrim(regexp_replace(lower(v_nome), '[^a-z0-9]+', '-', 'g'), '-');
-  end;
-  v_slug := coalesce(nullif(v_slug, ''), 'cliente');
-  v_caption := '📸 Foto per la cialda — ' || v_nome
-            || E'\n⬇️ Scarica la foto per la cialda: '
-            || v_url || case when position('?' in v_url) > 0 then '&' else '?' end
-            || 'download=foto-cialda-' || v_slug || '.jpg';
 
-  perform net.http_post(
-    url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
-    body := jsonb_build_object(
-      'chat_id', v_chat,
-      'photo',   v_url,
-      'caption', v_caption
-    ),
-    timeout_milliseconds := 20000
-  );
+  -- 1) Foto cliente per la cialda + download.
+  if v_url_cialda ~* '^https?://' then
+    begin
+      v_slug := btrim(regexp_replace(lower(unaccent(v_nome)), '[^a-z0-9]+', '-', 'g'), '-');
+    exception when others then
+      v_slug := btrim(regexp_replace(lower(v_nome), '[^a-z0-9]+', '-', 'g'), '-');
+    end;
+    v_slug := coalesce(nullif(v_slug, ''), 'cliente');
+    v_caption := '📸 Foto per la cialda — ' || v_nome
+              || E'\n⬇️ Scarica la foto per la cialda: '
+              || v_url_cialda
+              || case when position('?' in v_url_cialda) > 0 then '&' else '?' end
+              || 'download=foto-cialda-' || v_slug || '.jpg';
+
+    begin
+      perform net.http_post(
+        url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
+        body := jsonb_build_object(
+          'chat_id', v_chat,
+          'photo',   v_url_cialda,
+          'caption', v_caption
+        ),
+        timeout_milliseconds := 20000
+      );
+    exception when others then
+      null; -- prova comunque a inviare la torta finita
+    end;
+  end if;
+
+  -- 2) Render della torta finita, uguale alla miniatura in dashboard.
+  if v_url_torta ~* '^https?://' then
+    begin
+      perform net.http_post(
+        url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
+        body := jsonb_build_object(
+          'chat_id', v_chat,
+          'photo',   v_url_torta,
+          'caption', '🎂 Torta configurata — ' || v_nome
+        ),
+        timeout_milliseconds := 20000
+      );
+    exception when others then
+      null;
+    end;
+  end if;
+
   return new;
 exception when others then
-  return new;  -- la foto è un di più: l'ordine si salva comunque
+  return new;  -- le foto sono un di più: l'ordine si salva comunque
 end $$;
 
 -- "zz_" davanti al nome: i trigger scattano in ordine alfabetico, e questo
 -- deve partire DOPO quello del testo, così su Telegram prima arriva il
--- riepilogo e poi la foto.
+-- riepilogo e poi le due foto.
 drop trigger if exists zz_telegram_foto_ordine_trg on public.ordini;
 create trigger zz_telegram_foto_ordine_trg
   after insert on public.ordini
