@@ -1,18 +1,19 @@
 import { supabase } from './supabase';
 
 /**
- * Foto della torta 3D: caricata su Supabase Storage (bucket `torte`) al momento
- * dell'ordine, così nella riga finisce solo il LINK.
+ * Immagini dell'ordine caricate su Supabase Storage (bucket `torte`), così
+ * nella riga finiscono solo LINK brevi:
+ *   - foto cliente per la cialda, da scaricare e mandare su Telegram;
+ *   - anteprima leggera della torta 3D, solo per la lista ordini.
  *
  * Perché: per gli ordini dal sito la riga viene creata dal webhook Stripe a
  * pagamento avvenuto, ricomponendola dai metadata della sessione — che stanno
  * in campi da 500 caratteri l'uno. L'immagine (20-30 KB in base64) non ci
  * entrava, quindi gli ordini pagati arrivavano in dashboard senza foto.
  *
- * Dal 29-08 le foto sono DUE per ordine, con lo stesso nome:
- *   <id>.jpg      → alta risoluzione (lato lungo 2048 px): è quella che si
- *                   scarica dalla dashboard e che arriva su Telegram
- *   <id>-min.jpg  → miniatura per la lista ordini, che così resta leggera
+ * Dal 29-08 le immagini sono DUE per ordine, con lo stesso id:
+ *   <id>-cialda.jpg     → foto caricata dal cliente;
+ *   <id>-anteprima.jpg  → miniatura del modello 3D per la dashboard.
  *
  * Serve la migrazione migrations/2026-07-26-foto-torte.sql. Se un caricamento
  * non riesce torna null per quella foto: l'ordine si salva comunque.
@@ -58,21 +59,21 @@ async function carica(dataUrl, path) {
 }
 
 /**
- * Carica la foto in alta risoluzione e la miniatura, insieme.
- * Restituisce `{ hd, thumb }` con gli URL pubblici (null quella che non è
+ * Carica la foto cliente e l'anteprima 3D, insieme.
+ * Restituisce `{ customer, preview }` con gli URL pubblici (null quella che non è
  * riuscita). Le due partono in parallelo: non c'è motivo di aspettare.
  */
-export async function uploadCakePhotos({ hd, thumb }) {
-  if (!supabase) return { hd: null, thumb: null };
+export async function uploadCakePhotos({ customer, preview }) {
+  if (!supabase) return { customer: null, preview: null };
   // Cartella per mese: lo storage resta ordinato e ripulibile.
   const d = new Date();
   const cartella = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   const id = uuid();
-  const [urlHd, urlThumb] = await Promise.all([
-    carica(hd, `${cartella}/${id}.jpg`),
-    carica(thumb, `${cartella}/${id}-min.jpg`),
+  const [urlCustomer, urlPreview] = await Promise.all([
+    carica(customer, `${cartella}/${id}-cialda.jpg`),
+    carica(preview, `${cartella}/${id}-anteprima.jpg`),
   ]);
-  return { hd: urlHd, thumb: urlThumb };
+  return { customer: urlCustomer, preview: urlPreview };
 }
 
 /**
@@ -89,5 +90,5 @@ export function linkDownloadFoto(url, nomeCliente) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'cliente';
   const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}download=${encodeURIComponent(`torta-${slug}.jpg`)}`;
+  return `${url}${sep}download=${encodeURIComponent(`foto-cialda-${slug}.jpg`)}`;
 }

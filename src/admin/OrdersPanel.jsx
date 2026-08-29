@@ -230,21 +230,14 @@ export default function OrdersPanel() {
           // Bordo sinistro: rosso se scaduto, grigio se annullato, altrimenti il colore dello stato.
           const overdue = isScaduto(o);
           const borderCol = overdue ? '#b03a3a' : o.stato === 'annullato' ? '#c9c9c9' : stato.color;
-          // Foto in alta risoluzione: dal 29-08 sta in dettagli.immagineHd. Per
-          // gli ordini di prima vale la foto che c'è, ma solo se è un link: un
-          // data URL (ripiego dello staff) non si scarica col ?download.
-          const fotoHd = o.dettagli?.immagineHd || (/^https?:/.test(o.immagine || '') ? o.immagine : null);
+          // Solo la foto caricata dal cliente per la cialda è scaricabile.
+          // `o.immagine` resta invece la miniatura del modello 3D.
+          const fotoCialda = o.dettagli?.fotoCialdaUrl || null;
 
           return (
             <div key={o.id} className={`ord-card ${overdue ? 'scaduto' : ''}`} style={{ borderLeftColor: borderCol }}>
               <div className="ord-row">
-                {o.immagine && (fotoHd ? (
-                  <a className="ord-img-link" href={fotoHd} target="_blank" rel="noopener noreferrer" title="Apri la foto grande">
-                    <img className="ord-img" src={o.immagine} alt="Torta configurata" loading="lazy" />
-                  </a>
-                ) : (
-                  <img className="ord-img" src={o.immagine} alt="Torta configurata" loading="lazy" />
-                ))}
+                {o.immagine && <img className="ord-img" src={o.immagine} alt="Torta configurata" loading="lazy" />}
                 <div className="ord-body">
                   <div className="ord-top">
                     <div className="ord-who">
@@ -280,11 +273,10 @@ export default function OrdersPanel() {
                         WhatsApp
                       </a>
                     )}
-                    {/* Scarica la foto della torta com'è nell'anteprima 3D, in
-                        alta risoluzione (lo stesso link arriva su Telegram). */}
-                    {fotoHd && (
-                      <a className="adm-btn" href={linkDownloadFoto(fotoHd, o.cliente_nome)} title="Scarica la foto della torta in alta risoluzione">
-                        ⬇ Scarica foto
+                    {/* La stessa foto caricata per la cialda arriva su Telegram. */}
+                    {fotoCialda && (
+                      <a className="adm-btn" href={linkDownloadFoto(fotoCialda, o.cliente_nome)} title="Scarica la foto caricata per la cialda">
+                        ⬇ Scarica foto cialda
                       </a>
                     )}
                     <button className="adm-btn adm-btn-del" onClick={() => remove(o.id)} title="Elimina">🗑</button>

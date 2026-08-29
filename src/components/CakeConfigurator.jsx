@@ -1034,17 +1034,14 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
 
-    // Foto della torta 3D, in DUE misure: alta risoluzione (lato lungo 2048 px)
-    // per Telegram e per "Scarica foto" in dashboard, e una miniatura per la
-    // lista ordini. Il WebGL è trasparente: catturaTorta3D la stende già su
-    // sfondo crema, così il JPEG non viene nero.
-    let immagine = null;   // miniatura (data URL): finisce in `immagine`
-    let immagineHd = null; // alta risoluzione (data URL): va solo su Storage
+    // Miniatura della torta 3D per la lista ordini. NON è la foto da scaricare:
+    // download e Telegram devono usare esclusivamente `config.photo`, cioè il
+    // file caricato dal cliente per la cialda alimentare.
+    let immagine = null;
     try {
       const canvas = document.querySelector('.cfg-preview canvas');
-      const grande = catturaTorta3D(canvas, { maxPx: 2048 });
+      const grande = catturaTorta3D(canvas, { maxPx: 900 });
       if (grande) {
-        immagineHd = grande.toDataURL('image/jpeg', 0.9);
         immagine = ridimensiona(grande, 480).toDataURL('image/jpeg', 0.8);
       } else if (canvas) {
         // 3D non ancora registrato: cattura semplice del canvas com'è a schermo
@@ -1054,14 +1051,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
     }
 
-    // Le foto vanno su Storage: nella riga ordine ci finiscono solo i link, così
-    // passano anche dai metadata di Stripe (campi da 500 caratteri) e arrivano
-    // in dashboard pure sugli ordini pagati dal sito. La miniatura sta in
-    // `immagine` (la colonna che dashboard e Telegram leggono da sempre),
-    // l'alta risoluzione in `dettagli.immagineHd`: è jsonb, quindi nessuna
-    // colonna nuova e il webhook Stripe non può rompersi.
-    const foto = await uploadCakePhotos({ hd: immagineHd, thumb: immagine });
-    const immagineUrl = foto.thumb || foto.hd;
+    // Foto cialda e anteprima 3D vanno su Storage con ruoli distinti. La foto
+    // cliente sta in `dettagli.fotoCialdaUrl`; l'anteprima in `immagine`.
+    const foto = await uploadCakePhotos({ customer: config.photo, preview: immagine });
+    const immagineUrl = foto.preview;
 
     // Riga ordine. Per gli ordini pagati la salva il webhook (imposta lì il
     // totale); lo staff invece salva subito qui.
@@ -1086,9 +1079,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       dettagli: {
         ...dettagli,
         conFoto: !!photo,
-        // Foto della torta 3D in alta risoluzione (link su Storage): la
-        // dashboard ci mette "Scarica foto" e Telegram la manda come immagine.
-        immagineHd: foto.hd || null,
+        // Foto caricata dal cliente per la cialda: solo questa viene scaricata
+        // dalla dashboard e inviata su Telegram.
+        fotoCialdaUrl: foto.customer || null,
         scrittaStile: scritta?.name || null,
         // COMPATIBILITÀ: il gestionale, le notifiche Telegram e il link "Rifai
         // questa torta" leggono ancora la decorazione singola. Ci mettiamo la
@@ -2901,7 +2894,9 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const max = 700;
+        // Risoluzione utile anche per la stampa sulla cialda, restando sotto il
+        // limite di 2 MB del bucket grazie alla conversione JPEG.
+        const max = 1600;
         const scale = Math.min(1, max / Math.max(img.width, img.height));
         const w = img.width * scale;
         const h = img.height * scale;

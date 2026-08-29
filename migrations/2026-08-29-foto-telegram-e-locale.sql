@@ -1,23 +1,18 @@
 -- ============================================================
--- Foto della torta su Telegram (+ link per scaricarla) e riga
+-- Foto caricata dal cliente per la cialda su Telegram (+ download) e riga
 -- "Dove si mangia" nella notifica — 2026-08-29
 -- Da eseguire su Supabase (SQL Editor). È idempotente.
 --
 -- Cosa cambia sul sito, nella stessa versione:
---   · all'ordine la torta 3D viene fotografata in ALTA RISOLUZIONE (lato
---     lungo 2048 px) e caricata su Storage (bucket `torte`, `<id>.jpg`),
---     insieme a una miniatura (`<id>-min.jpg`). La miniatura sta nella
---     colonna `immagine` come sempre; l'alta risoluzione in
---     `dettagli.immagineHd` (jsonb: NESSUNA colonna nuova, il webhook Stripe
---     non può rompersi).
---   · in dashboard ogni ordine ha "⬇ Scarica foto" (link con ?download=…,
---     che Supabase Storage serve come allegato).
+--   · la foto caricata dal cliente per la cialda viene salvata su Storage in
+--     `dettagli.fotoCialdaUrl`; `immagine` resta solo l'anteprima 3D;
+--   · in dashboard gli ordini con foto hanno "⬇ Scarica foto cialda".
 --   · nel passo "I tuoi dati" si chiede se la torta verrà mangiata a casa o
 --     in un locale: la riga "Dove si mangia:" arriva nel riepilogo, nella
 --     mail e su Telegram.
 --
 -- Qui:
---   1. la notifica Telegram riceve ANCHE la foto della torta (sendPhoto),
+--   1. la notifica Telegram riceve ANCHE la foto per la cialda (sendPhoto),
 --      con nella didascalia il link per scaricarla in alta risoluzione;
 --   2. il messaggio di testo mette l'emoji davanti a "Dove si mangia:".
 --
@@ -115,8 +110,8 @@ begin
   end;
 end $$;
 
--- ── 1b. La foto su Telegram, appena l'ordine è salvato ──────
--- Manda la foto in alta risoluzione (se non c'è, la miniatura) con una
+-- ── 1b. La foto cialda su Telegram, appena l'ordine è salvato ──────
+-- Manda esclusivamente la foto caricata dal cliente con una
 -- didascalia corta: chi è il cliente e il link per scaricarla. Il riepilogo
 -- completo arriva già dal messaggio di testo di sempre.
 -- Salta senza fare nulla se manca la foto, se non è un link (un data URL di
@@ -131,7 +126,7 @@ as $$
 declare
   v_token text; v_chat text; v_url text; v_nome text; v_slug text; v_caption text;
 begin
-  v_url := coalesce(nullif(new.dettagli->>'immagineHd', ''), new.immagine);
+  v_url := nullif(new.dettagli->>'fotoCialdaUrl', '');
   if v_url is null or v_url !~* '^https?://' then return new; end if;
 
   select value into v_token from public.app_config where key = 'telegram_bot_token';
@@ -146,10 +141,10 @@ begin
     v_slug := btrim(regexp_replace(lower(v_nome), '[^a-z0-9]+', '-', 'g'), '-');
   end;
   v_slug := coalesce(nullif(v_slug, ''), 'cliente');
-  v_caption := '📸 Torta di ' || v_nome
-            || E'\n⬇️ Scarica in alta risoluzione: '
+  v_caption := '📸 Foto per la cialda — ' || v_nome
+            || E'\n⬇️ Scarica la foto per la cialda: '
             || v_url || case when position('?' in v_url) > 0 then '&' else '?' end
-            || 'download=torta-' || v_slug || '.jpg';
+            || 'download=foto-cialda-' || v_slug || '.jpg';
 
   perform net.http_post(
     url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
