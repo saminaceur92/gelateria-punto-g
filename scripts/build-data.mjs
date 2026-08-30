@@ -67,7 +67,8 @@ async function table(name) {
     .from(name)
     .select('*')
     .eq('attivo', true)
-    .order('ordine', { ascending: true });
+    .order('ordine', { ascending: true })
+    .order('id', { ascending: true }); // ordine stabile a parità di `ordine` (come in live.js)
   if (error) {
     console.warn(`[build-data] Tabella "${name}": ${error.message} — la salto (uso il fallback).`);
     return [];
