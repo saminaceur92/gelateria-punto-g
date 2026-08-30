@@ -268,6 +268,8 @@ export default function OrdersPanel() {
                     <span>🗓️ Prenotato {fmtDateTime(o.created_at)}</span>
                     {o.ritiro_data && <span>🛍️ Ritiro {fmtDate(o.ritiro_data)}{o.ritiro_ora ? ` alle ${o.ritiro_ora}` : ''}</span>}
                     {o.cliente_telefono && <span>📞 {o.cliente_telefono}</span>}
+                    {o.dettagli?.pagamentoStaff === 'pagata' && <span>✅ Già pagata</span>}
+                    {o.dettagli?.pagamentoStaff === 'ritiro' && <span>💶 Paga al ritiro</span>}
                   </div>
 
                   <div className="ord-actions">

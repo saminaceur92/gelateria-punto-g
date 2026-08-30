@@ -69,8 +69,8 @@ const MAX_EXTRA_QTY = 20;
 // o è vuota — si usa questa copia di sicurezza, così il passo funziona sempre.
 const FALLBACK_SCRITTE = [
   { id: 'stampatello', name: 'Stampatello maiuscolo', family: "'Inter', sans-serif", sample: 'AUGURI!', uppercase: true, italic: false },
-  { id: 'corsivo', name: 'Corsivo', family: "'Caveat', cursive", sample: 'Auguri!', uppercase: false, italic: false },
-  { id: 'corsivo-scolastico', name: 'Corsivo scolastico', family: "'Fraunces', serif", sample: 'Auguri!', uppercase: false, italic: true },
+  { id: 'corsivo', name: 'Corsivo', family: "'Kalam', cursive", sample: 'Auguri!', uppercase: false, italic: false },
+  { id: 'corsivo-scolastico', name: 'Corsivo scolastico', family: "'Dancing Script', cursive", sample: 'Auguri!', uppercase: false, italic: false },
 ];
 const DEFAULT_FONT = 'corsivo';
 // Vecchi id salvati negli ordini (e nei promemoria compleanno) → id della
@@ -369,6 +369,7 @@ function makeInitialConfig(cake, initial = {}) {
     delivery: false,      // consegna a domicilio (+€4) invece del ritiro
     deliveryAddress: '',  // indirizzo di consegna
     inLocale: null,       // dove si mangia: true = in un locale, false = a casa, null = da rispondere
+    pagamentoStaff: null, // solo dashboard: 'pagata' oppure 'ritiro'
     name: '',
     phone: '',
     email: '',
@@ -813,6 +814,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       }
       // Anche "dove si mangia" va risposto: i titolari lo vogliono per ogni ordine.
       case 'details': return config.name.trim() && phoneOk(config.phone) && emailOk(config.email) && !!config.pickupDate && config.pickupDate >= earliestISO && !!config.pickupTime && (!config.delivery || config.deliveryAddress.trim()) && config.inLocale !== null;
+      case 'review': return !staff || config.pagamentoStaff === 'pagata' || config.pagamentoStaff === 'ritiro';
       default: return true;
     }
   }, [step, steps, config, staff, earliestISO, cakeSizes]);
@@ -1029,7 +1031,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.email ? `*Email:* ${config.email}` : '',
       config.notes ? `*Note:* ${config.notes}` : '',
       ``,
-      staff ? `💰 *Importo da pagare:* €${totale.toFixed(2)}` : `💰 *Importo pagato:* €${totale.toFixed(2)}`,
+      staff && config.pagamentoStaff === 'pagata'
+        ? `💰 *Importo già pagato:* €${totale.toFixed(2)}`
+        : staff
+          ? `💰 *Importo da pagare al ritiro:* €${totale.toFixed(2)}`
+          : `💰 *Importo pagato:* €${totale.toFixed(2)}`,
       ``,
       staff ? `_Ordine creato in gelateria_` : `_Richiesta inviata dal sito gelateriapuntogcarpi_`,
     ].filter(Boolean).join('\n');
@@ -1085,6 +1091,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         // URL pubblico del render finale: Telegram non può leggere l'eventuale
         // data URL di ripiego conservato nella colonna `immagine`.
         tortaConfigurataUrl: foto.preview || null,
+        pagamentoStaff: staff ? config.pagamentoStaff : null,
         scrittaStile: scritta?.name || null,
         // COMPATIBILITÀ: il gestionale, le notifiche Telegram e il link "Rifai
         // questa torta" leggono ancora la decorazione singola. Ci mettiamo la
@@ -1131,6 +1138,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       config.delivery ? `Consegna a domicilio (+€${DELIVERY_FEE}) — ${config.deliveryAddress}` : '',
       quando ? `${config.delivery ? 'Consegna' : 'Ritiro'}: ${quando}` : '',
       doveSiMangia ? `Dove si mangia: ${doveSiMangia}` : '',
+      staff && config.pagamentoStaff
+        ? `Pagamento: ${config.pagamentoStaff === 'pagata' ? 'già pagata' : 'paga al ritiro'}`
+        : '',
       config.notes ? `Note: ${config.notes}` : '',
     ].filter(Boolean).join(' · ');
     const emailParams = config.email ? {
@@ -2270,7 +2280,7 @@ function ProposteExtra({ config, set, staff, listino, total, onOrdinaSenza, onOr
 
 // Anteprima dello stile: i corsivi hanno l'occhio più piccolo, si compensa.
 const fontPreviewSize = (family) =>
-  /caveat/i.test(family || '') ? '1.4rem' : /fraunces/i.test(family || '') ? '1.15rem' : '1rem';
+  /dancing script/i.test(family || '') ? '1.35rem' : /kalam/i.test(family || '') ? '1.2rem' : '1rem';
 
 function StepMessage({ config, set, staff }) {
   const cake = useCakeData();
@@ -2803,6 +2813,9 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
           <dt>{config.delivery ? 'Consegna' : 'Ritiro'}</dt><dd>{config.pickupDate || '—'}{config.pickupTime ? ` alle ${config.pickupTime}` : ''}</dd>
           {config.delivery && (<><dt>Indirizzo</dt><dd>{config.deliveryAddress || '—'}</dd></>)}
           {config.inLocale !== null && (<><dt>Si mangia</dt><dd>{testoDoveSiMangia(config.inLocale)}</dd></>)}
+          {staff && config.pagamentoStaff && (
+            <><dt>Pagamento</dt><dd>{config.pagamentoStaff === 'pagata' ? 'Già pagata' : 'Paga al ritiro'}</dd></>
+          )}
           <dt>Cliente</dt><dd>{config.name}</dd>
           <dt>Tel</dt><dd>{config.phone}</dd>
           {config.notes && (<><dt>Note</dt><dd>{config.notes}</dd></>)}
@@ -2818,6 +2831,29 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
           <strong style={{ color: 'var(--violet-deep)' }}>Prezzo totale: €{(total - sconto).toFixed(2)}</strong>
         </p>
       </div>
+
+      {staff && (
+        <div className="cfg-field staff-payment-choice">
+          <label>La torta è già stata pagata? *</label>
+          <div className="toggle-row">
+            <button
+              type="button"
+              className={`toggle-pill ${config.pagamentoStaff === 'pagata' ? 'active' : ''}`}
+              onClick={() => set({ pagamentoStaff: 'pagata' })}
+            >
+              ✅ Già pagata
+            </button>
+            <button
+              type="button"
+              className={`toggle-pill ${config.pagamentoStaff === 'ritiro' ? 'active' : ''}`}
+              onClick={() => set({ pagamentoStaff: 'ritiro' })}
+            >
+              💶 Paga al ritiro
+            </button>
+          </div>
+          {!config.pagamentoStaff && <p className="hint">Scegli una delle due opzioni per creare l’ordine.</p>}
+        </div>
+      )}
 
       {/* Il codice sconto si mette alla fine, quando il prezzo è già sotto agli
           occhi: è lì che uno si ricorda di averne uno. */}

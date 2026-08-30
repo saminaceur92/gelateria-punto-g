@@ -229,8 +229,8 @@ export const cakeDecorations = [
 // Nessuna scritta ha supplemento: sono tutte comprese nel prezzo.
 export const cakeScritte = [
   { id: 'stampatello', name: 'Stampatello maiuscolo', family: "'Inter', sans-serif", sample: 'AUGURI!', uppercase: true, italic: false },
-  { id: 'corsivo', name: 'Corsivo', family: "'Caveat', cursive", sample: 'Auguri!', uppercase: false, italic: false },
-  { id: 'corsivo-scolastico', name: 'Corsivo scolastico', family: "'Fraunces', serif", sample: 'Auguri!', uppercase: false, italic: true },
+  { id: 'corsivo', name: 'Corsivo', family: "'Kalam', cursive", sample: 'Auguri!', uppercase: false, italic: false },
+  { id: 'corsivo-scolastico', name: 'Corsivo scolastico', family: "'Dancing Script', cursive", sample: 'Auguri!', uppercase: false, italic: false },
 ];
 
 // Prodotti extra che si possono aggiungere all'ordine prima del pagamento
