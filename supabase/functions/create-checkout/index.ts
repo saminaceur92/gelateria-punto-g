@@ -50,6 +50,16 @@ Deno.serve(async (req) => {
     // La riga ordine (senza immagine) va nei metadata, a pezzi da <500 char.
     const payload = JSON.stringify(insert);
     const metadata: Record<string, string> = { chunks: String(Math.ceil(payload.length / 450)) };
+    // Le due foto viaggiano anche fuori dal JSON a pezzi. È una ridondanza
+    // intenzionale: il webhook deve sempre poterle distinguere e reinserire,
+    // anche se una versione precedente del payload non le conteneva.
+    const dettagli = insert.dettagli && typeof insert.dettagli === 'object'
+      ? insert.dettagli as Record<string, unknown>
+      : {};
+    const fotoCialdaUrl = typeof dettagli.fotoCialdaUrl === 'string' ? dettagli.fotoCialdaUrl : '';
+    const tortaConfigurataUrl = typeof dettagli.tortaConfigurataUrl === 'string' ? dettagli.tortaConfigurataUrl : '';
+    if (fotoCialdaUrl) metadata.foto_cialda_url = fotoCialdaUrl.slice(0, 500);
+    if (tortaConfigurataUrl) metadata.torta_configurata_url = tortaConfigurataUrl.slice(0, 500);
     // Lo sconto DAVVERO applicato viaggia a parte: il webhook lo scrive
     // sull'ordine e scala il contatore del codice solo a pagamento avvenuto.
     if (scontoCodice && sconto > 0) {

@@ -1044,17 +1044,24 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // download e Telegram devono usare esclusivamente `config.photo`, cioè il
     // file caricato dal cliente per la cialda alimentare.
     let immagine = null;
-    try {
-      const canvas = document.querySelector('.cfg-preview canvas');
-      const grande = catturaTorta3D(canvas, { maxPx: 900 });
-      if (grande) {
-        immagine = ridimensiona(grande, 480).toDataURL('image/jpeg', 0.8);
-      } else if (canvas) {
-        // 3D non ancora registrato: cattura semplice del canvas com'è a schermo
-        immagine = ridimensiona(canvas, 480, SFONDO_FOTO).toDataURL('image/jpeg', 0.8);
+    // Su alcuni telefoni il click finale può arrivare mentre WebGL sta ancora
+    // disegnando l'ultimo fotogramma. Aspettiamo e ritentiamo: senza questo la
+    // foto cialda sale, ma il render finale può restare null negli ordini web.
+    for (let tentativo = 0; tentativo < 3 && !immagine; tentativo += 1) {
+      try {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const canvas = document.querySelector('.cfg-preview canvas');
+        const grande = catturaTorta3D(canvas, { maxPx: 900 });
+        if (grande) {
+          immagine = ridimensiona(grande, 480).toDataURL('image/jpeg', 0.8);
+        } else if (canvas) {
+          // 3D non ancora registrato: cattura semplice del canvas com'è a schermo
+          immagine = ridimensiona(canvas, 480, SFONDO_FOTO).toDataURL('image/jpeg', 0.8);
+        }
+        if (immagine && immagine.length < 1000) immagine = null;
+      } catch {
+        immagine = null;
       }
-    } catch {
-      /* se la cattura fallisce, l'ordine si salva comunque senza immagine */
     }
 
     // Foto cialda e anteprima 3D vanno su Storage con ruoli distinti. La foto

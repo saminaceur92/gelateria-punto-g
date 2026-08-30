@@ -1,8 +1,7 @@
 // Edge Function: stripe-webhook
 // Su 'checkout.session.completed' ricompone la riga ordine dai metadata e la
 // SALVA in `ordini` (stato 'da_fare'). L'inserimento fa scattare il trigger DB
-// che notifica la gelateria su Telegram. L'email di conferma la manda il client
-// al ritorno sul sito (EmailJS lato browser).
+// che notifica la gelateria su Telegram e spedisce la conferma email.
 //
 // Deploy (IMPORTANTE --no-verify-jwt: Stripe non invia un JWT Supabase):
 //   supabase functions deploy stripe-webhook --no-verify-jwt
@@ -49,6 +48,39 @@ Deno.serve(async (req) => {
     for (let i = 0; i < n; i++) payload += md['d' + i] || '';
     let insert: Record<string, unknown> = {};
     try { insert = JSON.parse(payload); } catch { insert = {}; }
+
+    // Ripristino esplicito dei due URL fotografici. Le chiavi dedicate nei
+    // metadata rendono il passaggio sito → Stripe → webhook indipendente dal
+    // formato/versione del JSON principale.
+    const dettagli = insert.dettagli && typeof insert.dettagli === 'object'
+      ? insert.dettagli as Record<string, unknown>
+      : {};
+    if (md.foto_cialda_url) dettagli.fotoCialdaUrl = md.foto_cialda_url;
+    if (md.torta_configurata_url) dettagli.tortaConfigurataUrl = md.torta_configurata_url;
+    insert.dettagli = dettagli;
+
+    // La mail dell'ordine web deve partire dal database come quella staff. Se
+    // il payload fosse vecchio o incompleto, ricostruiamo almeno i parametri
+    // essenziali usando l'indirizzo confermato da Stripe.
+    const email = String(
+      insert.cliente_email || session.customer_details?.email || ''
+    ).trim();
+    if (email && !insert.email_params) {
+      const riepilogo = String(insert.riepilogo || '').replace(/[*_]/g, '').trim();
+      const data = String(insert.ritiro_data || '');
+      const ora = String(insert.ritiro_ora || '');
+      const quando = [data, ora && `alle ${ora}`].filter(Boolean).join(' ');
+      insert.cliente_email = email;
+      insert.email_params = {
+        email,
+        cliente: String(insert.cliente_nome || 'Cliente'),
+        ordine: riepilogo,
+        ritiro: quando,
+        modalita: `📅 Ritiro in gelateria${quando ? ` — ${quando}` : ''}`,
+        saluto: 'Ti aspettiamo in gelateria per il ritiro 🍰',
+        importo: ((session.amount_total ?? 0) / 100).toFixed(2),
+      };
+    }
 
     // Sconto: vale quello DECISO DAL SERVER quando ha preparato il pagamento,
     // non quello che il browser aveva messo nella riga ordine.

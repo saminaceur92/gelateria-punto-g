@@ -141,7 +141,7 @@ begin
 
   v_nome := coalesce(nullif(btrim(new.cliente_nome), ''), 'cliente');
 
-  -- 1) Foto cliente per la cialda + download.
+  -- Prepara la didascalia della foto cialda.
   if v_url_cialda ~* '^https?://' then
     begin
       v_slug := btrim(regexp_replace(lower(unaccent(v_nome)), '[^a-z0-9]+', '-', 'g'), '-');
@@ -155,35 +155,51 @@ begin
               || case when position('?' in v_url_cialda) > 0 then '&' else '?' end
               || 'download=foto-cialda-' || v_slug || '.jpg';
 
-    begin
-      perform net.http_post(
-        url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
-        body := jsonb_build_object(
-          'chat_id', v_chat,
-          'photo',   v_url_cialda,
-          'caption', v_caption
-        ),
-        timeout_milliseconds := 20000
-      );
-    exception when others then
-      null; -- prova comunque a inviare la torta finita
-    end;
   end if;
 
-  -- 2) Render della torta finita, uguale alla miniatura in dashboard.
-  if v_url_torta ~* '^https?://' then
+  -- Se ci sono entrambe, un unico album Telegram garantisce che non se ne
+  -- perda una tra due richieste asincrone separate.
+  if v_url_cialda ~* '^https?://' and v_url_torta ~* '^https?://' then
     begin
       perform net.http_post(
-        url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
+        url  := 'https://api.telegram.org/bot' || v_token || '/sendMediaGroup',
         body := jsonb_build_object(
           'chat_id', v_chat,
-          'photo',   v_url_torta,
-          'caption', '🎂 Torta configurata — ' || v_nome
+          'media', jsonb_build_array(
+            jsonb_build_object('type', 'photo', 'media', v_url_cialda, 'caption', v_caption),
+            jsonb_build_object('type', 'photo', 'media', v_url_torta, 'caption', '🎂 Torta configurata — ' || v_nome)
+          )
         ),
         timeout_milliseconds := 20000
       );
     exception when others then
       null;
+    end;
+    return new;
+  end if;
+
+  -- Ripiego: se esiste una sola immagine, invia comunque quella.
+  if v_url_cialda ~* '^https?://' then
+    begin
+      perform net.http_post(
+        url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
+        body := jsonb_build_object('chat_id', v_chat, 'photo', v_url_cialda, 'caption', v_caption),
+        timeout_milliseconds := 20000
+      );
+    exception when others then null;
+    end;
+  elsif v_url_torta ~* '^https?://' then
+    begin
+      perform net.http_post(
+        url  := 'https://api.telegram.org/bot' || v_token || '/sendPhoto',
+        body := jsonb_build_object(
+          'chat_id', v_chat,
+          'photo', v_url_torta,
+          'caption', '🎂 Torta configurata — ' || v_nome
+        ),
+        timeout_milliseconds := 20000
+      );
+    exception when others then null;
     end;
   end if;
 
