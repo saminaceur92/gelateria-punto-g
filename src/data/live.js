@@ -98,7 +98,10 @@ export async function fetchCakeOptions() {
       'farciture', 'coperture', 'decorazioni', 'occasioni',
     ];
     const results = await Promise.all(
-      names.map((n) => supabase.from(n).select('*').eq('attivo', true).order('ordine'))
+      // `.order('id')` a parità di `ordine`: le gemelle vegetali della panna
+      // hanno lo stesso `ordine` dell'originale, e senza un secondo criterio
+      // la posizione in lista cambierebbe da un caricamento all'altro.
+      names.map((n) => supabase.from(n).select('*').eq('attivo', true).order('ordine').order('id'))
     );
     if (results.some((r) => r.error)) return null;
     const [forme, tipi, dim, basi, farc, cop, dec, occ] = results.map((r) => r.data || []);

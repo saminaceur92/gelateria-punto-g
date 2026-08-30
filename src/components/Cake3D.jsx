@@ -2607,8 +2607,13 @@ function CaptureBridge() {
         ctx.drawImage(el, 0, 0);
         return out;
       } finally {
-        gl.setPixelRatio(dpr);
+        // Prima la misura, POI il pixel ratio: setPixelRatio richiama da sé
+        // setSize con la misura logica del momento, e se quella è ancora
+        // quella ingrandita della cattura alloca per un istante un buffer
+        // 2048×dpr — abbastanza da far cadere il WebGL sui telefoni economici
+        // (anteprima nera). Così invece il canvas torna piccolo subito.
         gl.setSize(size.x, size.y, false);
+        gl.setPixelRatio(dpr);
         gl.render(scene, camera);
       }
     });

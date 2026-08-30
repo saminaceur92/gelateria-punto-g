@@ -240,7 +240,10 @@ const conPannaVeg = (list, allergies, diets, sceltiIds) => {
   const ids = new Set((list || []).map((x) => x.id));
   return (list || []).filter((x) => {
     if (isVeg(x.id)) return veg || scelti.has(x.id);
-    return !(veg && ids.has(x.id + SUFFISSO_VEG));
+    // L'originale sparisce anche quando è già scelta la sua gemella (il
+    // cliente ha tolto Vegan dopo lo scambio): altrimenti si vedrebbero — e
+    // si potrebbero scegliere — tutte e due.
+    return !((veg || scelti.has(x.id + SUFFISSO_VEG)) && ids.has(x.id + SUFFISSO_VEG));
   });
 };
 
@@ -508,6 +511,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   // invio fallisce e il cliente riprova.
   const [showProposte, setShowProposte] = useState(false);
   const propostaFatta = useRef(false);
+  // Invio in corso: guardia SINCRONA contro il doppio tocco. Lo stato
+  // `submitting` spegne il pulsante, ma arriva solo al render successivo; e
+  // mentre le foto salgono su Storage (secondi, da telefono) un secondo tocco
+  // faceva partire un secondo ordine: due Telegram, due mail, due righe.
+  const invioInCorso = useRef(false);
 
   // Orari di apertura (per calcolare le fasce di ritiro)
   useEffect(() => {
@@ -525,6 +533,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     setSent(false);
     setSubmitting(false);
     setSubmitError('');
+    invioInCorso.current = false;
     // Ordine nuovo: la proposta degli extra è tutta da fare.
     setShowProposte(false);
     propostaFatta.current = false;
@@ -587,7 +596,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         if (!conflictsAllergies(d, c.allergies, c.diets)) { decorations.push(id); continue; }
         cambiate = true;
         const g = gemellaVeg(d, cakeDecorations, c.allergies, c.diets);
-        if (g) {
+        // (se la gemella è già in lista non si raddoppia)
+        if (g && !decorations.includes(g.id)) {
           decorations.push(g.id);
           if (colori[id] !== undefined) colori[g.id] = colori[id];
         }
@@ -780,9 +790,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       cakeSizes.length *
       flavorsCombos *
       cakeFillings.length *
-      cakeCoverings.length *
+      // Le gemelle vegetali prendono il POSTO delle voci con latte: non sono
+      // combinazioni in più.
+      cakeCoverings.filter((c) => !isVeg(c.id)).length *
       cakeBases.length *
-      cakeDecorations.length
+      cakeDecorations.filter((d) => !isVeg(d.id)).length
     );
   }, []);
 
@@ -939,6 +951,25 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   // `cfg` differisce da `config` SOLO per gli extra: per tutto il resto i due
   // sono la stessa cosa.
   const submitOrder = async (extraFinali) => {
+    if (invioInCorso.current) return;
+    invioInCorso.current = true;
+    // Il pulsante si spegne SUBITO, prima di catturare e caricare le foto: è
+    // lì che passano i secondi in cui un secondo tocco creava un doppione.
+    setSubmitError('');
+    setSubmitting(true);
+    try {
+      await inviaOrdineDavvero(extraFinali);
+    } catch (e) {
+      // Qualunque imprevisto (cattura, upload…): si sblocca il pulsante e si
+      // dice cosa è successo, invece di restare con "Attendi…" per sempre.
+      console.warn('[ordine] errore imprevisto:', e && e.message);
+      setSubmitError('Qualcosa è andato storto. Riprova.');
+      setSubmitting(false);
+      invioInCorso.current = false;
+    }
+  };
+
+  const inviaOrdineDavvero = async (extraFinali) => {
     const cfg = extraFinali ? { ...config, extras: extraFinali } : config;
     const type = cakeTypes.find((t) => t.id === config.type);
     const shape = cakeShapes.find((sh) => sh.id === config.shape);
@@ -1163,9 +1194,12 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     } : null;
     insertBase.email_params = emailParams;
 
-    if (!supabase) { setSent(true); return; }
-    setSubmitError('');
-    setSubmitting(true);
+    if (!supabase) {
+      setSubmitting(false);
+      invioInCorso.current = false;
+      setSent(true);
+      return;
+    }
 
     // STAFF: ordine creato in gelateria, nessun pagamento online → salva subito.
     if (staff) {
@@ -1180,10 +1214,12 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         console.warn('[ordine] non salvato:', error.message);
         setSubmitError("Non è stato possibile creare l'ordine. Riprova.");
         setSubmitting(false);
+        invioInCorso.current = false;
         return;
       }
       logAction('Torta creata', config.name || 'cliente');
       setSubmitting(false);
+      invioInCorso.current = false;
       setSent(true);
       return;
     }
@@ -1201,12 +1237,15 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         body: { config: { ...cfg, scontoCodice: config.sconto?.codice || null }, insert: insertBase },
       });
       if (error) throw error;
+      // Verso Stripe: la guardia resta ALZATA di proposito, la pagina sta per
+      // scaricarsi e un tocco in più non deve aprire una seconda cassa.
       if (data?.url) { window.location.href = data.url; return; }
       throw new Error(data?.error || 'Risposta non valida dal server');
     } catch (e) {
       traccia(EV.TORTA_CHECKOUT_ERRORE);
       setSubmitError(e?.message || 'Errore durante il pagamento. Riprova.');
       setSubmitting(false);
+      invioInCorso.current = false;
     }
   };
 
