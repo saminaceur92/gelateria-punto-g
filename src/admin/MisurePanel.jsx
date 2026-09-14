@@ -11,6 +11,9 @@ import { misuraForma, personeOf, RECT_MIN_PERSONE } from '../lib/misureTorta';
  * forme (una con due lati) sarebbero diventate cinque campi in fila senza
  * intestazione. Qui si legge come la tabella che si tiene in laboratorio.
  *
+ * Il tab ne mostra due: una per le taglie delle torte normali e una per
+ * quelle delle ALTE (prop `alta`), che hanno taglie e misure proprie.
+ *
  * La tonda si salva nella colonna storica `diametro`, le altre forme in
  * `misure` (vedi src/lib/misureTorta.js).
  */
@@ -61,7 +64,7 @@ function erroreCella(testi, lati) {
   return '';
 }
 
-export default function MisurePanel({ versione = 0 }) {
+export default function MisurePanel({ versione = 0, alta = false }) {
   const [taglie, setTaglie] = useState([]);
   const [forme, setForme] = useState([]);
   const [valori, setValori] = useState({}); // idTaglia -> idForma -> ['24'] o ['24', '34']
@@ -70,6 +73,9 @@ export default function MisurePanel({ versione = 0 }) {
   const [error, setError] = useState('');
   const [salvate, setSalvate] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  // Colonne che arrivano solo dopo le migrazioni: se Supabase non le
+  // restituisce, lo script non è ancora stato eseguito.
+  const [colonne, setColonne] = useState({ misure: true, alta: true });
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
 
@@ -85,7 +91,10 @@ export default function MisurePanel({ versione = 0 }) {
       setLoaded(true);
       return;
     }
-    const righe = dim.data || [];
+    const tutte = dim.data || [];
+    const prima = tutte[0];
+    setColonne({ misure: !prima || 'misure' in prima, alta: !prima || 'alta' in prima });
+    const righe = tutte.filter((r) => Boolean(r.alta) === alta);
     const fs = frm.data || [];
     setTaglie(righe);
     setForme(fs);
@@ -101,11 +110,14 @@ export default function MisurePanel({ versione = 0 }) {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [versione]);
+  }, [versione, alta]);
 
-  // Migrazione non ancora eseguita: Supabase non restituisce la colonna.
-  // La tonda si salva lo stesso, le altre forme restano bloccate.
-  const senzaColonna = taglie.length > 0 && !('misure' in taglie[0]);
+  // Migrazione delle misure non ancora eseguita: la tonda si salva lo
+  // stesso, le altre forme restano bloccate.
+  const senzaColonna = !colonne.misure;
+  // Migrazione delle alte non ancora eseguita: la sezione delle alte è vuota
+  // per forza, e va detto perché.
+  const altePrimaDellaMigrazione = alta && !colonne.alta;
 
   const cambia = (idTaglia, idForma, i, testo) => {
     setSalvate(0);
@@ -138,7 +150,7 @@ export default function MisurePanel({ versione = 0 }) {
       setDirty((d) => ({ ...d, [r.id]: false }));
       n += 1;
     }
-    if (n) logAction('Misure torta modificate', `${n} ${n === 1 ? 'taglia' : 'taglie'}`);
+    if (n) logAction('Misure torta modificate', `${alta ? 'torte alte, ' : ''}${n} ${n === 1 ? 'taglia' : 'taglie'}`);
     setSalvate(n);
     setBusy(false);
   }
@@ -147,7 +159,7 @@ export default function MisurePanel({ versione = 0 }) {
     <section className="adm-card">
       <header className="adm-card-head">
         <div>
-          <h3>Misure per forma</h3>
+          <h3>Misure per forma{alta ? ' · torte alte' : ''}</h3>
           <p>
             Quanto misura ogni taglia, forma per forma, in centimetri. È la misura che il cliente
             vede quando sceglie e che arriva scritta nell'ordine.
@@ -164,7 +176,13 @@ export default function MisurePanel({ versione = 0 }) {
         </div>
       </header>
 
-      {senzaColonna && (
+      {altePrimaDellaMigrazione && (
+        <div className="mis-avviso">
+          Le taglie delle <strong>torte alte</strong> si attivano eseguendo una volta su Supabase la
+          migrazione <code>migrations/2026-09-14-taglie-alte.sql</code>.
+        </div>
+      )}
+      {senzaColonna && !altePrimaDellaMigrazione && (
         <div className="mis-avviso">
           Per ora si può salvare solo la <strong>tonda</strong>. Per sbloccare cuore, quadrata e
           rettangolare va eseguita una volta su Supabase la migrazione
@@ -174,6 +192,11 @@ export default function MisurePanel({ versione = 0 }) {
       {error && <div className="adm-error">⚠️ {error}</div>}
       {nErrori > 0 && <div className="adm-error">⚠️ Sistema le caselle in rosso prima di salvare.</div>}
       {!loaded && <div className="adm-muted">Caricamento…</div>}
+      {loaded && !error && taglie.length === 0 && !altePrimaDellaMigrazione && (
+        <div className="adm-muted">
+          Nessuna taglia{alta ? ' per le torte alte' : ''}: aggiungila dal riquadro sopra con «+ Aggiungi».
+        </div>
+      )}
 
       {loaded && taglie.length > 0 && (
         <div className="mis-scroll">
@@ -191,7 +214,7 @@ export default function MisurePanel({ versione = 0 }) {
             </thead>
             <tbody>
               {taglie.map((r) => {
-                const persone = parseInt(r.etichetta, 10) || personeOf({ id: r.id });
+                const persone = personeOf({ id: r.id, label: r.etichetta });
                 return (
                   <tr key={r.id} className={`${r.attivo ? '' : 'off'} ${dirty[r.id] ? 'mod' : ''}`}>
                     <th scope="row">
@@ -223,7 +246,7 @@ export default function MisurePanel({ versione = 0 }) {
                                     disabled={ferma || busy}
                                     className={err ? 'err' : ''}
                                     aria-invalid={err ? 'true' : undefined}
-                                    aria-label={`${r.etichetta}, ${f.nome}${lati === 2 ? (i === 0 ? ', lato corto' : ', lato lungo') : `, ${COME[tipo]}`}, in centimetri`}
+                                    aria-label={`${alta ? 'Torta alta, ' : ''}${r.etichetta}, ${f.nome}${lati === 2 ? (i === 0 ? ', lato corto' : ', lato lungo') : `, ${COME[tipo]}`}, in centimetri`}
                                     onChange={(e) => cambia(r.id, f.id, i, e.target.value)}
                                   />
                                 </Fragment>

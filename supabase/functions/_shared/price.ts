@@ -13,6 +13,7 @@
 //   + Σ (extra.prezzo × quantità)   → salame dolce, cabaret di pasticcini
 // La scritta (tabella `scritte`) non incide sul prezzo: si salva soltanto nell'ordine.
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { tagliaAmmessa, TALL_TYPE_IDS } from './taglie.ts';
 
 // Il crumble si sceglie (e si paga) solo con la base croccante: stessa costante
 // del frontend, CRUMBLE_BASE_ID in src/data/cakeOptions.js.
@@ -204,7 +205,31 @@ async function extrasOf(
   return { euros, labels };
 }
 
+// Taglia e tipo devono andare d'accordo: le torte alte hanno taglie loro, a
+// prezzo doppio (vedi taglie.ts). Colonna non ancora creata o taglia
+// sconosciuta: tutto come prima, il supplemento lo decide priceOf.
+async function tagliaCoerente(supabase: SupabaseClient, config: CakeConfig): Promise<boolean> {
+  if (!config.sizeId) return true;
+  const { data, error } = await supabase.from('dimensioni').select('alta').eq('id', config.sizeId).maybeSingle();
+  if (error || !data) return true;
+  const tortaAlta = TALL_TYPE_IDS.includes(config.type ?? '');
+  const tagliaAlta = Boolean((data as { alta?: boolean }).alta);
+  let alteAttive = 0;
+  if (tortaAlta && !tagliaAlta) {
+    const { count } = await supabase
+      .from('dimensioni').select('id', { count: 'exact', head: true })
+      .eq('alta', true).eq('attivo', true);
+    alteAttive = count ?? 0;
+  }
+  return tagliaAmmessa({ tortaAlta, tagliaAlta, alteAttive });
+}
+
 export async function computeOrder(supabase: SupabaseClient, config: CakeConfig) {
+  // Una taglia normale su una torta alta farebbe pagare circa metà: si rifiuta
+  // prima di calcolare qualsiasi importo.
+  if (!(await tagliaCoerente(supabase, config))) {
+    throw new Error('La taglia scelta non vale per questo tipo di torta: torna al passo "Per quante persone?" e sceglila di nuovo.');
+  }
   // Il crumble si conteggia solo con la base croccante, esattamente come nel frontend.
   const crumbleId = config.baseId === CRUMBLE_BASE_ID ? config.crumbleId : undefined;
 

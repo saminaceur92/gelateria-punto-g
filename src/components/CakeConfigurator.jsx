@@ -8,7 +8,7 @@ import { logAction } from '../lib/log';
 import { traccia, tracciaUnaVolta, EV, EV_PASSO } from '../lib/analytics';
 import { uploadCakePhotos } from '../lib/cakePhoto';
 import { catturaTorta3D, ridimensiona, SFONDO_FOTO } from '../lib/cakeSnapshot';
-import { dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE } from '../lib/misureTorta';
+import { dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE, taglieDelTipo, tagliaEquivalente } from '../lib/misureTorta';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
 
@@ -693,6 +693,25 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     setStep((s) => Math.min(s, steps.length - 1));
   }, [steps.length]);
 
+  // Taglia e tipo devono andare d'accordo: le torte ALTE hanno taglie loro, a
+  // prezzo circa doppio. Se il tipo cambia (tornando indietro, o toccando una
+  // consigliata al passo forma, che porta avanti) la taglia passa a quella con
+  // lo stesso numero di persone dell'altra lista. Se non c'è si azzera e si
+  // torna al passo delle persone: meglio che arrivare al riepilogo senza
+  // taglia, o col prezzo di un'altra torta. Vale anche per "Rifai questa
+  // torta" e per i listini che arrivano da Supabase dopo il primo render.
+  useEffect(() => {
+    if (!config.sizeId) return;
+    const giusta = tagliaEquivalente(cakeSizes, config.sizeId, isTallType(config.type));
+    if (giusta === config.sizeId) return;
+    set({ sizeId: giusta });
+    if (!giusta) {
+      const passoTaglia = steps.indexOf('size');
+      if (passoTaglia >= 0) setStep((s) => Math.min(s, passoTaglia));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.type, config.sizeId, cakeSizes]);
+
   // Funnel: si conta il passo che ENTRA IN SCENA, non il click su "Avanti".
   // I passi effettivi sono 11/12/13 a seconda della torta e chi sceglie una
   // consigliata salta avanti: contando "Avanti" quel percorso sparirebbe.
@@ -798,7 +817,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     const size = cakeSizes.find((s) => s.id === config.sizeId);
     switch (steps[step]) {
       case 'type': return !!config.type;
-      case 'size': return !!config.sizeId;
+      case 'size': return !!config.sizeId && taglieDelTipo(cakeSizes, isTallType(config.type)).some((s) => s.id === config.sizeId);
       // Va data una risposta: allergeni scelti oppure "Nessuna intolleranza".
       // Le preferenze (vegan, senza zuccheri) da sole non bastano: sono un'altra
       // domanda, e per la gelateria conta avere la dichiarazione sulle allergie.
@@ -1687,11 +1706,13 @@ function StepShape({ config, set, consigliata }) {
 
 function StepSize({ config, set }) {
   const { cakeSizes } = useCakeData();
+  // Chi ha scelto un'alta vede le taglie delle alte (vedi taglieDelTipo).
+  const taglie = taglieDelTipo(cakeSizes, isTallType(config.type));
   return (
     <>
       <StepHeader stepKey="size" title="Per quante persone?" lead="Una stima abbondante: meglio un cucchiaio in più che in meno. Da qui in poi si sblocca «Sorprendimi»." />
       <div className="opt-grid cols-3">
-        {cakeSizes.map((s) => (
+        {taglie.map((s) => (
           <button
             key={s.id}
             className={`opt-card ${config.sizeId === s.id ? 'selected' : ''}`}

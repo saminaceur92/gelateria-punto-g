@@ -129,6 +129,10 @@ function messaggioErrore(msg = '') {
       ? `Manca un dato obbligatorio: "${campo}". Compilalo e riprova.`
       : 'Manca un dato obbligatorio: compila i campi vuoti e riprova.';
   }
+  // Taglie delle torte alte prima della migrazione: la colonna non c'è ancora.
+  if (/'alta' column|column "?alta"? /i.test(msg)) {
+    return "Le taglie delle torte alte non sono ancora attive: va eseguita una volta su Supabase la migrazione migrations/2026-09-14-taglie-alte.sql.";
+  }
   if (/does not exist|schema cache/i.test(msg)) return msg; // ha già il suo messaggio
   return msg;
 }
@@ -136,7 +140,9 @@ function messaggioErrore(msg = '') {
 // onChange: facoltativo, chiamato dopo ogni modifica salvata (salva, aggiungi,
 // elimina, mostra/nascondi) — serve a chi mostra gli stessi dati altrove,
 // come la griglia delle misure sotto le taglie.
-export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [], onChange }) {
+// rowFilter: facoltativo, (riga) => true/false. Mostra solo una parte della
+// tabella, es. le taglie delle torte alte in una sezione e le normali in un'altra.
+export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [], onChange, rowFilter }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
   const [busy, setBusy] = useState(false);
@@ -144,6 +150,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
   const [loaded, setLoaded] = useState(false);
   const excludeKey = excludeIds.join('|');
   const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.giorno || r.etichetta || 'voce';
+  const visibili = rowFilter ? rows.filter(rowFilter) : rows;
 
   // La riga si legge male se i campi sono tutti in fila: li dividiamo in fasce
   // — dati, foto, gruppi di spunte (allergeni presenti / tracce), sì/no.
@@ -197,7 +204,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
 
   // Tutte le righe modificate in un colpo solo: prima c'era soltanto il Salva
   // per riga, e dopo dieci ritocchi toccava andarli a cercare uno per uno.
-  const daSalvare = rows.filter((r) => dirty[r.id]);
+  const daSalvare = visibili.filter((r) => dirty[r.id]);
   async function saveAll() {
     setBusy(true);
     setError('');
@@ -278,7 +285,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
               💾 Salva tutto ({daSalvare.length})
             </button>
           )}
-          <span className="adm-count">{rows.filter((r) => r.attivo).length}/{rows.length} in vetrina</span>
+          <span className="adm-count">{visibili.filter((r) => r.attivo).length}/{visibili.length} in vetrina</span>
         </div>
       </header>
 
@@ -286,7 +293,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       {!loaded && <div className="adm-muted">Caricamento…</div>}
 
       <div className="adm-rows">
-        {rows.map((row) => (
+        {visibili.map((row) => (
           <div key={row.id} className={`adm-row ${row.attivo ? '' : 'off'}`}>
             <button
               type="button"

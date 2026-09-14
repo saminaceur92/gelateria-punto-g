@@ -10,14 +10,20 @@
 //    2026-09-14-misure-per-forma venga eseguita.
 //  - `misure`   → le altre forme, in cm:
 //    { cuore: [22], quadrata: [20], rettangolare: [24, 34] }
+//  - `alta`     → la taglia è delle torte ALTE (vedi più sotto).
 
 // La forma rettangolare è disponibile solo da 15 persone in su.
 export const RECT_MIN_PERSONE = 15;
 
-// N° persone ricavato dalla dimensione (id o etichetta).
+// N° persone di una taglia. Prima dall'etichetta ("10 persone"), che è quella
+// che i titolari scrivono; l'id vale solo se è un numero (le taglie storiche
+// '6', '8', …). Le taglie aggiunte dalla dashboard hanno un id casuale: letto
+// per primo, un "8f3a…" sarebbe diventato 8 persone.
 export const personeOf = (size) => {
   if (!size) return 0;
-  return parseInt(size.id, 10) || parseInt(size.label, 10) || 0;
+  const inEtichetta = String(size.label ?? '').match(/\d+/);
+  if (inEtichetta) return Number(inEtichetta[0]);
+  return /^\d+$/.test(String(size.id ?? '')) ? Number(size.id) : 0;
 };
 
 // Come si misura ogni forma. Una forma nuova, finché non si aggiunge qui,
@@ -67,4 +73,32 @@ export function misuraTesto(size, formaId) {
 export function dimensioneTesto(size, formaId) {
   if (!size) return '';
   return [size.label, misuraTesto(size, formaId)].filter(Boolean).join(' · ');
+}
+
+// ── Taglie delle torte ALTE ─────────────────────────────────────────────
+// Le alte (Alta semifreddo, Alta Gelato) sono in pratica una torta doppia:
+// hanno taglie loro, con prezzi e misure loro (colonna `alta` di `dimensioni`).
+// ⚠️ Stessa regola lato server: supabase/functions/_shared/taglie.ts.
+
+/** Le taglie fra cui sceglie chi ha preso una torta normale (false) o alta (true). */
+export function taglieDelTipo(cakeSizes, alta) {
+  const normali = (cakeSizes || []).filter((s) => !s.alta);
+  if (!alta) return normali;
+  const alte = (cakeSizes || []).filter((s) => s.alta);
+  // Finché nessuna taglia alta è accesa, le alte usano le normali (com'era).
+  return alte.length ? alte : normali;
+}
+
+/**
+ * La taglia giusta dopo un cambio di tipo di torta: la stessa se vale ancora,
+ * altrimenti quella con lo stesso numero di persone nell'altra lista,
+ * altrimenti '' (va scelta di nuovo).
+ */
+export function tagliaEquivalente(cakeSizes, sizeId, alta) {
+  if (!sizeId) return '';
+  const taglie = taglieDelTipo(cakeSizes, alta);
+  if (taglie.some((s) => s.id === sizeId)) return sizeId;
+  const persone = personeOf((cakeSizes || []).find((s) => s.id === sizeId));
+  if (!persone) return '';
+  return taglie.find((s) => personeOf(s) === persone)?.id || '';
 }
