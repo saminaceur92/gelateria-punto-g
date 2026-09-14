@@ -193,7 +193,12 @@ export async function fetchCakeOptions() {
       cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
       cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore, allergeni: splitLower(t.allergeni) })),
       cakeSizes: dim.map((s) => {
-        const o = { id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento) };
+        // `misure`: le forme diverse dalla tonda (vedi src/lib/misureTorta.js).
+        // Prima della migrazione la colonna non arriva: si parte da vuoto.
+        const o = {
+          id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento),
+          misure: s.misure && typeof s.misure === 'object' ? s.misure : {},
+        };
         if (s.popolare) o.popular = true;
         return o;
       }),

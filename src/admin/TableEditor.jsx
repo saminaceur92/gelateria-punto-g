@@ -133,7 +133,10 @@ function messaggioErrore(msg = '') {
   return msg;
 }
 
-export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [] }) {
+// onChange: facoltativo, chiamato dopo ogni modifica salvata (salva, aggiungi,
+// elimina, mostra/nascondi) — serve a chi mostra gli stessi dati altrove,
+// come la griglia delle misure sotto le taglie.
+export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [], onChange }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
   const [busy, setBusy] = useState(false);
@@ -187,6 +190,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     else {
       setDirty((d) => ({ ...d, [row.id]: false }));
       logAction('Contenuto modificato', `${title}: ${rowLabel(row)}`);
+      onChange?.();
     }
     setBusy(false);
   }
@@ -208,7 +212,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       setDirty((d) => ({ ...d, [row.id]: false }));
       salvate += 1;
     }
-    if (salvate) logAction('Contenuti modificati', `${title}: ${salvate} voci`);
+    if (salvate) {
+      logAction('Contenuti modificati', `${title}: ${salvate} voci`);
+      onChange?.();
+    }
     setBusy(false);
   }
 
@@ -221,6 +228,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     else {
       setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, attivo: next } : r)));
       logAction(next ? 'Contenuto attivato' : 'Contenuto disattivato', `${title}: ${rowLabel(row)}`);
+      onChange?.();
     }
     setBusy(false);
   }
@@ -238,6 +246,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     else {
       setRows((rs) => [...rs, data]);
       logAction('Contenuto aggiunto', title);
+      onChange?.();
     }
     setBusy(false);
   }
@@ -251,6 +260,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     else {
       setRows((rs) => rs.filter((r) => r.id !== row.id));
       logAction('Contenuto eliminato', `${title}: ${rowLabel(row)}`);
+      onChange?.();
     }
     setBusy(false);
   }

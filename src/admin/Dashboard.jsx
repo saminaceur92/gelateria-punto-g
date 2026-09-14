@@ -9,6 +9,7 @@ import ChiediCodice from './ChiediCodice';
 import CodiciPanel from './CodiciPanel';
 import PromemoriaPanel from './PromemoriaPanel';
 import StatistichePanel from './StatistichePanel';
+import MisurePanel from './MisurePanel';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 import { playPing } from '../lib/ping';
@@ -37,6 +38,8 @@ export default function Dashboard() {
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
+  // Sale a ogni modifica delle taglie: la griglia delle misure si ricarica.
+  const [versioneTaglie, setVersioneTaglie] = useState(0);
   // Chi sta prendendo l'ordine al banco (nome, dal codice personale).
   const [chiediCodice, setChiediCodice] = useState(false);
   const [operatore, setOperatore] = useState(null);
@@ -284,9 +287,11 @@ export default function Dashboard() {
         props: {
           table: 'dimensioni',
           title: 'Dimensioni torta',
+          subtitle: 'Le taglie fra cui sceglie il cliente e quanto costano in più. Le misure, forma per forma, si scrivono nella tabella qui sotto.',
+          // Il diametro non è più qui: è la colonna "Tonda" della griglia
+          // Misure per forma (MisurePanel), accanto alle altre forme.
           fields: [
             { key: 'etichetta', label: 'Etichetta', type: 'text' },
-            { key: 'diametro', label: 'Diametro cm', type: 'number' },
             { key: 'supplemento', label: 'Supplemento €', type: 'number' },
           ],
           newRow: () => ({ id: uuid(), etichetta: '', diametro: 0, supplemento: 0 }),
@@ -494,6 +499,13 @@ export default function Dashboard() {
           <PromemoriaPanel />
         ) : active === 'statistiche' ? (
           <StatistichePanel />
+        ) : active === 'dimensioni' ? (
+          // Taglie sopra, misure forma per forma sotto. La griglia si ricarica
+          // quando sopra si aggiunge, rinomina o nasconde una taglia.
+          <div className="adm-stack">
+            <TableEditor key={current.key} {...current.props} onChange={() => setVersioneTaglie((v) => v + 1)} />
+            <MisurePanel versione={versioneTaglie} />
+          </div>
         ) : (
           <TableEditor key={current.key} {...current.props} />
         )}

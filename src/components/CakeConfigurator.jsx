@@ -8,6 +8,7 @@ import { logAction } from '../lib/log';
 import { traccia, tracciaUnaVolta, EV, EV_PASSO } from '../lib/analytics';
 import { uploadCakePhotos } from '../lib/cakePhoto';
 import { catturaTorta3D, ridimensiona, SFONDO_FOTO } from '../lib/cakeSnapshot';
+import { dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE } from '../lib/misureTorta';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
 
@@ -171,13 +172,8 @@ const chosenExtras = (extras, cakeExtras) =>
     .filter(Boolean);
 const extraLabel = (e) => `${e.name} ×${fmtQty(e.qty)}${e.unit ? ` (${e.unit})` : ''} — €${e.total.toFixed(2)}`;
 
-// N° persone ricavato dalla dimensione (id o etichetta).
-const personeOf = (size) => {
-  if (!size) return 0;
-  return parseInt(size.id, 10) || parseInt(size.label, 10) || 0;
-};
-// La forma rettangolare è disponibile solo da 15 persone in su.
-const RECT_MIN_PERSONE = 15;
+// personeOf e RECT_MIN_PERSONE stanno in src/lib/misureTorta.js: servono
+// anche alla griglia delle misure nella dashboard.
 
 // Preferenze alimentari dichiarate nello step "Allergie": non sono allergeni,
 // filtrano al contrario (passa solo cio' che e' dichiarato adatto). L'elenco di
@@ -1033,7 +1029,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       dietLine ? `🌱 *PREFERENZE:* ${dietLine}` : '',
       `*Tipo:* ${type?.name}`,
       `*Forma:* ${shape?.name}`,
-      `*Dimensione:* ${size?.label} (Ø ${size?.diameter}cm)`,
+      `*Dimensione:* ${dimensioneTesto(size, config.shape)}`,
       // Con la base croccante la descrizione ("scegli sotto il gusto del
       // crumble") è un'istruzione per chi ordina, non per il laboratorio — e la
       // riga sotto dice già quale crumble. Per le altre basi resta.
@@ -1159,7 +1155,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       dietLine ? `PREFERENZE: ${dietLine}` : '',
       `Tipo: ${type?.name}`,
       `Forma: ${shape?.name}`,
-      `Dimensione: ${size?.label} (Ø ${size?.diameter}cm)`,
+      `Dimensione: ${dimensioneTesto(size, config.shape)}`,
       `Base: ${base?.name}`,
       crumble ? `Tipo di crumble: ${crumble.name}` : '',
       `Gusti: ${config.flavors.map((f) => f.name).join(', ')}`,
@@ -1554,7 +1550,8 @@ function StepShape({ config, set, consigliata }) {
     cakeShapes, cakeSizes, cakeTypes, cakeFlavors, cakeBases, cakeCrumbles,
     cakeFillings, cakeCoverings, cakeDecorations, torteConsigliate,
   } = useCakeData();
-  const persone = personeOf(cakeSizes.find((s) => s.id === config.sizeId));
+  const size = cakeSizes.find((s) => s.id === config.sizeId);
+  const persone = personeOf(size);
   // Quale gruppo di consigliate è aperto ('' = nessuno, si vedono solo i tasti).
   const [gruppoAperto, setGruppoAperto] = useState('');
 
@@ -1614,7 +1611,9 @@ function StepShape({ config, set, consigliata }) {
                 <span style={{ fontSize: '1.3rem' }}>{sh.emoji}</span> {sh.name}
               </div>
               <div className="opt-desc">{blocked ? `Solo da ${RECT_MIN_PERSONE} persone in su` : sh.desc}</div>
-              <div className="opt-meta">{sh.priceDelta > 0 ? `+ €${sh.priceDelta}` : 'inclusa'}</div>
+              {/* Con la taglia già scelta, ogni forma dice quanto misura: è qui che
+                  si vede che una quadrata non è una tonda con gli angoli. */}
+              <div className="opt-meta">{[!blocked && misuraTesto(size, sh.id), sh.priceDelta > 0 ? `+ €${sh.priceDelta}` : 'inclusa'].filter(Boolean).join(' · ')}</div>
             </button>
           );
         })}
@@ -1700,7 +1699,7 @@ function StepSize({ config, set }) {
           >
             {s.popular && <span className="badge-popular">Più scelta</span>}
             <div className="opt-name">{s.label}</div>
-            <div className="opt-desc">Ø {s.diameter} cm</div>
+            <div className="opt-desc">{misuraTesto(s, config.shape)}</div>
             <div className="opt-meta">{s.priceDelta > 0 ? `+ €${s.priceDelta}` : 'incluso'}</div>
           </button>
         ))}
@@ -2839,7 +2838,7 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
           {allergNames.length > 0 && (<><dt>Allergeni</dt><dd>{allergNames.join(', ').toUpperCase()}</dd></>)}
           <dt>Tipo</dt><dd>{type?.name}</dd>
           <dt>Forma</dt><dd>{shape?.name}</dd>
-          <dt>Dimensione</dt><dd>{size?.label} · Ø {size?.diameter}cm</dd>
+          <dt>Dimensione</dt><dd>{dimensioneTesto(size, config.shape)}</dd>
           <dt>Base</dt><dd>{base?.name}</dd>
           {crumble && (<><dt>Crumble</dt><dd>{crumble.name}</dd></>)}
           <dt>Strati</dt><dd>{config.flavors.map((f) => f.name).join(' · ') || '—'}</dd>
