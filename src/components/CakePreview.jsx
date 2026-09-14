@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useCakeData } from '../data/CakeDataProvider';
 import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
+import { misuraTesto } from '../lib/misureTorta';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
@@ -290,7 +291,7 @@ export default function CakePreview({ config }) {
 
         {(s || sh) && (
           <p className="cake-card-size">
-            {sh?.name}{s ? ` · Ø ${s.diameter} cm · ${s.label.toLowerCase()}` : ''}
+            {[sh?.name, misuraTesto(s, sh?.id), s?.label.toLowerCase()].filter(Boolean).join(' · ')}
           </p>
         )}
 

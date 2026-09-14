@@ -659,3 +659,42 @@
   letter-spacing: 0.5em;
   padding-left: 0.5em; /* compensa lo spazio dopo l'ultima cifra */
 }
+
+/* ───────── Misure per forma (tab Dimensioni) ─────────
+   Griglia taglie × forme. Su telefono ogni taglia diventa una scheda con
+   una riga per forma: una tabella da cinque colonne lì non si legge. */
+.adm-stack { display: grid; gap: 1rem; }
+.mis-avviso { margin: 0 0 .9rem; font-size: .86rem; color: #6b4a1f; background: rgba(192,137,76,.08); border: 1px solid rgba(192,137,76,.45); border-radius: 10px; padding: .7rem .9rem; }
+.mis-avviso code { font-size: .8rem; }
+.mis-scroll { overflow-x: auto; }
+.mis-tabella { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.mis-tabella th, .mis-tabella td { padding: .55rem .6rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.mis-tabella thead th { border-bottom-color: #d6cfc1; white-space: nowrap; font-weight: 600; }
+.mis-forma { display: block; }
+.mis-come { display: block; margin-top: .1rem; font-size: .68rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: #9a9186; }
+.mis-tabella tbody th { white-space: nowrap; font-weight: 600; padding-top: .8rem; }
+.mis-tabella tbody th small { display: block; font-size: .72rem; font-weight: 400; color: #9a9186; }
+.mis-tabella tr.off tbody th, .mis-tabella tr.off th { color: #9a9186; }
+.mis-tabella tr.mod th { color: var(--v-deep); }
+.mis-cella { display: flex; align-items: center; gap: .3rem; }
+.mis-cella input { width: 3.9rem; padding: .45rem .5rem; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; font-size: .95rem; text-align: right; font-variant-numeric: tabular-nums; }
+.mis-cella input::placeholder { color: #bdb5a8; }
+.mis-cella input:focus { outline: 2px solid var(--v); outline-offset: 0; border-color: var(--v-deep); }
+.mis-cella input.err { border-color: #b03a2e; background: #fdf3f2; }
+.mis-cella input:disabled { background: #f4f1ea; color: #9a9186; }
+.mis-x, .mis-cm { font-size: .8rem; color: #9a9186; }
+.mis-no { display: inline-block; padding-top: .45rem; font-size: .78rem; color: #9a9186; }
+.mis-err { display: block; margin-top: .25rem; font-size: .72rem; color: #b03a2e; }
+
+@media (max-width: 640px) {
+  .mis-tabella thead { display: none; }
+  .mis-tabella, .mis-tabella tbody, .mis-tabella tr { display: block; width: 100%; }
+  /* border-box: con width 100% + padding la scheda sforava di 26px a destra */
+  .mis-tabella tr { box-sizing: border-box; border: 1px solid var(--line); border-radius: 12px; padding: .3rem .8rem .5rem; margin-bottom: .6rem; }
+  .mis-tabella tbody th { display: block; padding: .5rem 0; border-bottom: 1px dashed var(--line); }
+  .mis-tabella td { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .6rem; padding: .45rem 0; border-bottom: 0; }
+  .mis-tabella td::before { content: attr(data-forma); font-size: .85rem; color: #555; }
+  .mis-tabella td .mis-err { flex-basis: 100%; text-align: right; margin-top: 0; }
+  /* 16px: sotto questa soglia iOS ingrandisce la pagina a ogni tocco */
+  .mis-cella input { font-size: 16px; width: 4.4rem; }
+}
