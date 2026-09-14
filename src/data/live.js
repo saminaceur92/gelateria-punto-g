@@ -198,6 +198,9 @@ export async function fetchCakeOptions() {
         const o = {
           id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento),
           misure: s.misure && typeof s.misure === 'object' ? s.misure : {},
+          // Taglia delle torte ALTE: il configuratore la mostra solo a chi sceglie
+          // un'alta (vedi taglieDelTipo in src/lib/misureTorta.js).
+          alta: !!s.alta,
         };
         if (s.popolare) o.popular = true;
         return o;

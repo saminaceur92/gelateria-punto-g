@@ -33,6 +33,23 @@ const ALLERGENI_OPTIONS = [
   { value: 'Solfiti', emoji: '🍷' },
 ];
 
+// Tab Dimensioni: i due listini di taglie. `alta` è la colonna di `dimensioni`
+// (vedi migrations/2026-09-14-taglie-alte.sql e src/lib/misureTorta.js).
+const GRUPPI_TAGLIE = [
+  {
+    chiave: 'normali',
+    alta: false,
+    titolo: 'Torte normali',
+    sotto: 'Le taglie di tutte le torte, tranne le alte.',
+  },
+  {
+    chiave: 'alte',
+    alta: true,
+    titolo: 'Torte alte',
+    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Finché qui non ne accendi almeno una, sul sito le alte usano le taglie normali.',
+  },
+];
+
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const [cats, setCats] = useState([]);
@@ -500,11 +517,31 @@ export default function Dashboard() {
         ) : active === 'statistiche' ? (
           <StatistichePanel />
         ) : active === 'dimensioni' ? (
-          // Taglie sopra, misure forma per forma sotto. La griglia si ricarica
-          // quando sopra si aggiunge, rinomina o nasconde una taglia.
+          // Due listini di taglie: le torte normali e le ALTE, che sono in
+          // pratica una torta doppia e hanno taglie, prezzi e misure propri.
+          // In ogni gruppo: taglie sopra, misure forma per forma sotto. Le
+          // griglie si ricaricano quando sopra si aggiunge, rinomina o nasconde
+          // una taglia.
           <div className="adm-stack">
-            <TableEditor key={current.key} {...current.props} onChange={() => setVersioneTaglie((v) => v + 1)} />
-            <MisurePanel versione={versioneTaglie} />
+            {GRUPPI_TAGLIE.map((g) => (
+              <section key={g.chiave} className="dim-gruppo">
+                <header className="dim-gruppo-head">
+                  <h2>{g.titolo}</h2>
+                  <p>{g.sotto}</p>
+                </header>
+                <TableEditor
+                  key={`${current.key}-${g.chiave}`}
+                  {...current.props}
+                  title={`Taglie · ${g.titolo.toLowerCase()}`}
+                  rowFilter={(r) => Boolean(r.alta) === g.alta}
+                  // Solo le alte scrivono la colonna: prima della migrazione
+                  // le normali si aggiungono come sempre.
+                  newRow={() => ({ ...current.props.newRow(), ...(g.alta ? { alta: true } : {}) })}
+                  onChange={() => setVersioneTaglie((v) => v + 1)}
+                />
+                <MisurePanel versione={versioneTaglie} alta={g.alta} />
+              </section>
+            ))}
           </div>
         ) : (
           <TableEditor key={current.key} {...current.props} />

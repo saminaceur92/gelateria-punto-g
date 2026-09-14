@@ -698,3 +698,11 @@
   /* 16px: sotto questa soglia iOS ingrandisce la pagina a ogni tocco */
   .mis-cella input { font-size: 16px; width: 4.4rem; }
 }
+
+/* Tab Dimensioni: due gruppi, torte normali e torte alte. Il titolo del
+   gruppo sta sopra i riquadri, e un filo separa i due listini: sono prezzi
+   diversi, confonderli costerebbe soldi. */
+.dim-gruppo { display: grid; gap: 1rem; }
+.dim-gruppo + .dim-gruppo { margin-top: 1.2rem; padding-top: 1.6rem; border-top: 2px solid var(--line); }
+.dim-gruppo-head h2 { margin: 0; font-size: 1.3rem; color: var(--v-deep); }
+.dim-gruppo-head p { margin: .3rem 0 0; max-width: 70ch; font-size: .9rem; color: #7a7166; }
