@@ -13,11 +13,15 @@
 //    ognuna ha la sua voce in EV_CONSIGLIATA, con chiave
 //    torta_consigliata_<gruppo>_<id>, un gruppo che la scheda sa dividere e la
 //    riga a catalogo con etichetta = nome della torta;
+//  - che le voci per torta partano SOLO da tracciaConsigliata(), e che la
+//    funzione del database a cui bussa (registra_torta_consigliata) la crei
+//    davvero una migrazione, con lo stesso nome: con un nome sbagliato ogni
+//    scelta finirebbe per sempre nel totale, mai divisa per torta;
 //  - "un tocco, un evento": nessun elemento ha insieme data-ev e una chiamata a
-//    traccia()/tracciaUnaVolta() (il click si conterebbe due volte), e la carta
-//    della consigliata non ha data-ev. Vede solo le chiamate scritte DENTRO il
-//    tag: un handler con un nome (onClick={apri}) che chiama traccia va
-//    controllato a occhio.
+//    traccia()/tracciaUnaVolta()/tracciaConsigliata() (il click si conterebbe
+//    due volte), e la carta della consigliata non ha data-ev. Vede solo le
+//    chiamate scritte DENTRO il tag: un handler con un nome (onClick={apri})
+//    che chiama traccia va controllato a occhio.
 //
 // Legge i file come testo e non tocca né la rete né il database: analytics.js
 // non si può importare in Node, perché usa import.meta.env.
@@ -101,7 +105,13 @@ for (const rel of sorgenti) {
     for (const nome of ['EV', 'EV_PASSO', 'EV_CONSIGLIATA']) testo = testo.replace(blocco(nome)?.[0] || '', '');
   } else {
     if (/\bEV_PASSO\s*\[/.test(testo)) usaPasso = true;
-    if (/\bEV_CONSIGLIATA\s*\[/.test(testo)) usaConsigliata = true;
+    if (/\btracciaConsigliata\s*\(/.test(testo)) usaConsigliata = true;
+    // Le voci per torta partono solo da tracciaConsigliata(): mandate con
+    // traccia() o tracciaUnaVolta() andrebbero a registra_evento, che senza la
+    // migrazione del 9 ottobre le scarta in silenzio, e senza nessun ripiego.
+    if (/\bEV_CONSIGLIATA\s*[[.]/.test(testo) || /\bEV\.TORTA_CONSIGLIATA_[A-Z]/.test(testo)) {
+      errori.push(`${rel}: usa direttamente le voci per torta (EV_CONSIGLIATA o EV.TORTA_CONSIGLIATA_…): si mandano solo con tracciaConsigliata(id)`);
+    }
   }
   // Attributi veri solo nei .jsx, e solo valori fatti come una chiave: un
   // data-ev="…" scritto in un commento per spiegare non è un punto di
@@ -122,8 +132,26 @@ for (const rel of sorgenti) {
     if (!valoriEV.has(k)) dataEvSconosciuti.push(`${rel}: ev: '${k}'`);
   }
 }
+/* La porta delle torte già composte: tracciaConsigliata() legge EV_CONSIGLIATA
+   e bussa a ENDPOINT_CONSIGLIATA, cioè a una funzione che deve crearla una
+   migrazione, con lo stesso nome. Se il nome non torna il database risponde
+   "non esiste" per sempre e il sito conta ogni scelta di ripiego: nel totale,
+   mai divisa per torta, e nessuno se ne accorgerebbe. */
+const corpoConsigliata = (analytics.match(/export function tracciaConsigliata\([\s\S]*?\n\}/) || [])[0] || '';
+const leggeMappa = /\bEV_CONSIGLIATA\s*\[/.test(corpoConsigliata) && /\bENDPOINT_CONSIGLIATA\b/.test(corpoConsigliata);
+if (!corpoConsigliata) errori.push(`${ANALYTICS}: manca "export function tracciaConsigliata("`);
+else if (!leggeMappa) errori.push(`${ANALYTICS}: tracciaConsigliata() deve leggere EV_CONSIGLIATA[…] e bussare a ENDPOINT_CONSIGLIATA`);
+const porta = (analytics.match(/const ENDPOINT_CONSIGLIATA\s*=[\s\S]*?\/rest\/v1\/rpc\/([a-z0-9_]+)/) || [])[1];
+const funzioniCreate = new Set();
+for (const f of readdirSync(join(RADICE, 'migrations')).filter((x) => x.endsWith('.sql') && !x.endsWith('-prova.sql'))) {
+  const sql = leggi(join('migrations', f)).replace(/--[^\n]*/g, '');
+  for (const [, nome] of sql.matchAll(/create\s+(?:or\s+replace\s+)?function\s+public\.([a-z0-9_]+)\s*\(/gi)) funzioniCreate.add(nome);
+}
+if (!porta) errori.push(`${ANALYTICS}: non trovo la porta delle torte già composte (const ENDPOINT_CONSIGLIATA = …/rest/v1/rpc/<funzione>)`);
+else if (!funzioniCreate.has(porta)) errori.push(`${ANALYTICS}: le torte già composte bussano a ${porta}, ma nessuna migrazione crea public.${porta}: ogni scelta finirebbe nel totale, mai divisa per torta`);
+
 if (usaPasso) for (const c of EV_PASSO.values()) usati.add(EV.get(c));
-if (usaConsigliata) for (const c of EV_CONSIGLIATA.values()) usati.add(EV.get(c));
+if (usaConsigliata && leggeMappa) for (const c of EV_CONSIGLIATA.values()) usati.add(EV.get(c));
 
 for (const k of valoriEV) {
   if (!catalogo.has(k)) errori.push(`${k}: è in EV ma non a catalogo in nessuna migrazione (il database lo scarterebbe in silenzio)`);
@@ -169,7 +197,9 @@ for (const k of new Set([...valoriEV, ...catalogo.keys()])) {
 /* ───────── 5. Un tocco, un evento ─────────
    Si leggono i tag JSX di apertura per intero, graffe comprese: un `>` dentro
    un'arrow function (`() => …`) non chiude il tag, e un apostrofo dentro un
-   commento dell'handler (in italiano capita sempre) non apre una stringa. */
+   commento dell'handler (in italiano capita sempre) non apre una stringa.
+   I controlli guardano il CODICE del tag, commenti esclusi: un commento che
+   nomina tracciaConsigliata (o data-ev) non è una chiamata (né un attributo). */
 
 function tagDiApertura(testo) {
   const tag = [];
@@ -184,6 +214,7 @@ function tagDiApertura(testo) {
     let graffe = 0;
     let quote = '';
     let fine = -1;
+    const commenti = []; // [inizio, fine) dei commenti dentro le graffe
     for (; i < testo.length && i - m.index < 6000; i++) {
       const ch = testo[i];
       if (quote) {
@@ -193,11 +224,13 @@ function tagDiApertura(testo) {
       }
       if (graffe > 0 && ch === '/' && testo[i + 1] === '/') {
         const a = testo.indexOf('\n', i);
+        commenti.push([i, a < 0 ? testo.length : a]);
         i = a < 0 ? testo.length : a;
         continue;
       }
       if (graffe > 0 && ch === '/' && testo[i + 1] === '*') {
         const a = testo.indexOf('*/', i + 2);
+        commenti.push([i, a < 0 ? testo.length : a + 2]);
         i = a < 0 ? testo.length : a + 1;
         continue;
       }
@@ -207,7 +240,13 @@ function tagDiApertura(testo) {
       else if (graffe === 0 && ch === '<') break; // non era un tag
       else if (graffe === 0 && ch === '>') { fine = i; break; }
     }
-    if (fine > 0) tag.push({ nome: m[1], testo: testo.slice(m.index, fine + 1), riga: testo.slice(0, m.index).split('\n').length });
+    if (fine > 0) {
+      let codice = '';
+      let da = m.index;
+      for (const [a, b] of commenti) { codice += testo.slice(da, a); da = b; }
+      codice += testo.slice(da, fine + 1);
+      tag.push({ nome: m[1], codice, riga: testo.slice(0, m.index).split('\n').length });
+    }
   }
   return tag;
 }
@@ -215,15 +254,15 @@ function tagDiApertura(testo) {
 let carteConsigliata = 0;
 for (const rel of sorgenti.filter((r) => r.endsWith('.jsx'))) {
   for (const t of tagDiApertura(leggi(rel))) {
-    const conDataEv = /\sdata-ev\s*=/.test(t.testo);
-    const chiamaTraccia = /\btraccia(UnaVolta)?\s*\(/.test(t.testo);
+    const conDataEv = /\sdata-ev\s*=/.test(t.codice);
+    const chiamaTraccia = /\btraccia(UnaVolta|Consigliata)?\s*\(/.test(t.codice);
     if (conDataEv && chiamaTraccia) {
       errori.push(`${rel}:${t.riga}: <${t.nome}> ha data-ev E chiama traccia(): un tocco conterebbe due volte`);
     }
-    if (/className="[^"]*\bconsigliata-card\b/.test(t.testo)) {
+    if (/className="[^"]*\bconsigliata-card\b/.test(t.codice)) {
       carteConsigliata++;
-      if (conDataEv) errori.push(`${rel}:${t.riga}: la carta della consigliata ha data-ev: con tracciaUnaVolta conterebbe due volte`);
-      if (!/tracciaUnaVolta\(\s*EV_CONSIGLIATA\[/.test(t.testo)) errori.push(`${rel}:${t.riga}: la carta della consigliata non chiama tracciaUnaVolta(EV_CONSIGLIATA[…])`);
+      if (conDataEv) errori.push(`${rel}:${t.riga}: la carta della consigliata ha data-ev: con tracciaConsigliata conterebbe due volte`);
+      if (!/\btracciaConsigliata\s*\(/.test(t.codice)) errori.push(`${rel}:${t.riga}: la carta della consigliata non chiama tracciaConsigliata(…)`);
     }
   }
 }
@@ -239,5 +278,5 @@ if (errori.length) {
 }
 console.log(
   `Eventi delle statistiche: OK — ${EV.size} in EV, ${catalogo.size} a catalogo, ` +
-  `${(torteConsigliate || []).length} torte già composte, ogni tocco un evento solo.`,
+  `${(torteConsigliate || []).length} torte già composte (porta ${porta}), ogni tocco un evento solo.`,
 );

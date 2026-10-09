@@ -16,9 +16,12 @@
  * cambia in un posto solo.
  *
  * Il vecchio evento `torta_consigliata` (una voce sola per tutte le torte,
- * quella usata fino all'ottobre 2026) resta a catalogo: nel totale ci entra,
- * nella divisione e nella classifica no, perché non dice quale torta era.
- * Dividerlo "a occhio" in proporzione sarebbe inventare dei numeri.
+ * quella usata fino all'ottobre 2026) resta a catalogo, e il sito lo manda
+ * ancora al posto della voce per torta finché il database non la conosce
+ * (vedi tracciaConsigliata in src/lib/analytics.js): un tocco è sempre o
+ * l'uno o l'altra, mai tutti e due. Nel totale ci entra, nella divisione e
+ * nella classifica no, perché non dice quale torta era. Dividerlo "a occhio"
+ * in proporzione sarebbe inventare dei numeri.
  */
 
 export const GENERICO = 'torta_consigliata';

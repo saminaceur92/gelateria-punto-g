@@ -12,6 +12,10 @@ declare
   v_nutella1 int;
   v_vecchio0 int;
   v_vecchio1 int;
+  v_delicata0 int;
+  v_delicata1 int;
+  v_altri0  int;
+  v_altri1  int;
   v_id      uuid;
   v_staff   uuid;
   v         json;
@@ -62,7 +66,29 @@ begin
    where giorno = v_oggi and evento = 'torta_consigliata';
   assert v_vecchio1 = v_vecchio0 + 1, '5: il vecchio torta_consigliata non conta più';
 
-  -- 6. La lettura della scheda, fatta come la fa il personale: le nove voci ci
+  -- 6. La porta del sito, registra_torta_consigliata: conta la voce della
+  --    torta come registra_evento, e non fa passare nient'altro (né le altre
+  --    voci, né il vecchio evento generico, né una torta inventata).
+  select coalesce(sum(conteggio), 0) into v_delicata0 from public.statistiche_sito
+   where giorno = v_oggi and evento = 'torta_consigliata_gelato_delicata';
+  perform public.registra_torta_consigliata('torta_consigliata_gelato_delicata', 'home', 'mobile', 'google');
+  select coalesce(sum(conteggio), 0) into v_delicata1 from public.statistiche_sito
+   where giorno = v_oggi and evento = 'torta_consigliata_gelato_delicata';
+  assert v_delicata1 = v_delicata0 + 1, '6: dalla porta La Delicata doveva salire di 1, è salita di ' || (v_delicata1 - v_delicata0);
+
+  select coalesce(sum(conteggio), 0) into v_altri0 from public.statistiche_sito
+   where giorno = v_oggi and evento in ('pagina_vista', 'torta_consigliata');
+  perform public.registra_torta_consigliata('pagina_vista', 'home', 'mobile', 'google');
+  perform public.registra_torta_consigliata('torta_consigliata', 'home', 'mobile', '');
+  perform public.registra_torta_consigliata('torta_consigliata_gelato_inventata', 'home', 'mobile', '');
+  select coalesce(sum(conteggio), 0) into v_altri1 from public.statistiche_sito
+   where giorno = v_oggi and evento in ('pagina_vista', 'torta_consigliata');
+  assert v_altri1 = v_altri0, '6: dalla porta delle torte è passato un evento che non è una torta';
+  assert not exists (select 1 from public.statistiche_sito
+                      where evento = 'torta_consigliata_gelato_inventata'),
+         '6: una torta inventata è entrata dalla porta';
+
+  -- 7. La lettura della scheda, fatta come la fa il personale: le nove voci ci
   --    sono, ognuna col numero che c'è in tabella. Serve un profilo del
   --    personale; se non se ne trova uno la prova lo dice e salta solo questo.
   for v_id in select id from public.profiles where role in ('owner', 'admin', 'staff') limit 20 loop
@@ -75,25 +101,28 @@ begin
   end loop;
 
   if v_staff is null then
-    v_nota := ' — senza la prova 6: nessun profilo del personale trovato';
+    v_nota := ' — senza la prova 7: nessun profilo del personale trovato';
   else
     v := public.statistiche_riepilogo(1);
-    assert v is not null, '6: il riepilogo non risponde al personale';
+    assert v is not null, '7: il riepilogo non risponde al personale';
     assert (select count(*) from json_array_elements(v -> 'eventi') e
              where e ->> 'chiave' like 'torta\_consigliata\_%') = 9,
-           '6: nel riepilogo non ci sono le nove torte';
+           '7: nel riepilogo non ci sono le nove torte';
     assert (select (e ->> 'conteggio')::int from json_array_elements(v -> 'eventi') e
              where e ->> 'chiave' = 'torta_consigliata_gelato_golosa') = v_golosa1,
-           '6: il riepilogo dà alla Golosa un numero diverso dalla tabella';
+           '7: il riepilogo dà alla Golosa un numero diverso dalla tabella';
     assert (select (e ->> 'conteggio')::int from json_array_elements(v -> 'eventi') e
              where e ->> 'chiave' = 'torta_consigliata_semifreddo_nutellona') = v_nutella1,
-           '6: il riepilogo dà alla Nutellona un numero diverso dalla tabella';
+           '7: il riepilogo dà alla Nutellona un numero diverso dalla tabella';
+    assert (select (e ->> 'conteggio')::int from json_array_elements(v -> 'eventi') e
+             where e ->> 'chiave' = 'torta_consigliata_gelato_delicata') = v_delicata1,
+           '7: il riepilogo dà alla Delicata un numero diverso dalla tabella';
     assert (select e ->> 'etichetta' from json_array_elements(v -> 'eventi') e
              where e ->> 'chiave' = 'torta_consigliata_semifreddo_rocher') = 'La Rocher',
-           '6: etichetta della Rocher sbagliata';
+           '7: etichetta della Rocher sbagliata';
     assert exists (select 1 from json_array_elements(v -> 'eventi') e
                     where e ->> 'chiave' = 'torta_consigliata'),
-           '6: il vecchio evento è sparito dal riepilogo (i numeri di prima non si vedrebbero)';
+           '7: il vecchio evento è sparito dal riepilogo (i numeri di prima non si vedrebbero)';
   end if;
 
   raise exception 'PROVE SUPERATE% (errore voluto: annulla tutto quello che la prova ha scritto)', v_nota;

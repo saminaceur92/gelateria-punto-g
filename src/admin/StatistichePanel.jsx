@@ -171,14 +171,15 @@ export function TorteConsigliate({ c }) {
       </header>
 
       {!c.aCatalogo ? (
-        // Sito già aggiornato, database no: il sito manda una voce per torta e
-        // il database, che non la conosce, la scarta in silenzio. Va detto
-        // forte, perché ogni giorno così è un giorno di scelte perse.
+        // Database non ancora aggiornato: il sito se ne accorge e conta le
+        // scelte col vecchio evento (vedi tracciaConsigliata in analytics.js),
+        // quindi non si perde niente, ma la divisione per torta non c'è
+        // finché la migrazione non è eseguita: per questo va detto forte.
         <div className="adm-error">
           ⚠️ Manca un passaggio su Supabase: esegui la migrazione{' '}
           <code>migrations/2026-10-09-statistiche-torte-consigliate.sql</code>. Finché non la
-          esegui, le torte già composte scelte dai clienti non vengono contate. Il numero qui
-          sopra è quello raccolto prima dell’aggiornamento, senza dire quali torte.
+          esegui, le torte già composte scelte dai clienti si contano solo nel numero qui
+          sopra, senza dire quali torte né se gelato o semifreddo.
         </div>
       ) : (
         <>
@@ -224,10 +225,10 @@ export function TorteConsigliate({ c }) {
           </p>
           {c.generico > 0 && (
             <p className="adm-muted stat-avviso">
-              {fmt(c.generico)} {c.generico === 1 ? 'scelta è' : 'scelte sono'} di prima
-              dell’aggiornamento, quando il sito contava solo «ha scelto una torta già composta»
-              senza dire quale: {c.generico === 1 ? 'è' : 'sono'} nel totale qui sopra, non nella
-              divisione né nella classifica.
+              {fmt(c.generico)} {c.generico === 1 ? 'scelta è stata contata' : 'scelte sono state contate'}{' '}
+              senza dire quale torta, come «ha scelto una torta già composta»: {c.generico === 1 ? 'è' : 'sono'}{' '}
+              di prima che sito e database fossero aggiornati tutti e due. Nel totale qui sopra
+              {c.generico === 1 ? ' c’è' : ' ci sono'}, nella divisione e nella classifica no.
             </p>
           )}
         </>
@@ -376,10 +377,11 @@ export default function StatistichePanel() {
         'torta_sconto_ko',
         'torta_chiusa',
       ]).map((r) => (r.chiave === GENERICO
-        // Dall'aggiornamento il vecchio evento porta solo i click di prima: la
-        // riga mostra il TOTALE (vecchio + torta per torta), così non dice mai
-        // un numero diverso dal riquadro "Torte già composte" e non crolla a
-        // zero il giorno del rilascio.
+        // Dall'aggiornamento il vecchio evento porta solo le scelte contate
+        // senza dire quale torta (quelle di prima, e quelle di ripiego finché
+        // il database non è aggiornato): la riga mostra il TOTALE (vecchio +
+        // torta per torta), così non dice mai un numero diverso dal riquadro
+        // "Torte già composte" e non crolla a zero il giorno del rilascio.
         ? { ...r, valore: consigliate.totale, extra: divisione(consigliate) }
         : r)),
       consigliate,
