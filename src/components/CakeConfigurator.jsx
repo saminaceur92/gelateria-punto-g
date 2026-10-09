@@ -1446,12 +1446,21 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
           </div>
           </StepsCtx.Provider>
 
-          {!sent && submitError && (
-            <div className="cfg-submit-error">⚠️ {submitError}</div>
-          )}
-
           {!sent && (
             <footer className="cfg-footer">
+              {/* L'errore d'invio galleggia sopra la barra: come riga a sé della
+                  griglia cambiava la ripartizione del pannello proprio quando
+                  compariva (vedi .cfg-footer .cfg-submit-error). Resta finché
+                  non si riprova, quindi si può chiudere: tornando indietro a
+                  controllare la taglia coprirebbe una parte delle scelte. */}
+              {submitError && (
+                <div className="cfg-submit-error" role="alert">
+                  <span>⚠️ {submitError}</span>
+                  <button type="button" className="cfg-submit-error-x" aria-label="Chiudi l'avviso" onClick={() => setSubmitError('')}>
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
               {/* Solo su telefono: barretta che apre il riepilogo (su schermi
                   grandi il riepilogo sta già nella colonna di sinistra). */}
               <RiepilogoBarra config={config} total={totaleFinale} staff={staff} steps={steps} step={step} />
@@ -1459,20 +1468,27 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                 <span>Prezzo totale</span>
                 <strong>€{totaleFinale.toFixed(2)}</strong>
               </div>
-              {/* su mobile, al posto del totale, c'è Sorprendimi (sbloccato dopo il n° persone) */}
-              <button
-                type="button"
-                className="cfg-btn cfg-btn-surprise"
-                data-ev="torta_sorprendimi"
-                onClick={surpriseMe}
-                disabled={!canSurprise}
-                title={canSurprise ? '' : 'Scegli prima il numero di persone'}
-              >
-                <Shuffle size={15} /> Sorprendimi!
-              </button>
+              {/* su mobile, al posto del totale, c'è Sorprendimi (sbloccato dopo il n° persone).
+                  Non al riepilogo: lì rimescolerebbe la torta appena confermata,
+                  e il posto serve a "Paga". */}
+              {steps[step] !== 'review' && (
+                <button
+                  type="button"
+                  className="cfg-btn cfg-btn-surprise"
+                  data-ev="torta_sorprendimi"
+                  onClick={surpriseMe}
+                  disabled={!canSurprise}
+                  title={canSurprise ? '' : 'Scegli prima il numero di persone'}
+                >
+                  <Shuffle size={15} /> Sorprendimi!
+                </button>
+              )}
               <div className="cfg-footer-actions">
-                <button className="cfg-btn cfg-btn-back" onClick={back} disabled={step === 0}>
-                  <ArrowLeft size={16} /> Indietro
+                {/* La scritta sta in uno span perché su telefono resti solo la
+                    freccia (.cfg-btn-back span): prima era testo libero e la
+                    regola non la trovava. */}
+                <button className="cfg-btn cfg-btn-back" onClick={back} disabled={step === 0} aria-label="Indietro">
+                  <ArrowLeft size={16} /> <span>Indietro</span>
                 </button>
                 {step < steps.length - 1 ? (
                   <button className="cfg-btn cfg-btn-next" onClick={next} disabled={!canNext}>
@@ -1484,7 +1500,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
                       ? (staff ? 'Invio…' : 'Attendi…')
                       : staff
                         ? (<><Check size={16} /> Crea ordine</>)
-                        : (<><CreditCard size={16} /> Ordina e paga €{totaleFinale.toFixed(2)}</>)}
+                        : (<><CreditCard size={16} /> <span className="cfg-lbl-lungo">Ordina e paga</span><span className="cfg-lbl-corto">Paga</span> €{totaleFinale.toFixed(2)}</>)}
                   </button>
                 )}
               </div>
@@ -1649,7 +1665,7 @@ function StepShape({ config, set, consigliata }) {
               style={blocked ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
             >
               <div className="opt-name">
-                <span style={{ fontSize: '1.3rem' }}>{sh.emoji}</span> {sh.name}
+                <span className="opt-emoji opt-emoji-forma">{sh.emoji}</span> {sh.name}
               </div>
               <div className="opt-desc">{blocked ? `Solo da ${RECT_MIN_PERSONE} persone in su` : sh.desc}</div>
               {/* Con la taglia già scelta, ogni forma dice quanto misura: è qui che
@@ -1733,7 +1749,8 @@ function StepSize({ config, set }) {
   return (
     <>
       <StepHeader stepKey="size" title="Per quante persone?" lead="Una stima abbondante: meglio un cucchiaio in più che in meno. Da qui in poi si sblocca «Sorprendimi»." />
-      <div className="opt-grid cols-3">
+      {/* cols-taglie: carte corte, su telefono ne stanno tre per riga. */}
+      <div className="opt-grid cols-3 cols-taglie">
         {taglie.map((s) => (
           <button
             key={s.id}
@@ -1998,7 +2015,11 @@ function StepCovering({ config, set }) {
                   in dashboard le hanno caricato la foto. */}
               {scelta && c.foto && (
                 <button type="button" className="opt-foto-link" onClick={() => setFotoAperta(c)}>
-                  📷 Clicca qui per vedere un&rsquo;immagine a scopo illustrativo della copertura
+                  {/* Su telefono la frase lunga occupava quattro righe in mezza
+                      colonna: lì resta "Immagine di esempio" (la foto si apre con
+                      la scritta "a scopo illustrativo"). */}
+                  📷 <span className="cfg-lbl-lungo">Clicca qui per vedere un&rsquo;immagine a scopo illustrativo della copertura</span>
+                  <span className="cfg-lbl-corto">Immagine di esempio</span>
                 </button>
               )}
             </div>
@@ -2165,7 +2186,7 @@ function StepDecoration({ config, set }) {
               style={blocked ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
             >
               <div className="opt-name">
-                <span style={{ fontSize: '1.2rem' }}>{d.emoji}</span> {d.name}
+                <span className="opt-emoji">{d.emoji}</span> {d.name}
               </div>
               <div className="opt-desc">
                 {maxed && !blocked

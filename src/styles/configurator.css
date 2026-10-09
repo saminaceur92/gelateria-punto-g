@@ -95,26 +95,36 @@
   position: relative;
 }
 
+/* Il pannello ha SEMPRE la stessa misura, la più grande, a ogni passo
+   (richiesta dei titolari). Prima l'altezza la decideva il contenuto: su uno
+   schermo grande il riquadro cresceva e si spostava da un passo all'altro.
+   `height: 100%` si calcola sull'overlay (fisso, con 2rem di margine): è lo
+   stesso tetto di prima, ma ora vale sempre, e non dipende da vh (su un iPad
+   in orizzontale 100vh supera la parte visibile). Le colonne scorrono dentro. */
 @media (min-width: 901px) {
   .cfg-overlay { padding: 2rem; align-items: center; }
   .cfg-modal {
     border-radius: var(--radius-lg);
+    height: 100%;
     max-height: calc(100vh - 4rem);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     box-shadow: var(--shadow-lg);
   }
 }
 
+/* Telefono: a tutto schermo. L'overlay qui non ha margini, quindi 100% è
+   l'altezza visibile (come 100dvh, ma vale anche dove dvh non c'è). */
 @media (max-width: 900px) {
   .cfg-modal {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     grid-template-areas:
       "header"
       "preview"
       "body"
       "footer";
-    height: 100dvh;
-    max-height: 100dvh;
+    height: 100%;
+    max-height: none;
   }
 }
 
@@ -650,7 +660,18 @@
   gap: 0.2rem;
 }
 
-.opt-card:hover { border-color: var(--violet); transform: translateY(-2px); }
+/* Solo dove c'è il mouse: su iPhone l'ultima carta toccata restava sollevata. */
+@media (hover: hover) {
+  .opt-card:hover { border-color: var(--violet); transform: translateY(-2px); }
+}
+
+/* Emoji di forme e decorazioni: misura da qui, non più nello stile inline,
+   così su telefono si possono rimpicciolire. Sul computer resta identica. */
+.opt-card .opt-emoji { font-size: 1.2rem; }
+.opt-card .opt-emoji-forma { font-size: 1.3rem; }
+
+/* Etichette lunghe e corte dello stesso pulsante: su telefono vince la corta. */
+.cfg-lbl-corto { display: none; }
 
 /* Cella "card + collegamento alla foto di esempio" (coperture): il div tiene
    il posto di una cella della griglia, la card si allunga a riempirlo. */
@@ -1022,7 +1043,9 @@
   justify-content: center;
 }
 
-.font-card:hover { border-color: var(--violet); transform: translateY(-2px); }
+@media (hover: hover) {
+  .font-card:hover { border-color: var(--violet); transform: translateY(-2px); }
+}
 
 .font-card.selected {
   border-color: var(--violet-deep);
@@ -1101,7 +1124,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
+  /* Il pannello ora ha sempre la misura più grande: la conferma sta al centro. */
+  min-height: 100%;
 }
 
 .cfg-success .check {
@@ -1288,7 +1314,9 @@
    Il conteggio combinazioni resta, i prezzi spariscono. */
 .cfg-staff .combo-counter { display: none; }
 
-/* Messaggio di errore in fase di conferma ordine */
+/* Messaggio di errore in fase di conferma ordine. Sta DENTRO la barra, ma
+   galleggia sopra di lei: prima era una riga in più della griglia, e proprio
+   quando compariva l'errore cambiava la ripartizione del pannello. */
 .cfg-submit-error {
   background: #fdecec;
   color: #b03a3a;
@@ -1297,6 +1325,40 @@
   font-size: 0.9rem;
   border-top: 1px solid #f3c9c9;
 }
+.cfg-footer { position: relative; }
+.cfg-footer .cfg-submit-error {
+  position: absolute;
+  left: 0.8rem;
+  right: 0.8rem;
+  bottom: calc(100% + 0.4rem);
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-right: 0.45rem;
+  text-align: left;
+  border: 1px solid #f3c9c9;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.3);
+}
+.cfg-submit-error > span { flex: 1; align-self: center; }
+.cfg-submit-error-x {
+  flex: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: -0.25rem 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.cfg-submit-error-x:hover { background: rgba(176, 58, 58, 0.1); }
+/* 44px da toccare, senza allargare il riquadro. */
+.cfg-submit-error-x::after { content: ''; position: absolute; inset: -7px; }
 
 /* ===========================================================
    Alternative dietetiche cliccabili (CTA "Crea la tua torta")
