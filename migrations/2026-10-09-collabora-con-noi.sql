@@ -434,6 +434,9 @@ end $$;
 -- ── 6. Pulizia automatica: 24 mesi, lo spam 30 giorni ───────
 -- Ogni notte alle 03:20 UTC. I dati personali non si tengono per sempre: è
 -- la regola della conservazione minima, ed è scritta anche nel modulo.
+-- Lo spam si conta dal giorno in cui è stato SEGNATO (aggiornata_il, la
+-- scrive il trigger qui sopra), come dice la dashboard: contando dall'arrivo,
+-- una proposta vecchia segnata spam per sbaglio spariva la notte stessa.
 do $$
 begin
   perform cron.unschedule('pulizia-collaborazioni');
@@ -443,7 +446,7 @@ end $$;
 select cron.schedule('pulizia-collaborazioni', '20 3 * * *', $$
   delete from public.collaborazioni
    where created_at < now() - interval '24 months'
-      or (stato = 'spam' and created_at < now() - interval '30 days');
+      or (stato = 'spam' and coalesce(aggiornata_il, created_at) < now() - interval '30 days');
 $$);
 
 
