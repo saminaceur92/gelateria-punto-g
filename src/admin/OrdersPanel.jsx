@@ -433,6 +433,7 @@ export default function OrdersPanel() {
                     />
                     {avvisoSuperata(o, 'note_lab')}
                     <button
+                      type="button"
                       className="adm-btn adm-btn-save"
                       onClick={() => salvaNota(o.id, 'note_lab')}
                       disabled={!notaCambiata(o, 'note_lab')}
