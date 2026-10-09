@@ -132,18 +132,38 @@ const INVISIBILI = new RegExp(
   'g',
 );
 
+/**
+ * I primi `max` caratteri (unità UTF-16, come il maxLength del browser) SENZA
+ * spezzare un'emoji: mezza coppia surrogata da sola non è un carattere, e il
+ * database rifiuta il testo intero. Con il taglio a metà di un'emoji l'ordine
+ * pagato non si salvava, né intero né nella forma ridotta.
+ */
+export function tagliaTesto(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const t = s.slice(0, Math.max(0, max));
+  return /[\uD800-\uDBFF]$/.test(t) ? t.slice(0, -1) : t;
+}
+
 /** Testo su UNA riga: a capo e tabulazioni diventano spazi. Taglio con "…". */
 export function rigaSingola(v: unknown, max: number): string {
   const s = str(v).normalize('NFC').replace(/[\r\n\t]+/g, ' ').replace(INVISIBILI, '').replace(/\s+/g, ' ').trim();
-  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
+  return s.length > max ? tagliaTesto(s, max - 1).trimEnd() + '…' : s;
 }
+
+/**
+ * Chiave per confrontare un nome del listino con quello che manda il sito:
+ * tutti e due puliti allo stesso modo (accenti composti, spazi, maiuscole).
+ * Prima si puliva solo quello del cliente: un gusto scritto in dashboard con
+ * un doppio spazio o uno spazio speciale veniva rifiutato a ogni pagamento.
+ */
+export const chiaveNome = (v: unknown): string => rigaSingola(v, 200).toLowerCase();
 
 /** Testo su più righe (le note): gli a capo restano, al massimo una riga vuota di fila. */
 export function testoMultiriga(v: unknown, max: number): string {
   const s = str(v).normalize('NFC').replace(/\r\n?/g, '\n').replace(INVISIBILI, '')
     .split('\n').map((r) => r.replace(/[\t ]+/g, ' ').trim()).join('\n')
     .replace(/\n{3,}/g, '\n\n').trim();
-  return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;
+  return s.length > max ? tagliaTesto(s, max - 1).trimEnd() + '…' : s;
 }
 
 // Lunghezza come la conta il `maxLength` del browser: in unità UTF-16 (JS
@@ -309,7 +329,7 @@ export function validaOrdine(config: unknown, L: Listino, oggi: string): OrdineV
   }
   const gusti = flavors.map((f) => {
     const nome = rigaSingola(typeof f === 'string' ? f : (f as Riga)?.name, 80);
-    const g = elencoGusti.find((x) => x.nome.trim().toLowerCase() === nome.toLowerCase());
+    const g = elencoGusti.find((x) => chiaveNome(x.nome) === chiaveNome(nome));
     if (!g) nonDisponibile('flavors', nome ? `Il gusto «${nome}»` : 'Uno dei gusti scelti', nome);
     return g as { nome: string; colore: string };
   });
@@ -343,7 +363,7 @@ export function validaOrdine(config: unknown, L: Listino, oggi: string): OrdineV
     const voluto = rigaSingola(coloriIn[id], 30);
     let colore = '';
     if (riga.scelta_colore === true && lista && lista.length) {
-      colore = lista.find((x) => x.toLowerCase() === voluto.toLowerCase()) || '';
+      colore = lista.find((x) => chiaveNome(x) === chiaveNome(voluto)) || '';
       if (!colore && !voluto) nonValida('decoration', `Scegli il colore di «${nomeDi(riga, id)}».`, id);
       if (!colore) nonDisponibile('decoration', `Il colore «${voluto}» di «${nomeDi(riga, id)}»`, id);
     } else if (riga.scelta_colore === true && lista === null) {
@@ -370,7 +390,7 @@ export function validaOrdine(config: unknown, L: Listino, oggi: string): OrdineV
     messageFont = font;
   }
   const occasioneIn = rigaSingola(c.occasion, 80);
-  const occasione = occasioneIn ? L.occasioni.find((o) => acceso(o) && String(o.nome ?? '').trim() === occasioneIn) : null;
+  const occasione = occasioneIn ? L.occasioni.find((o) => acceso(o) && chiaveNome(o.nome) === chiaveNome(occasioneIn)) : null;
   if (occasioneIn && !occasione) nonDisponibile('message', `L'occasione «${occasioneIn}»`, occasioneIn);
 
   // ── Allergie (mai scartate: sono sicurezza) e preferenze ──

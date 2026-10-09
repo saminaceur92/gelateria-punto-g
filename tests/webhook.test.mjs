@@ -129,6 +129,22 @@ test('riga ridotta dopo un insert fallito: contatti, importo e il riepilogo che 
   assert.equal(r.totale, 117.5);
 });
 
+test('riga ridotta: i tagli non lasciano mezza emoji (il database la rifiuterebbe)', () => {
+  const { sessione } = sessioneV2();
+  const torta = String.fromCodePoint(0x1f382);
+  const mezza = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+  // emoji proprio a cavallo dei tagli: 6000 per il riepilogo, 200 per il nome
+  const r = rigaRidotta(sessione, {
+    riepilogo: `${'x'.repeat(5999)}${torta}fine`,
+    cliente_nome: `${'y'.repeat(199)}${torta}`,
+    cliente_telefono: `${'1'.repeat(59)}${torta}`,
+  }, ADESSO);
+  for (const campo of ['riepilogo', 'cliente_nome', 'cliente_telefono']) {
+    assert.ok(!mezza.test(r[campo]), `${campo} con mezza emoji`);
+  }
+  assert.equal(r.cliente_nome, 'y'.repeat(199));
+});
+
 test('pagamento incassato: solo "paid" o "no_payment_required"', () => {
   assert.equal(pagamentoIncassato({ id: 'x', payment_status: 'paid' }), true);
   assert.equal(pagamentoIncassato({ id: 'x', payment_status: 'no_payment_required' }), true);

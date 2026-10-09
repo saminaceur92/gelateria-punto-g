@@ -148,7 +148,13 @@ export function rigaDaSessione(s: Sessione, adesso: Date) {
  * c'è, preceduto da un avviso che dice di controllare il pagamento su Stripe.
  */
 export function rigaRidotta(s: Sessione, riga: Record<string, unknown>, adesso: Date) {
-  const testo = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
+  // Taglio che non spezza un'emoji: mezza coppia surrogata fa rifiutare al
+  // database tutta la riga, e questa è proprio quella che deve salvarsi.
+  const testo = (v: unknown, max: number) => {
+    if (typeof v !== 'string') return '';
+    const t = v.slice(0, max);
+    return t.length === max && /[\uD800-\uDBFF]$/.test(t) ? t.slice(0, -1) : t;
+  };
   const riepilogo = testo(riga.riepilogo, 6000);
   return {
     cliente_nome: testo(riga.cliente_nome, 200) || 'Cliente',

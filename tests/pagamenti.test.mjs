@@ -177,6 +177,41 @@ test('testi liberi: invisibili tolti, tagli con …', () => {
   assert.equal(testoMultiriga(` a \n\n\n\n b ${String.fromCharCode(0x2028)}`, 50), 'a\n\nb');
 });
 
+// Un carattere fuori dal piano base (emoji) sono DUE unità UTF-16: un taglio
+// fra le due lascia mezzo carattere, che il database rifiuta.
+const mezzaEmoji = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
+test('i tagli non spezzano le emoji', () => {
+  const torta = String.fromCodePoint(0x1f370);
+  // 9 lettere + emoji: col taglio a 10 unità l'emoji resterebbe a metà
+  const s = `${'a'.repeat(9)}${torta}b`;
+  assert.equal(rigaSingola(s, 11), `${'a'.repeat(9)}…`);
+  assert.equal(testoMultiriga(s, 11), `${'a'.repeat(9)}…`);
+  for (let max = 2; max <= 14; max += 1) {
+    assert.ok(!mezzaEmoji.test(rigaSingola(`${torta.repeat(6)}x`, max)), `max ${max}`);
+  }
+  // l'emoji intera, quando ci sta, resta
+  assert.equal(rigaSingola(`ab${torta}cd`, 5), `ab${torta}…`);
+});
+
+test('nomi del listino scritti male in dashboard: il gusto passa lo stesso', () => {
+  const L = listino();
+  const torta = tortaBase();
+  const primo = torta.flavors[0];
+  const nome = typeof primo === 'string' ? primo : primo.name;
+  const riga = L.allergeni_prodotti.find((r) => r.gusto === nome && r.per_torte === true);
+  assert.ok(riga, `il gusto «${nome}» della torta di prova è nel listino`);
+  // spazio speciale davanti, doppio spazio in fondo, come capita copiando da un documento
+  riga.gusto = `${String.fromCharCode(0xa0)}${nome}  `;
+  assert.doesNotThrow(() => validaOrdine(torta, L, OGGI));
+  // e un nome con l'accento scritto in due pezzi (e + accento) vale come quello normale
+  const L2 = listino();
+  const r2 = L2.allergeni_prodotti.find((r) => r.gusto === nome && r.per_torte === true);
+  r2.gusto = `${nome} caffè`.normalize('NFD');
+  const conAccento = { ...torta, flavors: [{ ...(typeof primo === 'string' ? { name: primo } : primo), name: `${nome} caffè` }] };
+  assert.doesNotThrow(() => validaOrdine(conAccento, L2, OGGI));
+});
+
 test('campi in più: solo quelli previsti, con la forma prevista', () => {
   const v = valida({
     promemoria: false, consigliata: 'golosa', scrittaSuFoto: { colore: 'bianco', posizione: 'basso', x: { y: 1 } },

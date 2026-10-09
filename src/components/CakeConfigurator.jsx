@@ -75,16 +75,13 @@ const NO_DECO = 'nessuna';
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
 // Note e indirizzo: tetti uguali a quelli del server (MAX_NOTE e
 // MAX_INDIRIZZO in supabase/functions/_shared/valida.ts). Il testo viaggia
-// nei metadata di Stripe, che hanno un limite: un tetto che il sito non fa
-// superare è meglio di un pagamento rifiutato.
+// nei metadata di Stripe, che hanno un limite (al massimo 50 pezzi da 500
+// caratteri): mille caratteri di note bastano e avanzano, e un tetto che il
+// sito non fa superare è meglio di un pagamento rifiutato.
 const MAX_NOTE = 1000;
 const MAX_INDIRIZZO = 300;
 // Tetto di sicurezza per gli extra: nessuno ordina 50 kg di salame dal sito.
 const MAX_EXTRA_QTY = 20;
-// Note aggiuntive: mille caratteri bastano e avanzano. Senza tetto una nota
-// lunghissima poteva far fallire il pagamento: viaggia quattro volte nei dati
-// che il sito passa a Stripe (metadata, al massimo 50 pezzi da 500 caratteri).
-const MAX_NOTE = 1000;
 
 // Stili della scritta: arrivano dalla tabella `scritte` (opzionale). Se manca —
 // o è vuota — si usa questa copia di sicurezza, così il passo funziona sempre.
@@ -2864,7 +2861,6 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
           value={config.notes}
           maxLength={MAX_NOTE}
           onChange={(e) => set({ notes: e.target.value })}
-          maxLength={MAX_NOTE}
         />
         {/* Il contatore compare solo vicino al limite: per due righe di note
             sarebbe solo rumore. */}
