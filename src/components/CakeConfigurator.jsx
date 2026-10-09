@@ -51,6 +51,12 @@ const StepsCtx = createContext(STEPS);
  * una torta che si contraddice nel nome.
  */
 const BASE_OBBLIGATA = { crock: 'glutenfree' };
+// La base di partenza: "Senza base", se c'è. Non "la prima della lista":
+// l'ordine delle basi lo decidono i titolari con le frecce della dashboard,
+// e spostarne una in cima non deve cambiare la base pre-scelta né il prezzo
+// mostrato fin dal primo passo (la Classica costa 1 € in più).
+const BASE_PREDEFINITA = 'cacao';
+const basePredefinita = (basi) => (basi || []).find((b) => b.id === BASE_PREDEFINITA) || (basi || [])[0];
 // Le torte "Alte" (semifreddo e gelato) consentono 4 gusti; le altre (basse) 2.
 // Non e' un obbligo: si puo' fare una torta a un gusto solo. Il numero
 // consigliato (GUSTI_CONSIGLIATI) e' quello che rende meglio in vetrina.
@@ -355,7 +361,7 @@ function makeInitialConfig(cake, initial = {}) {
     noAllergies: false,
     diets: [],           // preferenze alimentari: vegan, senza zuccheri aggiunti
     flavors: [], // [{name,color}]
-    baseId: cake.cakeBases[0]?.id || '',
+    baseId: basePredefinita(cake.cakeBases)?.id || '',
     crumbleId: '', // tipo di crumble: usato solo con la base crumble croccante
     fillingId: 'nessuna',
     coveringId: '',
@@ -580,7 +586,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       const patch = {};
       const base = cakeBases.find((b) => b.id === c.baseId);
       if (conflictsAllergies(base, c.allergies, c.diets)) {
-        patch.baseId = cakeBases.find((b) => !conflictsAllergies(b, c.allergies, c.diets))?.id || '';
+        // La base di partenza se va bene, altrimenti la prima compatibile.
+        patch.baseId = basePredefinita(cakeBases.filter((b) => !conflictsAllergies(b, c.allergies, c.diets)))?.id || '';
         patch.crumbleId = '';
       }
       const crumble = cakeCrumbles.find((x) => x.id === c.crumbleId);

@@ -17,6 +17,7 @@ import { dirname, resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import * as fbCake from '../src/data/fallback/cakeOptions.js';
 import { gruppiForma } from '../src/lib/misureTorta.js';
+import { ordinaGustiTorte } from '../src/lib/riordina.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const genDir = resolve(__dirname, '..', 'src/data/generated');
@@ -180,7 +181,9 @@ try {
   // ── TORTE ──
   // Gusti selezionabili per le torte: quelli spuntati "per torte" nella lista unica.
   // Finché nessuno è spuntato si ripiega sulla vecchia tabella `gusti_torte`.
-  const perTorte = prodotti.filter((r) => r.per_torte);
+  // Come live.js: nell'ordine scelto per le torte (ordine_torte), separato da
+  // quello della carta; prima della migrazione vale quello della carta.
+  const perTorte = ordinaGustiTorte(prodotti.filter((r) => r.per_torte));
   const cakeFlavors = perTorte.length
     ? perTorte.map((r) => ({
       name: r.gusto,

@@ -14,6 +14,9 @@ declare
   v_testo  text;
   v_forma  text;
   v_alte   boolean;
+  v_gusto  text;
+  v_prima  text;
+  v_dopo   text;
   n        int;
 begin
   select id into v_owner from public.profiles where role = 'owner' limit 1;
@@ -69,6 +72,43 @@ begin
   end;
   reset role;
   assert n = 0, '17: il sito pubblico (anon) riesce a spegnere una forma!';
+
+  -- ── 18. Ordine delle liste ──
+  -- I numeri nuovi danno lo stesso ordine di prima: l'ordine dei gusti per
+  -- torte (ordine_torte) è quello della carta, finché nessuno lo cambia.
+  select string_agg(id::text, ',' order by ordine nulls last, id) into v_prima
+    from public.allergeni_prodotti where per_torte;
+  select string_agg(id::text, ',' order by ordine_torte nulls last, ordine nulls last, id) into v_dopo
+    from public.allergeni_prodotti where per_torte;
+  if v_prima is distinct from v_dopo then
+    raise notice '18: l''ordine dei gusti nelle torte è già diverso da quello della carta (normale se i titolari l''hanno cambiato)';
+  end if;
+
+  -- Lo staff sposta un gusto (come fanno le frecce: update di una riga
+  -- alla volta, che deve toccare UNA riga); il sito pubblico no.
+  select id::text into v_gusto from public.allergeni_prodotti where per_torte order by ordine_torte nulls last, id limit 1;
+  if v_gusto is null then
+    raise notice '18: nessun gusto «Per torte», prova dello spostamento saltata';
+  else
+    perform set_config('request.jwt.claims',
+      json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+    set local role authenticated;
+    update public.allergeni_prodotti set ordine_torte = 5 where id::text = v_gusto;
+    get diagnostics n = row_count;
+    reset role;
+    assert n = 1, '18: lo staff non riesce a cambiare l''ordine dei gusti nelle torte (righe toccate: ' || n || ')';
+
+    perform set_config('request.jwt.claims', '', true);
+    set local role anon;
+    begin
+      update public.allergeni_prodotti set ordine_torte = 1 where id::text = v_gusto;
+      get diagnostics n = row_count;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
+    reset role;
+    assert n = 0, '18: il sito pubblico (anon) riesce a cambiare l''ordine dei gusti!';
+  end if;
 
   raise exception 'PROVE SUPERATE (errore voluto: annulla tutto quello che la prova ha scritto)';
 end $$;
