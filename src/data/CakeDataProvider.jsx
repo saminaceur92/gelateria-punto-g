@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import * as fb from './cakeOptions';
 import { fetchCakeOptions } from './live';
 
@@ -25,19 +25,30 @@ const CakeDataCtx = createContext({ ...fallback, cakeRecipes: fb.cakeRecipes, to
 
 export function CakeDataProvider({ children }) {
   const [data, setData] = useState(fallback);
+  const vivo = useRef(true);
 
-  useEffect(() => {
-    let alive = true;
-    fetchCakeOptions().then((d) => {
-      if (alive && d) setData(d);
-    });
-    return () => {
-      alive = false;
-    };
+  // Rilegge il listino da Supabase. Gira all'avvio e a ogni apertura del
+  // configuratore (vedi CakeConfigurator): la dashboard al banco resta aperta
+  // tutto il giorno, e un listino letto una volta sola continuerebbe a vendere
+  // ai prezzi del mattino, per esempio le torte alte con le taglie normali
+  // dopo che i titolari hanno acceso le loro. Se la lettura fallisce restano i
+  // dati di prima. Restituisce i dati nuovi, oppure null.
+  const ricarica = useCallback(async () => {
+    const d = await fetchCakeOptions();
+    if (vivo.current && d) setData(d);
+    return d || null;
   }, []);
 
+  useEffect(() => {
+    vivo.current = true;
+    ricarica();
+    return () => {
+      vivo.current = false;
+    };
+  }, [ricarica]);
+
   // cakeRecipes e torteConsigliate restano sempre dai dati statici
-  const value = { ...data, cakeRecipes: fb.cakeRecipes, torteConsigliate: fb.torteConsigliate };
+  const value = { ...data, ricarica, cakeRecipes: fb.cakeRecipes, torteConsigliate: fb.torteConsigliate };
   return <CakeDataCtx.Provider value={value}>{children}</CakeDataCtx.Provider>;
 }
 

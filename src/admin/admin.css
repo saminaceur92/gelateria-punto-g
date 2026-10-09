@@ -706,3 +706,8 @@
 .dim-gruppo + .dim-gruppo { margin-top: 1.2rem; padding-top: 1.6rem; border-top: 2px solid var(--line); }
 .dim-gruppo-head h2 { margin: 0; font-size: 1.3rem; color: var(--v-deep); }
 .dim-gruppo-head p { margin: .3rem 0 0; max-width: 70ch; font-size: .9rem; color: #7a7166; }
+/* Stato reale delle torte alte sul sito (StatoTaglieAlte): un fatto, non un
+   consiglio, quindi testo pieno e riquadro, azzurro quando le alte sono accese. */
+.dim-stato { margin: .6rem 0 0; max-width: 70ch; font-size: .88rem; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: .55rem .8rem; }
+.dim-stato.accese { border-color: var(--v-deep); background: rgba(44,118,153,.06); }
+.dim-stato strong { color: var(--v-deep); }

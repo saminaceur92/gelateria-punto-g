@@ -526,6 +526,10 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // reset del wizard all'apertura
     setStep(0);
     setConfig(makeInitialConfig(cake, initial));
+    // Listino fresco a ogni apertura (vedi `ricarica` in CakeDataProvider).
+    // Quando arriva, taglia e totale si riallineano da soli: l'effetto su
+    // tagliaEquivalente e il calcolo del totale dipendono dai listini.
+    cake.ricarica?.();
     setSent(false);
     setSubmitting(false);
     setSubmitError('');
@@ -1258,7 +1262,21 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       throw new Error(data?.error || 'Risposta non valida dal server');
     } catch (e) {
       traccia(EV.TORTA_CHECKOUT_ERRORE);
-      setSubmitError(e?.message || 'Errore durante il pagamento. Riprova.');
+      // Il server rifiuta la taglia se il listino è cambiato mentre il cliente
+      // sceglieva, per esempio perché sono appena state accese le taglie delle
+      // torte alte. La risposta (409, codice 'taglia_non_valida') la manda
+      // create-checkout. Si rilegge il listino: l'effetto su tagliaEquivalente
+      // aggiorna la taglia, o riporta al passo persone se non ce n'è una
+      // uguale, e il totale si ricalcola. Senza questo il cliente leggeva
+      // "Edge Function returned a non-2xx status code" e restava bloccato.
+      let risposta = null;
+      try { risposta = await e?.context?.json?.(); } catch { /* corpo non leggibile */ }
+      if (risposta?.codice === 'taglia_non_valida') {
+        await cake.ricarica?.();
+        setSubmitError('Il listino delle taglie è appena cambiato e abbiamo aggiornato la tua torta: controlla taglia e prezzo, poi conferma di nuovo.');
+      } else {
+        setSubmitError(e?.message || 'Errore durante il pagamento. Riprova.');
+      }
       setSubmitting(false);
       invioInCorso.current = false;
     }
@@ -1540,25 +1558,32 @@ function StepHeader({ stepKey, num, title, lead }) {
 }
 
 function StepType({ config, set }) {
-  const { cakeTypes } = useCakeData();
+  const { cakeTypes, cakeSizes } = useCakeData();
   return (
     <>
       <StepHeader stepKey="type" title="Che torta vuoi creare?" lead="Scegli la base, poi la rendiamo unica insieme." />
       <div className="opt-grid cols-2">
-        {cakeTypes.map((t) => (
-          <button
-            key={t.id}
-            className={`opt-card ${config.type === t.id ? 'selected' : ''}`}
-            onClick={() => set({ type: t.id })}
-          >
-            <div className="opt-name">
-              <span className="opt-dot" style={{ '--dot-size': '14px', background: t.color }} />
-              {t.name}
-            </div>
-            <div className="opt-desc">{t.desc}</div>
-            <div className="opt-meta">da €{t.basePrice}</div>
-          </button>
-        ))}
+        {cakeTypes.map((t) => {
+          // "Da" = prezzo base + la taglia più economica fra quelle che il
+          // cliente vedrà al passo persone. Con le taglie delle alte accese, per
+          // le alte si parte dalla taglia alta più economica.
+          const supplementi = taglieDelTipo(cakeSizes, isTallType(t.id)).map((s) => s.priceDelta ?? 0);
+          const da = t.basePrice + (supplementi.length ? Math.min(...supplementi) : 0);
+          return (
+            <button
+              key={t.id}
+              className={`opt-card ${config.type === t.id ? 'selected' : ''}`}
+              onClick={() => set({ type: t.id })}
+            >
+              <div className="opt-name">
+                <span className="opt-dot" style={{ '--dot-size': '14px', background: t.color }} />
+                {t.name}
+              </div>
+              <div className="opt-desc">{t.desc}</div>
+              <div className="opt-meta">da €{da}</div>
+            </button>
+          );
+        })}
       </div>
     </>
   );

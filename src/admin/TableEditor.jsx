@@ -246,7 +246,9 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
     const maxOrd = rows.reduce((m, r) => Math.max(m, Number(r.ordine) || 0), 0);
     const { data, error } = await supabase
       .from(table)
-      .insert({ ...newRow(), ordine: maxOrd + 10, attivo: true })
+      // Accesa, salvo che newRow dica altrimenti: le taglie delle torte alte
+      // nascono spente, perché accenderne una cambia le taglie di tutte le alte.
+      .insert({ attivo: true, ...newRow(), ordine: maxOrd + 10 })
       .select()
       .single();
     if (error) setError(messaggioErrore(error.message));

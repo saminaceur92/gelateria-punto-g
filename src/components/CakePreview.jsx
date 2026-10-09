@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useCakeData } from '../data/CakeDataProvider';
 import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
-import { misuraTesto } from '../lib/misureTorta';
+import { misuraTesto, personeOf } from '../lib/misureTorta';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
@@ -195,7 +195,9 @@ export default function CakePreview({ config }) {
 
   // Forma del piatto: rettangolare per la rettangolare (e per 20+ persone),
   // quadrato per la quadrata, rotondo per tonda e cuore.
-  const persone = s ? (parseInt(s.id, 10) || parseInt(String(s.label), 10) || 0) : 0;
+  // personeOf legge l'etichetta: le taglie aggiunte dalla dashboard hanno id
+  // casuali, e "9f4550b9-…" letto come numero faceva della 35 persone una 9.
+  const persone = personeOf(s);
   const plateShape =
     persone >= 20 ? 'rettangolare'
     : shape === 'quadrata' ? 'quadrata'

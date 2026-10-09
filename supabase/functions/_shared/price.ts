@@ -224,11 +224,19 @@ async function tagliaCoerente(supabase: SupabaseClient, config: CakeConfig): Pro
   return tagliaAmmessa({ tortaAlta, tagliaAlta, alteAttive });
 }
 
+// Rifiuto della taglia, riconoscibile: create-checkout lo trasforma in una
+// risposta 409 con `codice`, e il sito rilegge il listino invece di mostrare
+// un errore tecnico. Succede a chi ha la pagina aperta da prima che i titolari
+// cambiassero le taglie (per esempio accendendo quelle delle torte alte).
+export class TagliaNonValida extends Error {
+  codice = 'taglia_non_valida';
+}
+
 export async function computeOrder(supabase: SupabaseClient, config: CakeConfig) {
   // Una taglia normale su una torta alta farebbe pagare circa metà: si rifiuta
   // prima di calcolare qualsiasi importo.
   if (!(await tagliaCoerente(supabase, config))) {
-    throw new Error('La taglia scelta non vale per questo tipo di torta: torna al passo "Per quante persone?" e sceglila di nuovo.');
+    throw new TagliaNonValida('La taglia scelta non vale per questo tipo di torta: torna al passo "Per quante persone?" e sceglila di nuovo.');
   }
   // Il crumble si conteggia solo con la base croccante, esattamente come nel frontend.
   const crumbleId = config.baseId === CRUMBLE_BASE_ID ? config.crumbleId : undefined;
