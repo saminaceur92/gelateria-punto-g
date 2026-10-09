@@ -11,6 +11,7 @@ import PromemoriaPanel from './PromemoriaPanel';
 import StatistichePanel from './StatistichePanel';
 import MisurePanel from './MisurePanel';
 import StatoTaglieAlte from './StatoTaglieAlte';
+import CambiaMioCodice from './CambiaMioCodice';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 import { playPing } from '../lib/ping';
@@ -56,6 +57,8 @@ export default function Dashboard() {
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
   const [cfgOpen, setCfgOpen] = useState(false);
+  // "Il mio codice": ognuno cambia il proprio, senza passare dal SQL Editor.
+  const [mioCodice, setMioCodice] = useState(false);
   // Sale a ogni modifica delle taglie: la griglia delle misure si ricarica.
   const [versioneTaglie, setVersioneTaglie] = useState(0);
   // Chi sta prendendo l'ordine al banco (nome, dal codice personale).
@@ -478,9 +481,11 @@ export default function Dashboard() {
         </div>
         <div className="adm-user">
           <span>{user?.email}</span>
+          <button className="adm-btn" onClick={() => setMioCodice(true)}>Il mio codice</button>
           <button className="adm-btn" onClick={signOut}>Esci</button>
         </div>
       </header>
+      {mioCodice && <CambiaMioCodice onChiudi={() => setMioCodice(false)} />}
 
       <nav className="adm-nav">
         <button className="adm-tab adm-new-cake" onClick={() => setChiediCodice(true)}>

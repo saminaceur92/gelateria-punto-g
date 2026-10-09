@@ -640,6 +640,55 @@
 .codici-nuovo-riga { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
 .codici-nuovo-riga .adm-field { flex: 1 1 150px; }
 
+/* ── Codici visibili agli amministratori ───────────────────────────── */
+.codici-testata { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.codici-testata .adm-btn { display: inline-flex; align-items: center; gap: 0.35rem; }
+.codici-badge-tu { background: transparent; border: 1px solid #2c7699; }
+.codici-codice-blocco { display: inline-flex; align-items: center; gap: 0.35rem; }
+/* Cifre a larghezza fissa: maschera e codice occupano lo stesso posto, la
+   riga non salta quando il codice compare. */
+.codici-codice {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.15em;
+  min-width: 7ch;
+  text-align: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  color: #7a7166;
+  font-size: 0.95rem;
+}
+.codici-codice.aperto { color: var(--ink); background: #fff; border-color: var(--v-deep); font-weight: 700; }
+.codici-occhio { display: inline-flex; align-items: center; justify-content: center; padding: 0.4rem 0.55rem; }
+.codici-badge-attesa {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(192, 137, 76, 0.12);
+  color: #8a5a22;
+}
+.codici-azioni { display: inline-flex; gap: 0.4rem; }
+.codici-nota { margin: 0.7rem 0 0; max-width: 64ch; font-size: 0.82rem; line-height: 1.5; color: #6b5d4f; }
+
+/* Finestrella "Il mio codice": tre campi con la loro etichetta. */
+.codice-campo { display: block; text-align: left; margin-top: 0.7rem; }
+.codice-campo span { display: block; font-size: 0.78rem; font-weight: 600; color: #6b5d4f; margin-bottom: 0.25rem; }
+.codice-nota { margin: 0.9rem 0 0; font-size: 0.78rem; color: #7a7166; }
+
+@media (max-width: 640px) {
+  /* Nome sopra, codice e pulsanti sotto; pulsanti comodi da toccare. */
+  .codici-nome { flex-basis: 100%; }
+  .codici-lista li .adm-muted { margin-left: 0; flex-basis: 100%; order: 3; }
+  .codici-azioni { margin-left: auto; }
+  .codici-azioni .adm-btn,
+  .codici-occhio,
+  .codici-testata .adm-btn { min-height: 44px; }
+  .codici-testata { justify-content: flex-start; }
+}
+
 .attivita-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
 .attivita-lista li {
   display: flex;
