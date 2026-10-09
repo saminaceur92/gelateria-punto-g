@@ -5,7 +5,7 @@ import { useCakeData } from '../data/CakeDataProvider';
 import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
-import { traccia, tracciaUnaVolta, EV, EV_PASSO } from '../lib/analytics';
+import { traccia, tracciaUnaVolta, tracciaConsigliata, EV, EV_PASSO } from '../lib/analytics';
 import { uploadCakePhotos } from '../lib/cakePhoto';
 import { catturaTorta3D, ridimensiona, SFONDO_FOTO } from '../lib/cakeSnapshot';
 import { dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE, taglieDelTipo, tagliaEquivalente } from '../lib/misureTorta';
@@ -1713,20 +1713,30 @@ function StepShape({ config, set, consigliata }) {
                   {lista.map((t) => (
                     <button
                       key={t.id}
+                      type="button"
                       className="opt-card consigliata-card"
-                      data-ev="torta_consigliata"
                       disabled={t.bloccata}
                       style={t.bloccata ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                      onClick={() => !t.bloccata && consigliata({
-                        type: t.type,
-                        baseId: t.baseId,
-                        crumbleId: t.crumbleId || '',
-                        flavors: t._flavors,
-                        fillingId: t.fillingId,
-                        coveringId: t.coveringId,
-                        decorations: [...(t.decorations || [])],
-                        decorationColors: {},
-                      })}
+                      onClick={() => {
+                        if (t.bloccata) return;
+                        // Statistiche: QUALE torta, una volta per visita: chi la
+                        // sceglie, torna indietro e la riprende conta una volta
+                        // sola. tracciaConsigliata (analytics.js) sa anche cosa
+                        // fare se il database non è ancora aggiornato.
+                        // Questa carta NON ha data-ev, di proposito: o data-ev o
+                        // traccia, mai tutti e due, se no un tocco conta doppio.
+                        tracciaConsigliata(t.id);
+                        consigliata({
+                          type: t.type,
+                          baseId: t.baseId,
+                          crumbleId: t.crumbleId || '',
+                          flavors: t._flavors,
+                          fillingId: t.fillingId,
+                          coveringId: t.coveringId,
+                          decorations: [...(t.decorations || [])],
+                          decorationColors: {},
+                        });
+                      }}
                     >
                       <div className="opt-name">{t.name}</div>
                         <div className="opt-desc">{t.desc}</div>

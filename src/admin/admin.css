@@ -288,6 +288,20 @@
   font-size: 0.75rem;
   color: #9a9186;
 }
+/* "La più scelta": un nome al posto del numero. Più piccolo e libero di
+   andare a capo, se no "La Golosa e La Nutellona" uscirebbe dalla tessera. */
+.stat-kpi-num.stat-kpi-testo {
+  font-size: 1.2rem;
+  line-height: 1.25;
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+/* Sul telefono le tessere stanno a due a due: la terza, da sola, prende tutta
+   la riga invece di restare una mezza tessera con un nome lungo dentro. */
+@media (max-width: 640px) {
+  .stat-kpi-largo { grid-column: 1 / -1; }
+  .stat-kpi-num.stat-kpi-testo { font-size: 1.1rem; }
+}
 /* Verde solo per il meglio, grigio per il peggio: il rosso qui allarmerebbe
    per niente (una settimana storta capita). */
 .stat-delta { font-weight: 700; color: #8a8078; }

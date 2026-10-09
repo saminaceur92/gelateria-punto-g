@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { daConfigurare, riepilogo } from '../lib/statistiche';
+import { divisione, GENERICO, piuScelta, riepilogoConsigliate } from './consigliateStat';
 
 /**
  * Scheda "Statistiche": quanta gente apre il sito e cosa ci clicca.
@@ -108,11 +109,15 @@ function Delta({ ora, prima }) {
   );
 }
 
-/** Uno dei numeri grossi in cima. */
-function Numero({ valore, etichetta, spiega, ora, prima, delta = true, comePrima = fmt }) {
+/**
+ * Uno dei numeri grossi in cima. `testo`: al posto del numero c'è un nome (la
+ * torta più scelta), scritto più piccolo perché vada a capo invece di
+ * uscire dalla tessera. `largo`: sul telefono la tessera prende tutta la riga.
+ */
+function Numero({ valore, etichetta, spiega, ora, prima, delta = true, comePrima = fmt, largo = false, testo = false }) {
   return (
-    <div className="stat-kpi">
-      <span className="stat-kpi-num">{valore}</span>
+    <div className={`stat-kpi${largo ? ' stat-kpi-largo' : ''}`}>
+      <span className={`stat-kpi-num${testo ? ' stat-kpi-testo' : ''}`}>{valore}</span>
       <span className="stat-kpi-lab">{etichetta}</span>
       <span className="stat-kpi-hint">{spiega}</span>
       <span className="stat-kpi-sotto">
@@ -141,6 +146,94 @@ function Elenco({ righe, vuoto, base }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * "Torte già composte": le consigliate del passo Forma, divise fra torte
+ * gelato e semifreddi, e quale piace di più. `c` è riepilogoConsigliate()
+ * sugli eventi del periodo (i conti e le frasi stanno in consigliateStat.js,
+ * che si prova senza browser); qui si disegna e basta.
+ */
+export function TorteConsigliate({ c }) {
+  const vince = piuScelta(c);
+  return (
+    <section className="adm-card">
+      <header className="adm-card-head">
+        <div>
+          <h3>⭐ Torte già composte</h3>
+          <p>
+            Le «consigliate» che il cliente trova al passo Forma: quante volte le scelgono, se
+            torte gelato o semifreddi, e quale piace di più.
+          </p>
+        </div>
+        <span className="adm-count">{fmt(c.totale)} {c.totale === 1 ? 'scelta' : 'scelte'}</span>
+      </header>
+
+      {!c.aCatalogo ? (
+        // Database non ancora aggiornato: il sito se ne accorge e conta le
+        // scelte col vecchio evento (vedi tracciaConsigliata in analytics.js),
+        // quindi non si perde niente, ma la divisione per torta non c'è
+        // finché la migrazione non è eseguita: per questo va detto forte.
+        <div className="adm-error">
+          ⚠️ Manca un passaggio su Supabase: esegui la migrazione{' '}
+          <code>migrations/2026-10-09-statistiche-torte-consigliate.sql</code>. Finché non la
+          esegui, le torte già composte scelte dai clienti si contano solo nel numero qui
+          sopra, senza dire quali torte né se gelato o semifreddo.
+        </div>
+      ) : (
+        <>
+          <div className="stat-kpis">
+            {c.perGruppo.map((g) => (
+              <Numero
+                key={g.id}
+                valore={fmt(g.valore)}
+                etichetta={g.nome}
+                spiega={c.dettaglio ? `${g.quota}% delle torte già composte scelte` : 'nessuna scelta in questo periodo'}
+                delta={false}
+              />
+            ))}
+            <Numero largo testo valore={vince.valore} etichetta="🏆 La più scelta" spiega={vince.spiega} delta={false} />
+          </div>
+
+          {c.perGruppo.map((g) => (
+            <Fragment key={g.id}>
+              <h4 className="adm-sub">{g.nome}</h4>
+              <Elenco
+                righe={g.torte.map((t) => ({
+                  chiave: t.chiave,
+                  nome: t.nome,
+                  valore: t.valore,
+                  // Legno sulla più scelta in assoluto, anche a pari merito.
+                  forte: c.max > 0 && t.valore === c.max,
+                }))}
+                // Stessa scala per i due elenchi: una barra piena vuol dire "la
+                // più scelta di tutte", non "la prima del suo gruppo". Con due
+                // scale diverse un semifreddo scelto una volta sembrerebbe
+                // forte quanto una torta gelato scelta venti.
+                base={Math.max(1, c.max)}
+                vuoto="Nessuna torta di questo tipo fra le consigliate."
+              />
+            </Fragment>
+          ))}
+
+          <p className="adm-muted stat-avviso">
+            Ogni torta si conta una volta per visita: chi la sceglie, torna indietro e la riprende
+            conta una volta sola. «Scelta» non vuol dire pagata: gli ordini veri sono nella scheda{' '}
+            <strong>Ordini</strong>. Uno zero può voler dire anche che la torta non era in vetrina:
+            se un suo ingrediente è spento dalla dashboard, la carta sparisce dal sito.
+          </p>
+          {c.generico > 0 && (
+            <p className="adm-muted stat-avviso">
+              {fmt(c.generico)} {c.generico === 1 ? 'scelta è stata contata' : 'scelte sono state contate'}{' '}
+              senza dire quale torta, come «ha scelto una torta già composta»: {c.generico === 1 ? 'è' : 'sono'}{' '}
+              di prima che sito e database fossero aggiornati tutti e due. Nel totale qui sopra
+              {c.generico === 1 ? ' c’è' : ' ci sono'}, nella divisione e nella classifica no.
+            </p>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -237,6 +330,11 @@ export default function StatistichePanel() {
       }))
       .sort((a, b) => b.valore - a.valore);
 
+    // Torte già composte: una voce per torta, divise per prefisso di chiave
+    // (vedi consigliateStat.js). Nessun gruppo qui sopra le raccoglie — i
+    // prefissi sono torta_passo_ e torta_apre_ — quindi non compaiono due volte.
+    const consigliate = riepilogoConsigliate(eventi);
+
     return {
       totale: n(ora.eventi),
       visite: { ora: n(ora.visite), prima: n(prima.visite) },
@@ -278,7 +376,15 @@ export default function StatistichePanel() {
         'torta_sconto_ok',
         'torta_sconto_ko',
         'torta_chiusa',
-      ]),
+      ]).map((r) => (r.chiave === GENERICO
+        // Dall'aggiornamento il vecchio evento porta solo le scelte contate
+        // senza dire quale torta (quelle di prima, e quelle di ripiego finché
+        // il database non è aggiornato): la riga mostra il TOTALE (vecchio +
+        // torta per torta), così non dice mai un numero diverso dal riquadro
+        // "Torte già composte" e non crolla a zero il giorno del rilascio.
+        ? { ...r, valore: consigliate.totale, extra: divisione(consigliate) }
+        : r)),
+      consigliate,
     };
   }, [dati]);
 
@@ -586,6 +692,8 @@ export default function StatistichePanel() {
             <h4 className="adm-sub">Le altre scelte</h4>
             <Elenco righe={v.scelte} vuoto="Ancora niente." />
           </section>
+
+          <TorteConsigliate c={v.consigliate} />
         </>
       )}
 

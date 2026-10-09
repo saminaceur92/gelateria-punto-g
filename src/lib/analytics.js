@@ -34,13 +34,20 @@ const CHIAVE = import.meta.env.VITE_SUPABASE_KEY;
 const ENDPOINT =
   BASE && CHIAVE ? `${String(BASE).replace(/\/+$/, '')}/rest/v1/rpc/registra_evento` : '';
 
+// La porta delle torte già composte: esiste solo dopo la migrazione
+// migrations/2026-10-09-statistiche-torte-consigliate.sql. Perché una porta a
+// parte, e cosa succede finché non c'è: vedi tracciaConsigliata(), in fondo.
+const ENDPOINT_CONSIGLIATA =
+  BASE && CHIAVE ? `${String(BASE).replace(/\/+$/, '')}/rest/v1/rpc/registra_torta_consigliata` : '';
+
 /* ───────── Elenco chiuso degli eventi ─────────
    La stessa lista sta anche a catalogo nel database: se una chiave non è in
    entrambi i posti l'evento viene scartato in silenzio. Aggiungerne uno vuol
    dire tre cose insieme, sempre: riga nel catalogo (migrazione), costante
    qui, punto di chiamata. Il nome è <canale>_<posizione>, e il prefisso è
    struttura, non estetica: la dashboard raggruppa con "like 'whatsapp\\_%'".
-   Pagina e mobile/desktop NON stanno nella chiave: sono già colonne. */
+   Pagina e mobile/desktop NON stanno nella chiave: sono già colonne.
+   `node scripts/verifica-eventi.mjs` controlla che i tre posti coincidano. */
 export const EV = Object.freeze({
   // Visite
   PAGINA_VISTA: 'pagina_vista',
@@ -105,6 +112,13 @@ export const EV = Object.freeze({
   // Torta — scelte ed esito.
   // TORTA_SCONTO_OK/KO non portano mai con sé il codice: alcuni sono nominativi.
   TORTA_SORPRENDIMI: 'torta_sorprendimi',
+  // Il vecchio "ha scelto una torta già composta", senza dire quale. Da
+  // ottobre 2026 ogni torta ha la sua chiave (TORTA_CONSIGLIATA_<GRUPPO>_<ID>,
+  // più sotto) e questa resta come ripiego: quando il database non conosce
+  // ancora le voci per torta (vedi tracciaConsigliata), per una consigliata
+  // nuova che non avesse ancora la sua voce in EV_CONSIGLIATA, e a catalogo per
+  // i numeri dei giorni passati. Mai insieme alla voce per torta: un tocco
+  // conterebbe due volte.
   TORTA_CONSIGLIATA: 'torta_consigliata',
   TORTA_ALLERGENI_APERTI: 'torta_allergeni_aperti',
   TORTA_RITIRO: 'torta_ritiro',
@@ -119,6 +133,22 @@ export const EV = Object.freeze({
   TORTA_PAGAMENTO_OK: 'torta_pagamento_ok',
   TORTA_PAGAMENTO_ANNULLATO: 'torta_pagamento_annullato',
   TORTA_CHIUSA: 'torta_chiusa',
+
+  // Torta — QUALE torta già composta ("le nostre consigliate", passo Forma).
+  // Una chiave per torta, col gruppo DENTRO: torta_consigliata_<gruppo>_<id>.
+  // Il prefisso è struttura: la scheda Statistiche divide torte gelato e
+  // semifreddi leggendo la chiave, come il database fa con 'whatsapp\\_%'.
+  // Si mandano solo con tracciaConsigliata(id), in fondo al file: mai con
+  // traccia(), che senza la migrazione del 9 ottobre le perderebbe.
+  TORTA_CONSIGLIATA_GELATO_GOLOSA: 'torta_consigliata_gelato_golosa',
+  TORTA_CONSIGLIATA_GELATO_DELICATA: 'torta_consigliata_gelato_delicata',
+  TORTA_CONSIGLIATA_GELATO_FRESCA: 'torta_consigliata_gelato_fresca',
+  TORTA_CONSIGLIATA_GELATO_CLASSICISSIMA: 'torta_consigliata_gelato_classicissima',
+  TORTA_CONSIGLIATA_GELATO_VEGAN: 'torta_consigliata_gelato_vegan',
+  TORTA_CONSIGLIATA_SEMIFREDDO_NUTELLONA: 'torta_consigliata_semifreddo_nutellona',
+  TORTA_CONSIGLIATA_SEMIFREDDO_CHEESECAKE: 'torta_consigliata_semifreddo_cheesecake',
+  TORTA_CONSIGLIATA_SEMIFREDDO_BISCOTTONA: 'torta_consigliata_semifreddo_biscottona',
+  TORTA_CONSIGLIATA_SEMIFREDDO_ROCHER: 'torta_consigliata_semifreddo_rocher',
 
   // Contenuti
   NAV_GUSTI: 'nav_gusti',
@@ -160,6 +190,28 @@ export const EV_PASSO = Object.freeze({
   message: EV.TORTA_PASSO_SCRITTA,
   details: EV.TORTA_PASSO_DATI,
   review: EV.TORTA_PASSO_RIEPILOGO,
+});
+
+/**
+ * Dall'id di una torta consigliata (torteConsigliate in
+ * src/data/fallback/cakeOptions.js) al suo evento. Stesso schema di EV_PASSO:
+ * la chiave non si compone mai a mano, perché una chiave composta male il
+ * database la scarta in silenzio e la torta resterebbe a zero per sempre.
+ * Una consigliata senza voce qui cade sul vecchio TORTA_CONSIGLIATA: conta
+ * nel totale della scheda, non nella divisione gelato/semifreddo.
+ * La legge solo tracciaConsigliata(), qui sotto: è lei che sa a quale porta
+ * del database bussare.
+ */
+export const EV_CONSIGLIATA = Object.freeze({
+  golosa: EV.TORTA_CONSIGLIATA_GELATO_GOLOSA,
+  delicata: EV.TORTA_CONSIGLIATA_GELATO_DELICATA,
+  fresca: EV.TORTA_CONSIGLIATA_GELATO_FRESCA,
+  classicissima: EV.TORTA_CONSIGLIATA_GELATO_CLASSICISSIMA,
+  vegan: EV.TORTA_CONSIGLIATA_GELATO_VEGAN,
+  nutellona: EV.TORTA_CONSIGLIATA_SEMIFREDDO_NUTELLONA,
+  cheesecake: EV.TORTA_CONSIGLIATA_SEMIFREDDO_CHEESECAKE,
+  biscottona: EV.TORTA_CONSIGLIATA_SEMIFREDDO_BISCOTTONA,
+  rocher: EV.TORTA_CONSIGLIATA_SEMIFREDDO_ROCHER,
 });
 
 const VALIDI = new Set(Object.values(EV));
@@ -287,7 +339,11 @@ const MAX_PER_PAGINA = 60; // se un loop di rendering impazzisce, ci fermiamo
 
 /* ───────── Invio ───────── */
 
-function invia(evento, c) {
+// `dove`: la funzione del database a cui bussare. Sempre registra_evento,
+// tranne per le torte già composte (vedi tracciaConsigliata). Restituisce la
+// richiesta partita, o null: la guarda solo tracciaConsigliata, nessun altro
+// aspetta la risposta.
+function invia(evento, c, dove = ENDPOINT) {
   // Stessa forma di src/lib/log.js: nessun await (aspettare dentro un handler
   // di click ritarderebbe la navigazione), .then(() => {}, () => {}) esplicito
   // perché senza quello una promise rifiutata lascia una unhandled rejection in
@@ -295,7 +351,7 @@ function invia(evento, c) {
   // tira prima ancora di restituire la promise. E nessun console.error: con il
   // backend irraggiungibile stamperebbe una riga per ogni click.
   try {
-    const p = fetch(ENDPOINT, {
+    const p = fetch(dove, {
       method: 'POST',
       // Sopravvive all'unload: senza, i click sui link interni e su tel: si
       // perderebbero in modo sistematico. Sui browser molto vecchi che non lo
@@ -319,22 +375,22 @@ function invia(evento, c) {
         p_provenienza: c.provenienza,
       }),
     });
-    if (p && typeof p.then === 'function') p.then(() => {}, () => {});
+    if (p && typeof p.then === 'function') {
+      p.then(() => {}, () => {});
+      return p;
+    }
   } catch {
     /* no-op: se le statistiche non partono, pazienza */
   }
+  return null;
 }
 
-/* ───────── API ───────── */
-
 /**
- * Conta un click. Ritorna sempre undefined e non lancia mai.
- *
- * Un solo argomento, di proposito: niente payload libero, niente oggetto
- * "dettagli". Ogni parametro in più è una porta da cui, fra sei mesi, entra
- * un dato personale. Il contesto se lo calcola il modulo.
+ * I freni di ogni tocco, in un posto solo (li usano traccia() e
+ * tracciaConsigliata()): dice se l'evento può partire ADESSO e, se sì, lo
+ * segna come partito.
  */
-export function traccia(evento) {
+function puoPartire(evento) {
   if (!ATTIVO) return false;
   if (!VALIDI.has(evento)) return false; // chiave sconosciuta: scartata senza rumore
   if (inviati >= MAX_PER_PAGINA) return false;
@@ -350,6 +406,20 @@ export function traccia(evento) {
   ultimo.set(evento, ora);
 
   inviati += 1;
+  return true;
+}
+
+/* ───────── API ───────── */
+
+/**
+ * Conta un click. Ritorna sempre undefined e non lancia mai.
+ *
+ * Un solo argomento, di proposito: niente payload libero, niente oggetto
+ * "dettagli". Ogni parametro in più è una porta da cui, fra sei mesi, entra
+ * un dato personale. Il contesto se lo calcola il modulo.
+ */
+export function traccia(evento) {
+  if (!puoPartire(evento)) return false;
   invia(evento, contesto());
   return true;
 }
@@ -370,6 +440,64 @@ export function tracciaUnaVolta(evento) {
   // senza un errore, senza un segno. Sono proprio i passi del configuratore
   // il dato per cui esiste tutto questo lavoro.
   if (traccia(evento)) visti.add(evento);
+}
+
+/**
+ * La scelta di una torta già composta (le "consigliate" del passo Forma):
+ * conta QUALE torta, una volta per visita. Chi la sceglie, torna indietro e
+ * la riprende conta una volta sola; un'altra torta conta a parte.
+ *
+ * Perché non basta tracciaUnaVolta(EV_CONSIGLIATA[id]). Le voci per torta il
+ * database le conosce solo dopo la migrazione
+ * migrations/2026-10-09-statistiche-torte-consigliate.sql, che il titolare
+ * lancia a mano, quando può: spesso DOPO che il sito nuovo è già online.
+ * Nel frattempo registra_evento scarterebbe ogni scelta in silenzio (risponde
+ * allo stesso modo sia quando conta sia quando scarta, apposta: il sito non
+ * può accorgersene), e siccome al posto del vecchio "ha scelto una torta già
+ * composta" partirebbe la voce della torta, si fermerebbe anche quello:
+ * giorni di scelte persi, e nessun modo di ricostruirli.
+ *
+ * Allora si bussa a una porta che esiste SOLO dopo quella migrazione,
+ * registra_torta_consigliata, che conta la voce della torta. Se la porta c'è,
+ * fatto: la scelta è contata con il suo nome. Se il database risponde di no
+ * (un errore 4xx: 404 "non esiste" finché la migrazione non è stata
+ * eseguita) la scelta NON è stata contata — quando rifiuta, il database non
+ * scrive niente — e allora la si conta col vecchio torta_consigliata, che
+ * ogni database conosce: nel totale della scheda, senza dire quale torta.
+ * Così non importa cosa arriva prima, il sito o la migrazione, e un tocco
+ * resta UN evento contato: mai il vecchio e il nuovo insieme.
+ *
+ * Se invece la risposta non arriva (rete giù) o è un guasto del server (5xx,
+ * per esempio un tempo scaduto a metà strada), niente ripiego: la scelta
+ * potrebbe essere stata contata lo stesso, e ricontarla vorrebbe dire
+ * contarla due volte. Meglio un tocco perso che uno doppio.
+ */
+export function tracciaConsigliata(id) {
+  const evento = EV_CONSIGLIATA[id];
+  // Una consigliata nuova, senza la sua voce: solo nel totale, una volta per visita.
+  if (!evento) {
+    tracciaUnaVolta(EV.TORTA_CONSIGLIATA);
+    return;
+  }
+  if (!ATTIVO || visti.has(evento)) return;
+  if (!puoPartire(evento)) return;
+  // Come in tracciaUnaVolta: "già fatto" solo adesso che è partito davvero.
+  visti.add(evento);
+  const p = invia(evento, contesto(), ENDPOINT_CONSIGLIATA);
+  if (!p) return;
+  p.then(
+    (risposta) => {
+      const stato = Number(risposta && risposta.status);
+      if (!(stato >= 400 && stato < 500)) return; // contata, o non si sa: niente ripiego
+      // Il ripiego appartiene allo stesso tocco, già passato dai freni quando
+      // è partito: niente seconda finestra anti-doppio-tap e niente controllo
+      // della scheda in primo piano (la risposta può arrivare quando il
+      // cliente ha già cambiato app). Il tetto per pagina non serve: al
+      // massimo un ripiego per ogni torta in vetrina, una volta per visita.
+      invia(EV.TORTA_CONSIGLIATA, contesto());
+    },
+    () => {},
+  );
 }
 
 /** Un solo listener per tutto il sito: le CTA si strumentano con data-ev="…". */
