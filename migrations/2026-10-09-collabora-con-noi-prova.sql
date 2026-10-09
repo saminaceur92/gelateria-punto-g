@@ -48,6 +48,10 @@ begin
   v := public.invia_collaborazione('eventi', 'ZZ Prova', null, v_mail, null,
          'Messaggio abbastanza lungo per passare.', false, null, 9000);
   assert v ->> 'campo' = 'privacy', '4d: ' || v::text;
+  -- un'emoji nell'indirizzo (chr(127846) è 🍦) non passa
+  v := public.invia_collaborazione('eventi', 'ZZ Prova', null, 'zz' || chr(127846) || '@example.com', null,
+         'Messaggio abbastanza lungo per passare.', true, null, 9000);
+  assert v ->> 'campo' = 'email' and v ->> 'motivo' like '%emoji%', '4e: ' || v::text;
 
   -- 5. Il pubblico non legge le proposte e non scrive direttamente in tabella.
   begin
@@ -82,6 +86,21 @@ begin
                     and privacy_testo like '%iubenda%'), '7b: riga salvata male';
   assert not exists (select 1 from public.collaborazioni where email = 'zz-bot-collabora@example.com'),
          '7c: salvata la proposta di un bot';
+
+  -- 7d. Sito e menù (https://www.…, due link normali) non tolgono l'avviso
+  --     Telegram. Si prova solo se nelle ultime 24 ore non è arrivata nessun
+  --     altra proposta: con tante proposte il filtro scatta per quelle, ed è
+  --     giusto così.
+  if (select count(*) from public.collaborazioni where created_at > now() - interval '24 hours') = 1 then
+    execute 'set local role anon';
+    v := public.invia_collaborazione('locale', 'ZZ Due Link', null, 'zz-link-collabora@example.com', null,
+           'Il nostro sito https://www.zz-esempio.it e il menù https://www.zz-esempio.it/menu', true, null, 9000);
+    execute 'reset role';
+    assert (v ->> 'ok')::boolean, '7d: ' || v::text;
+    assert exists (select 1 from public.collaborazioni
+                    where email = 'zz-link-collabora@example.com' and not silenziata),
+           '7d: due link normali bastano a togliere l''avviso Telegram';
+  end if;
 
   -- 8. L'avviso Telegram è stato preparato (se le chiavi degli ordini ci sono).
   if coalesce((select value from public.app_config where key = 'telegram_bot_token'), '') <> ''

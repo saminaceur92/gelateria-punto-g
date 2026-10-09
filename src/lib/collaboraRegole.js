@@ -8,9 +8,9 @@
  * database, perché dal browser chiunque può mandare quello che vuole.
  * Se cambi una regola qui, cambiala anche là (e viceversa).
  *
- * Non vanno importate nel configuratore anche se l'email si controlla allo
- * stesso modo: quel file lo stanno cambiando altre persone, e le due righe
- * doppie si possono unire con calma dopo.
+ * Non vanno importate nel configuratore anche se l'email si controlla quasi
+ * allo stesso modo (qui in più si rifiutano le emoji): quel file lo stanno
+ * cambiando altre persone, e le due regole si possono unire con calma dopo.
  */
 
 /**
@@ -58,10 +58,24 @@ export const testoMessaggio = (s) => String(s ?? '')
   .replace(/[\u0001-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
   .trim();
 
-/** Stessa regola del configuratore (CakeConfigurator.jsx) e della funzione SQL. */
+/**
+ * Un carattere oltre U+FFFF: quasi sempre un'emoji. In JavaScript occupa due
+ * "mezzi caratteri" (surrogati), quindi basta trovarne uno.
+ */
+const OLTRE_FFFF = /[\uD800-\uDFFF]/;
+
+/**
+ * La regola del configuratore (CakeConfigurator.jsx) più due, uguali a quelle
+ * della funzione SQL:
+ *   · niente emoji: in un indirizzo vero non ci sono (di solito le mette la
+ *     tastiera del telefono) e a chi risponde dalla dashboard darebbero un
+ *     indirizzo che non arriva a nessuno;
+ *   · i caratteri di controllo valgono come spazi, come nel database: in
+ *     mezzo all'indirizzo lo rendono sbagliato, in testa e in coda spariscono.
+ */
 export const emailOk = (s) => {
-  const t = String(s ?? '').trim();
-  return t.length <= LIMITI.email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t);
+  const t = pulito(s);
+  return t.length <= LIMITI.email && !OLTRE_FFFF.test(t) && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t);
 };
 
 /**
@@ -85,9 +99,12 @@ export function errori(v) {
   if (!TIPI.some((t) => t.id === v.tipo)) e.tipo = 'Scegli di cosa si tratta.';
   if (pulito(v.nome).length < 2) e.nome = 'Scrivi nome e cognome.';
   if (!emailOk(v.email)) {
-    e.email = String(v.email ?? '').trim()
-      ? 'Controlla l’email: sembra incompleta.'
-      : 'Scrivi la tua email: ti rispondiamo lì.';
+    const t = String(v.email ?? '').trim();
+    e.email = !t
+      ? 'Scrivi la tua email: ti rispondiamo lì.'
+      : OLTRE_FFFF.test(t)
+        ? 'Controlla l’email: un indirizzo non può contenere emoji.'
+        : 'Controlla l’email: sembra incompleta.';
   }
   if (!telefonoOk(v.telefono)) e.telefono = 'Controlla il numero (oppure lascialo vuoto).';
   const m = testoMessaggio(v.messaggio).length;
@@ -158,6 +175,25 @@ export const WHATSAPP_NUMERO = '393203306009';
 export const WHATSAPP_URL = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMERO}`;
 
 /**
+ * encodeURIComponent che non lancia mai. Quello del browser lancia un errore
+ * (URIError) se trova mezza emoji, cioè un surrogato rimasto da solo dopo un
+ * taglio; e un errore mentre si disegna un link fa sparire tutta la pagina
+ * (il modulo con quello che la persona ha scritto, o l'intera dashboard).
+ * Le metà spaiate diventano U+FFFD (il punto di domanda nel rombo), tutto
+ * il resto si codifica come sempre.
+ */
+export function perUrl(s) {
+  const t = String(s ?? '');
+  try {
+    return encodeURIComponent(t);
+  } catch {
+    // Array.from divide per caratteri veri: un'emoji intera resta intera,
+    // un surrogato spaiato resta da solo (lungo 1) e si riconosce.
+    return encodeURIComponent(Array.from(t, (c) => (OLTRE_FFFF.test(c) && c.length === 1 ? '\uFFFD' : c)).join(''));
+  }
+}
+
+/**
  * WhatsApp con la proposta già scritta: è la strada di riserva quando il
  * modulo non riesce a inviare (Supabase giù, migrazione non ancora lanciata,
  * troppe proposte). Così quello che la persona ha scritto non va perso.
@@ -171,18 +207,24 @@ export function linkWhatsapp(v) {
   const azienda = pulito(v?.azienda);
   if (azienda) righe.push(`Azienda o locale: ${azienda}`);
   const msg = testoMessaggio(v?.messaggio);
-  if (msg) righe.push('', msg.length > 1500 ? `${msg.slice(0, 1500)}…` : msg);
-  return `${WHATSAPP_URL}&text=${encodeURIComponent(righe.join('\n'))}`;
+  if (msg) {
+    // Il taglio si fa per caratteri veri (Array.from), non con slice: slice
+    // conta i mezzi caratteri e potrebbe spezzare un'emoji a metà.
+    const caratteri = Array.from(msg);
+    righe.push('', caratteri.length > 1500 ? `${caratteri.slice(0, 1500).join('')}…` : msg);
+  }
+  return `${WHATSAPP_URL}&text=${perUrl(righe.join('\n'))}`;
 }
 
 /** Per la dashboard: risposta via email con oggetto e saluto già scritti. */
 export function linkEmail(email, nome) {
   // L'indirizzo resta leggibile; si codificano solo i caratteri che
-  // romperebbero il link (?, &, #, spazi…).
-  const indirizzo = String(email ?? '').trim().replace(/[^A-Za-z0-9@._+-]/g, (c) => encodeURIComponent(c));
+  // romperebbero il link (?, &, #, spazi…). La "u" fa arrivare un'emoji
+  // intera alla codifica, non le sue due metà una alla volta.
+  const indirizzo = String(email ?? '').trim().replace(/[^A-Za-z0-9@._+-]/gu, (c) => perUrl(c));
   const primo = pulito(nome).split(' ')[0];
   const corpo = `${primo ? `Ciao ${primo},` : 'Ciao,'}\r\n\r\n`;
-  return `mailto:${indirizzo}?subject=${encodeURIComponent('La tua proposta a Gelateria Punto Gi')}&body=${encodeURIComponent(corpo)}`;
+  return `mailto:${indirizzo}?subject=${perUrl('La tua proposta a Gelateria Punto Gi')}&body=${perUrl(corpo)}`;
 }
 
 /** tel: con le sole cifre (e il + iniziale, se c'era). */

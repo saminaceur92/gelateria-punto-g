@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   TIPI, MSG_MAX, errori, primoErrore, parametri, emailOk, telefonoOk, pulito, testoMessaggio,
   tipoDaRicerca, etichettaTipo, linkWhatsapp, linkEmail, linkTelefono, linkWhatsappTelefono,
-  dopoRisposta, NON_INVIATA,
+  dopoRisposta, NON_INVIATA, perUrl,
 } from './collaboraRegole.js';
 
 const ok = {
@@ -42,6 +42,21 @@ test('email: stessa regola del configuratore e del database', () => {
   assert.equal(emailOk(`${'x'.repeat(250)}@b.it`), false);
   assert.match(errori({ ...ok, email: '' }).email, /Scrivi la tua email/);
   assert.match(errori({ ...ok, email: 'mario@' }).email, /incompleta/);
+});
+
+test('email: niente emoji, caratteri di controllo come spazi (come nel database)', () => {
+  // emoji (oltre U+FFFF) ovunque nell'indirizzo, e mezza emoji spaiata
+  for (const e of ['mario🍦@gmail.com', '🍦@x.it', 'mario@🍕.ws', 'mario\uD83C@gmail.com']) {
+    assert.equal(emailOk(e), false, e);
+    assert.match(errori({ ...ok, email: e }).email, /non può contenere emoji/, e);
+  }
+  // lettere accentate e simboli comuni restano ammessi
+  assert.equal(emailOk('andrè@example.it'), true);
+  assert.equal(emailOk('info@caffè.it'), true);
+  // controllo in mezzo = spazio (sbagliata); in testa e in coda sparisce
+  assert.equal(emailOk('mario\u0001rossi@example.com'), false);
+  assert.match(errori({ ...ok, email: 'mario\u0007@example.com' }).email, /incompleta/);
+  assert.equal(emailOk('\u0001mario@example.com\u0002'), true);
 });
 
 test('telefono facoltativo, fissi ed esteri ammessi', () => {
@@ -134,12 +149,50 @@ test('WhatsApp di riserva: la proposta già scritta, accorciata se lunghissima',
   assert.ok(new URL(linkWhatsapp({})).searchParams.get('text').startsWith('Ciao!'));
 });
 
+test('WhatsApp di riserva: il taglio non spezza mai un’emoji e il link non lancia', () => {
+  // Il caso della revisione: l'emoji occupa le posizioni 1499 e 1500, proprio
+  // dove cadeva il taglio. Il messaggio è valido, quindi arriva davvero all'invio.
+  const messaggio = `${'a'.repeat(1499)}🍦${' resto del messaggio'.repeat(10)}`;
+  assert.deepEqual(errori({ ...ok, messaggio }), {});
+  const t = new URL(linkWhatsapp({ ...ok, messaggio })).searchParams.get('text');
+  assert.ok(t.endsWith(`${'a'.repeat(1499)}🍦…`), 'l’emoji resta intera, poi i puntini');
+  // 1500 caratteri VERI: anche un testo di sole emoji non si accorcia prima
+  const emoji = '🍦'.repeat(1600);
+  const te = new URL(linkWhatsapp({ ...ok, messaggio: emoji })).searchParams.get('text');
+  assert.ok(te.endsWith(`${'🍦'.repeat(1500)}…`));
+  assert.ok(!te.includes('\uFFFD'));
+  // mezzi caratteri spaiati nei campi (incolla strani): niente errore, U+FFFD al loro posto
+  for (const strano of ['\uD83C', '\uDF66', `ciao \uD83C${'x'.repeat(30)}`]) {
+    const v = { ...ok, nome: `Mario ${strano}`, azienda: strano, messaggio: `${'m'.repeat(25)} ${strano}` };
+    const u = new URL(linkWhatsapp(v));
+    assert.ok(u.searchParams.get('text').includes('\uFFFD'));
+  }
+});
+
+test('codifica per i link: come encodeURIComponent, ma non lancia mai', () => {
+  for (const s of ['', 'a b&c?d#e', 'andrè', '🍦', 'Ciao,\r\n\r\n', 'x'.repeat(5000)]) {
+    assert.equal(perUrl(s), encodeURIComponent(s));
+  }
+  assert.equal(perUrl('a\uD83Cb'), 'a%EF%BF%BDb');
+  assert.equal(perUrl('\uDF66'), '%EF%BF%BD');
+  assert.equal(perUrl('🍦\uD83C'), '%F0%9F%8D%A6%EF%BF%BD');
+  assert.equal(perUrl(null), '');
+  assert.equal(perUrl(undefined), '');
+});
+
 test('dashboard: email, telefono e WhatsApp del mittente', () => {
   const m = linkEmail('anna.bianchi+eventi@example.com', 'Anna Maria Bianchi');
   assert.ok(m.startsWith('mailto:anna.bianchi+eventi@example.com?subject='));
   assert.match(decodeURIComponent(m), /La tua proposta a Gelateria Punto Gi/);
   assert.match(decodeURIComponent(m), /Ciao Anna,/);
   assert.ok(linkEmail('a?b#c@x.it', '').startsWith('mailto:a%3Fb%23c@x.it?'));
+  // Un'emoji nell'indirizzo (riga salvata prima di questa regola, o arrivata
+  // a mano): il link si costruisce lo stesso, con l'emoji codificata intera.
+  // Prima lanciava URIError e la dashboard spariva tutta.
+  assert.ok(linkEmail('mario🍦@gmail.com', 'Mario').startsWith('mailto:mario%F0%9F%8D%A6@gmail.com?subject='));
+  assert.ok(linkEmail('🍦@x.it', '🍦 Mario').includes('body=Ciao%20%F0%9F%8D%A6%2C'));
+  assert.ok(linkEmail('andrè@example.it', '').startsWith('mailto:andr%C3%A8@example.it?'));
+  assert.ok(linkEmail('mario\uD83C@x.it', 'Anna\uDF66').startsWith('mailto:mario%EF%BF%BD@x.it?'));
   assert.equal(linkTelefono('+39 348 555 6677'), 'tel:+393485556677');
   assert.equal(linkTelefono('059 623 1234'), 'tel:0596231234');
   assert.equal(linkTelefono('12'), null);

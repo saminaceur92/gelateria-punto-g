@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   listaCollaborazioni, aggiornaCollaborazione, eliminaCollaborazione, MIGRAZIONE_MANCANTE,
 } from '../lib/collabora';
@@ -142,6 +142,47 @@ export function Proposta({ r, occupata, onStato, onNota, onElimina }) {
   );
 }
 
+/**
+ * Rete di sicurezza intorno a OGNI proposta. Le proposte le scrive chiunque,
+ * con qualunque carattere: se un giorno una non si riuscisse a disegnare,
+ * senza questa rete React toglierebbe dallo schermo TUTTA la dashboard
+ * (ordini compresi) fino al ricaricamento, e di nuovo a ogni clic sulla
+ * scheda. Così invece al suo posto compare una riga semplice con "Elimina",
+ * e tutto il resto resta in piedi.
+ */
+class ReteProposta extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { rotta: false };
+  }
+
+  // L'errore lo scrive già React nella console del browser: qui basta
+  // ricordarsi di mostrare la riga semplice.
+  static getDerivedStateFromError() {
+    return { rotta: true };
+  }
+
+  render() {
+    if (!this.state.rotta) return this.props.children;
+    const { r, occupata, onElimina } = this.props;
+    return (
+      <article className="collab-card">
+        <p className="adm-error">
+          ⚠️ Questa proposta non si riesce a mostrare. Puoi eliminarla; se succede ancora, avvisa
+          chi cura il sito.
+        </p>
+        {/* L'indirizzo, per sapere di chi era (e scrivergli da Gmail se serve). */}
+        <span className="collab-email">{String(r?.email ?? '')}</span>
+        <div className="collab-azioni">
+          <button type="button" className="adm-btn adm-btn-del collab-elimina" disabled={occupata} onClick={() => onElimina(r)}>
+            Elimina
+          </button>
+        </div>
+      </article>
+    );
+  }
+}
+
 export default function CollaborazioniPanel({ onCambio }) {
   const [righe, setRighe] = useState([]);
   const [errLista, setErrLista] = useState('');
@@ -257,19 +298,20 @@ export default function CollaborazioniPanel({ onCambio }) {
           ) : (
             <div className="collab-lista">
               {visibili.map((r) => (
-                <Proposta
-                  key={r.id}
-                  r={r}
-                  occupata={occupata === r.id}
-                  onStato={(x, stato) => salva(
-                    x,
-                    { stato },
-                    // Lo spam esce da "Tutte": si dice dove è finito.
-                    stato === 'spam' && filtro !== 'spam' ? 'Spostata nello spam: la trovi nel filtro «Spam».' : '',
-                  )}
-                  onNota={(x, nota) => salva(x, { nota_staff: nota }, 'Nota salvata.')}
-                  onElimina={elimina}
-                />
+                <ReteProposta key={r.id} r={r} occupata={occupata === r.id} onElimina={elimina}>
+                  <Proposta
+                    r={r}
+                    occupata={occupata === r.id}
+                    onStato={(x, stato) => salva(
+                      x,
+                      { stato },
+                      // Lo spam esce da "Tutte": si dice dove è finito.
+                      stato === 'spam' && filtro !== 'spam' ? 'Spostata nello spam: la trovi nel filtro «Spam».' : '',
+                    )}
+                    onNota={(x, nota) => salva(x, { nota_staff: nota }, 'Nota salvata.')}
+                    onElimina={elimina}
+                  />
+                </ReteProposta>
               ))}
             </div>
           )}

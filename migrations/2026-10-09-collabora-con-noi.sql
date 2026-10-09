@@ -159,7 +159,8 @@ create trigger collaborazioni_aggiornata_trg
 --     Al bot si risponde "fatto" ma non si salva niente: non impara nulla;
 --   · al massimo 3 proposte in 24 ore dallo stesso indirizzo email;
 --   · oltre 5 proposte nell'ultima ora, o 20 avvisi nelle ultime 24 ore, o
---     più di 2 link nel testo, o un indirizzo web al posto dell'azienda, o
+--     più di 2 link nel testo (ogni indirizzo una volta; i profili social
+--     non contano), o un indirizzo web al posto dell'azienda, o
 --     lo stesso testo già arrivato da un'altra email: si SALVA ma senza
 --     avviso Telegram (in dashboard la proposta lo dice). Così uno spammer
 --     non può riempire la chat degli ordini;
@@ -198,6 +199,7 @@ declare
   v_ora      int;
   v_giorno   int;
   v_avvisi   int;
+  v_link     int;
   v_silenzia boolean;
 begin
   -- 1) Trappole per i bot: si risponde "fatto" senza salvare niente.
@@ -225,6 +227,15 @@ begin
   end if;
   if char_length(v_email) > 254 or v_email !~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$' then
     return json_build_object('ok', false, 'campo', 'email', 'motivo', 'Controlla l''email: sembra incompleta.');
+  end if;
+  -- Niente emoji (caratteri oltre U+FFFF): in un indirizzo vero non ci sono,
+  -- di solito le mette la tastiera del telefono, e in dashboard il pulsante
+  -- "Rispondi via email" porterebbe a un indirizzo che non arriva a nessuno.
+  -- L'intervallo è scritto con chr() e non con le barre rovesciate: vale
+  -- uguale con qualunque impostazione del database.
+  if v_email ~ ('[' || chr(65536) || '-' || chr(1114111) || ']') then
+    return json_build_object('ok', false, 'campo', 'email',
+      'motivo', 'Controlla l''email: un indirizzo non può contenere emoji.');
   end if;
   -- Telefono facoltativo e più largo di quello del configuratore (lì servono
   -- 10 cifre): qui scrivono anche locali col fisso (059…) e fornitori esteri.
@@ -277,9 +288,24 @@ begin
       'motivo', 'In questo momento non riusciamo a ricevere altre proposte: scrivici su WhatsApp al 320 330 6009.');
   end if;
 
+  -- Quanti link ci sono nel testo. Ogni indirizzo conta UNA volta, anche
+  -- quando ha sia "https://" sia "www." (https://www.esempio.it) e anche se è
+  -- attaccato al successivo con una virgola. I profili social non contano:
+  -- un locale manda sito e Instagram, un creator Instagram, TikTok e YouTube,
+  -- e non è spam. Conta invece "instagram.com@altro.sito", che porta ad
+  -- altro.sito. Per aggiungere un social: una voce in più nella lista.
+  --   m[1] = il nome del sito (dopo https:// e www.), m[2] = il carattere dopo
+  select count(*) into v_link
+    from regexp_matches(v_msg, '(?:https?://|www[.])(?:www[.])?([[:alnum:].-]*)(.?)', 'gi') as m
+   where coalesce(m[2], '') = '@'
+      or rtrim(m[1], '.') !~* ('(^|[.])(instagram[.]com|facebook[.]com|fb[.]com|fb[.]me|tiktok[.]com'
+                               || '|youtube[.]com|youtu[.]be|linkedin[.]com|twitter[.]com|x[.]com'
+                               || '|threads[.]net|threads[.]com|twitch[.]tv|pinterest[.]com|pinterest[.]it'
+                               || '|linktr[.]ee)$');
+
   v_silenzia := v_ora >= 5
              or v_avvisi >= 20
-             or (select count(*) from regexp_matches(v_msg, '(https?://|www[.])', 'gi')) > 2
+             or v_link > 2
              or coalesce(v_azienda, '') ~* '(https?://|www[.])'
              or exists (select 1 from public.collaborazioni
                          where messaggio = v_msg and created_at > now() - interval '24 hours');
