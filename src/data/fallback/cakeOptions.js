@@ -662,6 +662,13 @@ export const cakeRecipes = [
 // del listino. Se un ingrediente sparisce dal listino la carta si nasconde da
 // sola; se è in conflitto con le intolleranze dichiarate resta visibile ma
 // sbarrata, col perché.
+// Statistiche: ogni torta ha il suo evento, torta_consigliata_<gruppo>_<id>,
+// e la scheda Statistiche le divide per gruppo e mostra la più scelta.
+// Aggiungerne, toglierne o rinominarne una (id, gruppo o name) vuol dire
+// aggiornare anche la costante in EV e la voce in EV_CONSIGLIATA
+// (src/lib/analytics.js) e la riga del catalogo statistiche_eventi con
+// etichetta = name (una migrazione nuova, come quella del 2026-10-09).
+// `node scripts/verifica-eventi.mjs` controlla che i tre posti coincidano.
 export const torteConsigliate = [
   // ---- Torte gelato ----
   {

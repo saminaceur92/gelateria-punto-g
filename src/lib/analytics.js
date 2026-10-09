@@ -40,7 +40,8 @@ const ENDPOINT =
    dire tre cose insieme, sempre: riga nel catalogo (migrazione), costante
    qui, punto di chiamata. Il nome è <canale>_<posizione>, e il prefisso è
    struttura, non estetica: la dashboard raggruppa con "like 'whatsapp\\_%'".
-   Pagina e mobile/desktop NON stanno nella chiave: sono già colonne. */
+   Pagina e mobile/desktop NON stanno nella chiave: sono già colonne.
+   `node scripts/verifica-eventi.mjs` controlla che i tre posti coincidano. */
 export const EV = Object.freeze({
   // Visite
   PAGINA_VISTA: 'pagina_vista',
@@ -105,6 +106,11 @@ export const EV = Object.freeze({
   // Torta — scelte ed esito.
   // TORTA_SCONTO_OK/KO non portano mai con sé il codice: alcuni sono nominativi.
   TORTA_SORPRENDIMI: 'torta_sorprendimi',
+  // Il vecchio "ha scelto una torta già composta", senza dire quale. Da
+  // ottobre 2026 ogni torta ha la sua chiave (TORTA_CONSIGLIATA_<GRUPPO>_<ID>,
+  // più sotto): questa resta come ripiego per una consigliata nuova che non
+  // avesse ancora la sua voce in EV_CONSIGLIATA, e a catalogo per i numeri dei
+  // giorni passati. Mai mandarle insieme: un tocco conterebbe due volte.
   TORTA_CONSIGLIATA: 'torta_consigliata',
   TORTA_ALLERGENI_APERTI: 'torta_allergeni_aperti',
   TORTA_RITIRO: 'torta_ritiro',
@@ -119,6 +125,21 @@ export const EV = Object.freeze({
   TORTA_PAGAMENTO_OK: 'torta_pagamento_ok',
   TORTA_PAGAMENTO_ANNULLATO: 'torta_pagamento_annullato',
   TORTA_CHIUSA: 'torta_chiusa',
+
+  // Torta — QUALE torta già composta ("le nostre consigliate", passo Forma).
+  // Una chiave per torta, col gruppo DENTRO: torta_consigliata_<gruppo>_<id>.
+  // Il prefisso è struttura: la scheda Statistiche divide torte gelato e
+  // semifreddi leggendo la chiave, come il database fa con 'whatsapp\\_%'.
+  // Si mandano solo passando da EV_CONSIGLIATA, qui sotto.
+  TORTA_CONSIGLIATA_GELATO_GOLOSA: 'torta_consigliata_gelato_golosa',
+  TORTA_CONSIGLIATA_GELATO_DELICATA: 'torta_consigliata_gelato_delicata',
+  TORTA_CONSIGLIATA_GELATO_FRESCA: 'torta_consigliata_gelato_fresca',
+  TORTA_CONSIGLIATA_GELATO_CLASSICISSIMA: 'torta_consigliata_gelato_classicissima',
+  TORTA_CONSIGLIATA_GELATO_VEGAN: 'torta_consigliata_gelato_vegan',
+  TORTA_CONSIGLIATA_SEMIFREDDO_NUTELLONA: 'torta_consigliata_semifreddo_nutellona',
+  TORTA_CONSIGLIATA_SEMIFREDDO_CHEESECAKE: 'torta_consigliata_semifreddo_cheesecake',
+  TORTA_CONSIGLIATA_SEMIFREDDO_BISCOTTONA: 'torta_consigliata_semifreddo_biscottona',
+  TORTA_CONSIGLIATA_SEMIFREDDO_ROCHER: 'torta_consigliata_semifreddo_rocher',
 
   // Contenuti
   NAV_GUSTI: 'nav_gusti',
@@ -160,6 +181,26 @@ export const EV_PASSO = Object.freeze({
   message: EV.TORTA_PASSO_SCRITTA,
   details: EV.TORTA_PASSO_DATI,
   review: EV.TORTA_PASSO_RIEPILOGO,
+});
+
+/**
+ * Dall'id di una torta consigliata (torteConsigliate in
+ * src/data/fallback/cakeOptions.js) al suo evento. Stesso schema di EV_PASSO:
+ * la chiave non si compone mai a mano, perché una chiave composta male il
+ * database la scarta in silenzio e la torta resterebbe a zero per sempre.
+ * Una consigliata senza voce qui cade sul vecchio TORTA_CONSIGLIATA: conta
+ * nel totale della scheda, non nella divisione gelato/semifreddo.
+ */
+export const EV_CONSIGLIATA = Object.freeze({
+  golosa: EV.TORTA_CONSIGLIATA_GELATO_GOLOSA,
+  delicata: EV.TORTA_CONSIGLIATA_GELATO_DELICATA,
+  fresca: EV.TORTA_CONSIGLIATA_GELATO_FRESCA,
+  classicissima: EV.TORTA_CONSIGLIATA_GELATO_CLASSICISSIMA,
+  vegan: EV.TORTA_CONSIGLIATA_GELATO_VEGAN,
+  nutellona: EV.TORTA_CONSIGLIATA_SEMIFREDDO_NUTELLONA,
+  cheesecake: EV.TORTA_CONSIGLIATA_SEMIFREDDO_CHEESECAKE,
+  biscottona: EV.TORTA_CONSIGLIATA_SEMIFREDDO_BISCOTTONA,
+  rocher: EV.TORTA_CONSIGLIATA_SEMIFREDDO_ROCHER,
 });
 
 const VALIDI = new Set(Object.values(EV));
