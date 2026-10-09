@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabase';
 import * as fbCake from './fallback/cakeOptions';
+import { gruppiForma } from '../lib/misureTorta';
 
 // Gli allergeni restano gestiti da codice (dato tecnico/di sicurezza): li
 // sovrapponiamo ai dati live cercandoli nel fallback per nome (gusti) o id.
@@ -190,7 +191,10 @@ export async function fetchCakeOptions() {
       ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi), vegan: !!r.vegan, senzaZucchero: !!r.senza_zucchero }))
       : gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] }));
     return {
-      cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
+      // perNormali / perAlte: la forma si può scegliere per le torte normali e
+      // per le alte (interruttori del tab Dimensioni, vedi formeDelTipo in
+      // src/lib/misureTorta.js). Prima della migrazione valgono true.
+      cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento), ...gruppiForma(s) })),
       cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore, allergeni: splitLower(t.allergeni) })),
       cakeSizes: dim.map((s) => {
         // `misure`: le forme diverse dalla tonda (vedi src/lib/misureTorta.js).

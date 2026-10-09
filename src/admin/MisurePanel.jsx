@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
-import { misuraForma, personeOf, RECT_MIN_PERSONE } from '../lib/misureTorta';
+import { misuraForma, personeOf, RECT_MIN_PERSONE, formeAmmesseRighe, ultimaFormaDelGruppo } from '../lib/misureTorta';
 
 /**
  * Misure della torta per forma (tab Dimensioni).
@@ -16,7 +16,38 @@ import { misuraForma, personeOf, RECT_MIN_PERSONE } from '../lib/misureTorta';
  *
  * La tonda si salva nella colonna storica `diametro`, le altre forme in
  * `misure` (vedi src/lib/misureTorta.js).
+ *
+ * In cima a ogni colonna c'è l'interruttore della forma PER QUESTO GRUPPO
+ * (colonne `per_normali` / `per_alte` di `forme`): una forma si può spegnere
+ * solo per le alte o solo per le normali. Si salva subito, senza «Salva
+ * misure». L'interruttore della scheda Forme (`attivo`) resta quello
+ * generale. Da telefono l'intestazione della tabella non si vede, quindi gli
+ * stessi interruttori stanno in una striscia sopra la tabella.
  */
+
+/**
+ * L'interruttore di una forma per un gruppo. Un pulsante intero, non solo la
+ * levetta: l'area da toccare deve essere comoda anche da telefono.
+ */
+function InterruttoreForma({ f, acceso, disabled, title, etichetta, stato, idStato, onClick, conNome = false }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={acceso}
+      aria-label={etichetta}
+      aria-describedby={idStato}
+      className={`mis-sw ${acceso ? 'on' : ''}`}
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+    >
+      <span className="mis-sw-pista" aria-hidden="true"><span className="mis-sw-pallino" /></span>
+      {conNome && <span className="mis-sw-nome">{f.emoji} {f.nome}</span>}
+      <span className="mis-sw-stato" id={idStato}>{stato}</span>
+    </button>
+  );
+}
 
 // Nell'input si lavora con il testo finché non si salva: "24," a metà
 // battitura non deve diventare 24 né sparire.
@@ -76,14 +107,24 @@ export default function MisurePanel({ versione = 0, alta = false }) {
   // Colonne che arrivano solo dopo le migrazioni: se Supabase non le
   // restituisce, lo script non è ancora stato eseguito.
   const [colonne, setColonne] = useState({ misure: true, alta: true });
+  const [formaInCorso, setFormaInCorso] = useState(''); // forma che si sta accendendo o spegnendo
+  const [avvisoForma, setAvvisoForma] = useState('');
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
+
+  // La colonna di `forme` di questo gruppo e come lo si chiama a parole.
+  const col = alta ? 'per_alte' : 'per_normali';
+  const gruppo = alta ? 'torte alte' : 'torte normali';
+  // Interruttori per gruppo: le colonne nascono con la migrazione
+  // 2026-10-09-dashboard-ottobre. Prima, select('*') non le restituisce.
+  const conGruppi = forme.length > 0 && col in forme[0];
 
   async function load() {
     setError('');
     const [dim, frm] = await Promise.all([
-      supabase.from('dimensioni').select('*').order('ordine', { ascending: true }),
-      supabase.from('forme').select('*').order('ordine', { ascending: true }),
+      supabase.from('dimensioni').select('*').order('ordine', { ascending: true }).order('id', { ascending: true }),
+      // stesso ordine del configuratore (ordine, poi id)
+      supabase.from('forme').select('*').order('ordine', { ascending: true }).order('id', { ascending: true }),
     ]);
     const err = dim.error || frm.error;
     if (err) {
@@ -155,6 +196,58 @@ export default function MisurePanel({ versione = 0, alta = false }) {
     setBusy(false);
   }
 
+  // Le forme che il cliente vede per questo gruppo (stessa regola del
+  // configuratore) e se sta scattando la rete di sicurezza.
+  const { ammesse, rete } = useMemo(() => formeAmmesseRighe(forme, alta), [forme, alta]);
+
+  // Stato di una forma per questo gruppo, a parole: sotto l'interruttore e
+  // nell'etichetta delle caselle da telefono.
+  const statoForma = (f) => {
+    const acceso = f[col] !== false;
+    if (!f.attivo) return { acceso, vista: false, testo: 'nascosta in Forme' };
+    if (!acceso) return { acceso, vista: ammesse.includes(f.id), testo: `spenta per le ${alta ? 'alte' : 'normali'}` };
+    return { acceso, vista: true, testo: 'in vendita' };
+  };
+
+  // Accende o spegne la forma per questo gruppo. Vale SUBITO sul sito: non
+  // aspetta «Salva misure», che riguarda solo le caselle dei centimetri.
+  async function cambiaForma(f) {
+    const acceso = f[col] !== false;
+    if (acceso && ultimaFormaDelGruppo(forme, f.id, alta)) {
+      setAvvisoForma(`${f.nome} è l'ultima forma accesa per le ${gruppo}: accendine prima un'altra, poi spegni questa.`);
+      return;
+    }
+    setAvvisoForma('');
+    setError('');
+    setFormaInCorso(f.id);
+    const { data, error: e } = await supabase.from('forme').update({ [col]: !acceso }).eq('id', f.id).select('id');
+    setFormaInCorso('');
+    if (e) { setError(`${f.nome}: ${e.message}`); return; }
+    // Un aggiornamento fermato dai permessi non dà errore: non tocca righe.
+    if (!data?.length) { setError(`${f.nome}: il database non ha accettato la modifica. Esci e rientra col tuo codice, poi riprova.`); return; }
+    setForme((fs) => fs.map((x) => (x.id === f.id ? { ...x, [col]: !acceso } : x)));
+    logAction(acceso ? 'Forma spenta' : 'Forma accesa', `${f.nome} · ${gruppo}`);
+  }
+
+  // Lo stesso interruttore sta in due posti (intestazione da computer,
+  // striscia da telefono): gli id restano diversi.
+  const interruttore = (f, dove) => {
+    const st = statoForma(f);
+    return (
+      <InterruttoreForma
+        f={f}
+        acceso={st.acceso}
+        disabled={!f.attivo || busy || formaInCorso !== ''}
+        title={f.attivo ? undefined : 'Accendila prima nella scheda Forme'}
+        etichetta={`${f.nome} per le ${gruppo}`}
+        stato={formaInCorso === f.id ? 'salvo…' : st.testo}
+        idStato={`mis-sw-${alta ? 'alte' : 'normali'}-${f.id}-${dove}`}
+        onClick={() => cambiaForma(f)}
+        conNome={dove === 'striscia'}
+      />
+    );
+  };
+
   return (
     <section className="adm-card">
       <header className="adm-card-head">
@@ -163,6 +256,12 @@ export default function MisurePanel({ versione = 0, alta = false }) {
           <p>
             Quanto misura ogni taglia, forma per forma, in centimetri. È la misura che il cliente
             vede quando sceglie e che arriva scritta nell'ordine.
+            {conGruppi && (
+              <>
+                {' '}L'interruttore sotto ogni forma decide se si può scegliere per le {gruppo}: vale
+                subito, senza «Salva misure».
+              </>
+            )}
           </p>
         </div>
         <div className="adm-head-destra">
@@ -189,12 +288,47 @@ export default function MisurePanel({ versione = 0, alta = false }) {
           <code> migrations/2026-09-14-misure-per-forma.sql</code>.
         </div>
       )}
+      {loaded && forme.length > 0 && !conGruppi && !altePrimaDellaMigrazione && (
+        <div className="mis-avviso">
+          Gli interruttori per accendere e spegnere ogni forma solo per le {gruppo} si attivano
+          eseguendo una volta su Supabase la migrazione <code>migrations/2026-10-09-dashboard-ottobre.sql</code>.
+        </div>
+      )}
+      {conGruppi && rete && (
+        <div className="mis-avviso" role="status">
+          Per le <strong>{gruppo}</strong> non c'è nessuna forma accesa (contano anche gli interruttori
+          della scheda Forme). Per non lasciare i clienti senza scelta, finché non ne accendi una il sito
+          mostra alle {gruppo} <strong>tutte</strong> le forme in vendita.
+        </div>
+      )}
+      {conGruppi && ammesse.length === 1 && ammesse[0] === 'rettangolare' && (
+        <div className="mis-avviso" role="status">
+          Per le <strong>{gruppo}</strong> c'è solo la rettangolare, che si può scegliere da{' '}
+          {RECT_MIN_PERSONE} persone in su: chi ne ordina una più piccola resta senza forma. Accendine
+          anche un'altra.
+        </div>
+      )}
+      {avvisoForma && <div className="mis-avviso" role="status">{avvisoForma}</div>}
       {error && <div className="adm-error">⚠️ {error}</div>}
       {nErrori > 0 && <div className="adm-error">⚠️ Sistema le caselle in rosso prima di salvare.</div>}
       {!loaded && <div className="adm-muted">Caricamento…</div>}
       {loaded && !error && taglie.length === 0 && !altePrimaDellaMigrazione && (
         <div className="adm-muted">
           Nessuna taglia{alta ? ' per le torte alte' : ''}: aggiungila dal riquadro sopra con «+ Aggiungi».
+        </div>
+      )}
+
+      {/* Da telefono l'intestazione della tabella è nascosta: gli interruttori
+          stanno qui. Da computer questa striscia compare solo se la tabella
+          non c'è (nessuna taglia), altrimenti stanno sotto il nome della forma. */}
+      {loaded && conGruppi && (
+        <div
+          className={`mis-forme-switch ${taglie.length === 0 ? 'sempre' : ''}`}
+          role="group"
+          aria-label={`Forme per le ${gruppo}`}
+        >
+          <p className="mis-fs-tit">Forme per le {gruppo}</p>
+          {forme.map((f) => <Fragment key={f.id}>{interruttore(f, 'striscia')}</Fragment>)}
         </div>
       )}
 
@@ -205,9 +339,10 @@ export default function MisurePanel({ versione = 0, alta = false }) {
               <tr>
                 <th scope="col">Taglia</th>
                 {forme.map((f) => (
-                  <th key={f.id} scope="col" className={f.attivo ? '' : 'off'}>
+                  <th key={f.id} scope="col" className={statoForma(f).vista ? '' : 'off'}>
                     <span className="mis-forma">{f.emoji} {f.nome}</span>
-                    <span className="mis-come">{COME[misuraForma(f.id).tipo]}{f.attivo ? '' : ' · nascosta'}</span>
+                    <span className="mis-come">{COME[misuraForma(f.id).tipo]}{f.attivo || conGruppi ? '' : ' · nascosta'}</span>
+                    {conGruppi && interruttore(f, 'testa')}
                   </th>
                 ))}
               </tr>
@@ -229,8 +364,16 @@ export default function MisurePanel({ versione = 0, alta = false }) {
                       const ferma = senzaColonna && f.id !== 'tonda';
                       // Cuore vuoto = diametro della tonda: lo si suggerisce in grigio.
                       const suggerito = tipo === 'diametro' && f.id !== 'tonda' ? (valori[r.id]?.tonda?.[0] || '') : '';
+                      // Forma che il cliente non vede: caselle attenuate ma
+                      // ancora scrivibili, così le misure si preparano prima di
+                      // accenderla (come per le taglie alte).
+                      const st = statoForma(f);
                       return (
-                        <td key={f.id} data-forma={`${f.emoji} ${f.nome} · ${COME[tipo]}`}>
+                        <td
+                          key={f.id}
+                          className={st.vista ? '' : 'off'}
+                          data-forma={`${f.emoji} ${f.nome} · ${COME[tipo]}${st.vista ? '' : ` · ${st.testo}`}`}
+                        >
                           {bloccata ? (
                             <span className="mis-no">solo da {RECT_MIN_PERSONE} persone</span>
                           ) : (
@@ -269,6 +412,12 @@ export default function MisurePanel({ versione = 0, alta = false }) {
       <p className="adm-locked-note">
         Casella vuota: per il <strong>cuore</strong> vale il diametro della tonda (il numero in grigio);
         per <strong>quadrata e rettangolare</strong> al cliente non si mostra nessuna misura.
+        {conGruppi && (
+          <>
+            {' '}Una forma spenta qui resta in vendita per le altre torte; spenta nella scheda{' '}
+            <strong>Forme</strong> non la vede nessuno.
+          </>
+        )}
       </p>
     </section>
   );

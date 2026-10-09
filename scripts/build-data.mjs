@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import * as fbCake from '../src/data/fallback/cakeOptions.js';
+import { gruppiForma } from '../src/lib/misureTorta.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const genDir = resolve(__dirname, '..', 'src/data/generated');
@@ -193,8 +194,10 @@ try {
     }));
 
   const cake = {
+    // Come live.js: perNormali / perAlte dicono per quali torte vale la forma.
     cakeShapes: forme.map((s) => ({
       id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento),
+      ...gruppiForma(s),
     })),
     cakeTypes: tipiTorta.map((t) => ({
       id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore, allergeni: splitLower(t.allergeni),

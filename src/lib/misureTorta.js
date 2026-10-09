@@ -11,6 +11,9 @@
 //  - `misure`   → le altre forme, in cm:
 //    { cuore: [22], quadrata: [20], rettangolare: [24, 34] }
 //  - `alta`     → la taglia è delle torte ALTE (vedi più sotto).
+//
+// Qui sta anche la regola delle FORME per torte normali e alte (in fondo).
+// Le prove: node --test src/lib/misureTorta.test.mjs
 
 // La forma rettangolare è disponibile solo da 15 persone in su.
 export const RECT_MIN_PERSONE = 15;
@@ -101,4 +104,77 @@ export function tagliaEquivalente(cakeSizes, sizeId, alta) {
   const persone = personeOf((cakeSizes || []).find((s) => s.id === sizeId));
   if (!persone) return '';
   return taglie.find((s) => personeOf(s) === persone)?.id || '';
+}
+
+// ── Forme per gruppo: torte normali e torte alte ────────────────────────
+// Dal tab Dimensioni ogni forma si accende e si spegne a parte per le torte
+// normali e per le alte (colonne `per_normali` e `per_alte` di `forme`).
+// L'interruttore della scheda Forme (`attivo`) resta quello GENERALE: una
+// forma spenta lì non arriva proprio al configuratore. Il gruppo lo decide
+// il TIPO di torta (isTallType), non la taglia.
+// ⚠️ Il server (create-checkout) deve applicare la stessa regola, con la
+// stessa rete di sicurezza.
+
+// La forma di partenza, e quella su cui si ripiega: la tonda, se c'è. Non
+// "la prima della lista": riordinare le forme dalla dashboard non deve
+// cambiare la forma pre-scelta né il prezzo mostrato fin dal primo passo.
+export const FORMA_PREDEFINITA = 'tonda';
+
+/**
+ * I due interruttori di gruppo di una riga di `forme`. Prima della
+ * migrazione 2026-10-09-dashboard-ottobre le colonne non arrivano: vale
+ * "accesa" per tutti, cioè come prima.
+ */
+export const gruppiForma = (riga) => ({
+  perNormali: riga?.per_normali !== false,
+  perAlte: riga?.per_alte !== false,
+});
+
+/**
+ * Le forme fra cui sceglie chi ha preso una torta normale (alta = false) o
+ * alta (true). `cakeShapes` sono già solo quelle accese. Rete di sicurezza:
+ * se per un gruppo sono spente tutte, valgono tutte le forme accese, così il
+ * cliente non resta mai senza forme (la dashboard lo segnala).
+ */
+export function formeDelTipo(cakeShapes, alta) {
+  const tutte = cakeShapes || [];
+  const ammesse = tutte.filter((s) => (alta ? s.perAlte !== false : s.perNormali !== false));
+  return ammesse.length ? ammesse : tutte;
+}
+
+/**
+ * La forma giusta dopo un cambio di tipo di torta (o di listino): la stessa
+ * se vale ancora, altrimenti la tonda, altrimenti la prima ammessa, '' se
+ * non ce n'è nessuna.
+ */
+export function formaEquivalente(cakeShapes, shapeId, alta) {
+  const forme = formeDelTipo(cakeShapes, alta);
+  if (forme.some((s) => s.id === shapeId)) return shapeId;
+  return (forme.find((s) => s.id === FORMA_PREDEFINITA) || forme[0])?.id || '';
+}
+
+/**
+ * Dashboard: la stessa regola, sulle righe della tabella `forme` (accese e
+ * spente). `ammesse` = gli id che il cliente vede per quel gruppo;
+ * `rete` = true quando per il gruppo non è accesa nessuna forma e il sito,
+ * per sicurezza, sta mostrando tutte quelle accese.
+ */
+export function formeAmmesseRighe(righe, alta) {
+  const accese = (righe || []).filter((f) => f.attivo).map((f) => ({ id: f.id, ...gruppiForma(f) }));
+  const proprie = accese.filter((f) => (alta ? f.perAlte : f.perNormali));
+  return {
+    ammesse: formeDelTipo(accese, alta).map((f) => f.id),
+    rete: accese.length > 0 && proprie.length === 0,
+  };
+}
+
+/**
+ * Dashboard: spegnere `id` per il gruppo lascerebbe il gruppo senza forme
+ * accese? Allora non si fa: scatterebbe la rete di sicurezza e il cliente
+ * vedrebbe di nuovo TUTTE le forme, cioè il contrario di quello che si
+ * voleva. Si contano solo le forme accese anche nella scheda Forme.
+ */
+export function ultimaFormaDelGruppo(righe, id, alta) {
+  const colonna = alta ? 'per_alte' : 'per_normali';
+  return !(righe || []).some((f) => f.id !== id && f.attivo && f[colonna] !== false);
 }

@@ -770,7 +770,34 @@
 .mis-no { display: inline-block; padding-top: .45rem; font-size: .78rem; color: #9a9186; }
 .mis-err { display: block; margin-top: .25rem; font-size: .72rem; color: #b03a2e; }
 
+/* Interruttore di una forma per un gruppo (torte normali / alte), sotto il
+   nome della forma. È tutto un pulsante, levetta e scritta: si tocca bene
+   anche col dito. Stessi colori degli interruttori delle schede. */
+.mis-sw { display: flex; align-items: center; gap: .45rem; min-height: 40px; margin-top: .25rem; padding: .25rem 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.mis-sw:disabled { cursor: not-allowed; opacity: .55; }
+.mis-sw:focus-visible { outline: 2px solid var(--v-deep); outline-offset: 2px; border-radius: 8px; }
+.mis-sw-pista { position: relative; flex-shrink: 0; width: 40px; height: 22px; border-radius: 999px; background: #d7cfdb; transition: background .2s; }
+.mis-sw.on .mis-sw-pista { background: #46c46a; }
+.mis-sw-pallino { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .2s; }
+.mis-sw.on .mis-sw-pallino { left: 21px; }
+.mis-sw-stato { font-size: .72rem; font-weight: 500; color: #7a7166; white-space: nowrap; }
+.mis-sw.on .mis-sw-stato { color: #2f7d4f; }
+/* Forma che il cliente di questo gruppo non vede: colonna attenuata, caselle
+   ancora scrivibili (le misure si preparano prima di accenderla). */
+.mis-tabella thead th.off .mis-forma { color: #9a9186; }
+.mis-tabella td.off { background: #faf8f4; }
+.mis-tabella td.off .mis-cella input:not(:focus) { color: #7a7166; background: #faf8f4; }
+/* Striscia degli interruttori: da telefono (l'intestazione della tabella è
+   nascosta) e, da computer, solo quando la tabella non c'è. */
+.mis-forme-switch { display: none; margin: 0 0 .9rem; padding: .45rem .8rem .35rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.mis-forme-switch.sempre { display: grid; }
+.mis-fs-tit { margin: 0 0 .1rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #9a9186; }
+.mis-forme-switch .mis-sw { width: 100%; min-height: 44px; margin: 0; border-top: 1px dashed var(--line); }
+.mis-forme-switch .mis-sw:first-of-type { border-top: 0; }
+.mis-sw-nome { flex: 1; min-width: 0; font-size: .92rem; }
+
 @media (max-width: 640px) {
+  .mis-forme-switch { display: grid; }
   .mis-tabella thead { display: none; }
   .mis-tabella, .mis-tabella tbody, .mis-tabella tr { display: block; width: 100%; }
   /* border-box: con width 100% + padding la scheda sforava di 26px a destra */

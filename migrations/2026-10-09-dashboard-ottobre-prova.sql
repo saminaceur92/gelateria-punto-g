@@ -12,6 +12,8 @@ declare
   v_owner  uuid;
   v_ordine text;
   v_testo  text;
+  v_forma  text;
+  v_alte   boolean;
   n        int;
 begin
   select id into v_owner from public.profiles where role = 'owner' limit 1;
@@ -43,6 +45,30 @@ begin
     reset role;
     assert n = 0, '16: il sito pubblico (anon) riesce a modificare un ordine!';
   end if;
+
+  -- ── 17. Interruttori delle forme per gruppo ──
+  select id::text, per_alte into v_forma, v_alte from public.forme order by ordine, id limit 1;
+  assert v_forma is not null, '17: la tabella forme è vuota';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  update public.forme set per_alte = not per_alte where id::text = v_forma;
+  get diagnostics n = row_count;
+  reset role;
+  assert n = 1, '17: lo staff non riesce a spegnere una forma per le alte (righe toccate: ' || n || ')';
+  assert (select per_alte from public.forme where id::text = v_forma) = not v_alte, '17: interruttore non salvato';
+
+  perform set_config('request.jwt.claims', '', true);
+  set local role anon;
+  begin
+    update public.forme set per_normali = false where id::text = v_forma;
+    get diagnostics n = row_count;
+  exception when insufficient_privilege then
+    n := 0;
+  end;
+  reset role;
+  assert n = 0, '17: il sito pubblico (anon) riesce a spegnere una forma!';
 
   raise exception 'PROVE SUPERATE (errore voluto: annulla tutto quello che la prova ha scritto)';
 end $$;

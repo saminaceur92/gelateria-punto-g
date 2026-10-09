@@ -48,7 +48,7 @@ const GRUPPI_TAGLIE = [
     chiave: 'alte',
     alta: true,
     titolo: 'Torte alte',
-    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Le taglie nuove nascono spente. Appena ne accendi una, le alte si vendono solo nelle taglie alte accese: prepara prima tutte quelle che vuoi vendere (nome, prezzo, misure), poi accendile.',
+    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Le taglie nuove nascono spente. Appena ne accendi una, le alte si vendono solo nelle taglie alte accese: prepara prima tutte quelle che vuoi vendere (nome, prezzo, misure), poi accendile. Le forme per le alte si scelgono con gli interruttori qui sotto, anche quando le alte usano ancora le taglie normali.',
   },
 ];
 
@@ -324,7 +324,10 @@ export default function Dashboard() {
         props: {
           table: 'forme',
           title: 'Forme torta',
-          subtitle: 'Forme legate alla grafica 3D: attiva o disattiva quelle disponibili.',
+          // L'interruttore di questa scheda è quello GENERALE. Quelli per
+          // gruppo (solo normali / solo alte) stanno nel tab Dimensioni,
+          // sotto il nome di ogni forma (MisurePanel).
+          subtitle: 'Forme legate alla grafica 3D: attiva o disattiva quelle disponibili. Questo è l\'interruttore generale: una forma spenta qui non la vede nessuno. Per spegnerla solo per le torte normali o solo per le alte usa gli interruttori sotto il nome della forma, nella scheda Dimensioni.',
           locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
