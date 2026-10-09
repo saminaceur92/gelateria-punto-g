@@ -13,6 +13,7 @@ import {
   formeDelTipo, formaEquivalente, FORMA_PREDEFINITA,
 } from '../lib/misureTorta';
 import { CODICI_RIFIUTO, indicePasso, PASSO_DEL_CAMPO, riallineaConfig } from '../lib/riallineaListino';
+import { avvisoPromemoria, testiPromemoria } from '../lib/promemoriaRegole';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
 
@@ -413,6 +414,12 @@ function makeInitialConfig(cake, initial = {}) {
     deliveryAddress: '',  // indirizzo di consegna
     inLocale: null,       // dove si mangia: true = in un locale, false = a casa, null = da rispondere
     pagamentoStaff: null, // solo dashboard: 'pagata' oppure 'ritiro'
+    // Promemoria tra un anno (compleanno, anniversario). Finisce nei dettagli
+    // dell'ordine: true dice al database che l'avviso è stato mostrato (il
+    // sito vecchio non lo scriveva, e senza avviso niente promemoria per
+    // l'anniversario); false = lo staff l'ha spento al banco. Il cliente non lo
+    // cambia: per lui c'è l'avviso e il link per toglierlo in ogni mail.
+    promemoria: true,
     name: '',
     phone: '',
     email: '',
@@ -1335,6 +1342,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         // creato_da: chi ha preso l'ordine al banco. Il nome arriva dal codice
         // personale, verificato dal database prima di aprire il configuratore.
         ...insertBase, totale, immagine: immagineUrl || immagine, creato_da: operatore || null,
+        // Interruttore «Promemoria tra un anno» del riepilogo (acceso di partenza).
+        promemoria_ok: config.promemoria !== false,
       });
       if (error) {
         console.warn('[ordine] non salvato:', error.message);
@@ -2744,13 +2753,11 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
         <p className="hint" style={emailInvalid ? { color: '#b03a3a' } : undefined}>
           {emailInvalid ? "Inserisci un'email valida." : 'Ti invieremo qui la conferma dell’ordine.'}
         </p>
-        {/* Avviso promemoria: obbligatorio informare, visto che la mail dell'anno
-            dopo è promozionale. La disiscrizione è in ogni promemoria. */}
-        {config.occasion === 'Compleanno' && !staff && (
-          <p className="hint cfg-reminder-note">
-            🎂 Tra un anno ti scriveremo qui per ricordarti il compleanno, con la torta che hai
-            scelto oggi. Ti basterà un clic per non riceverlo più.
-          </p>
+        {/* Avviso promemoria (compleanno e anniversario): obbligatorio informare,
+            visto che la mail dell'anno dopo è promozionale. Il link per toglierlo
+            è in ogni promemoria. */}
+        {!staff && avvisoPromemoria(config.occasion) && (
+          <p className="hint cfg-reminder-note">{avvisoPromemoria(config.occasion)}</p>
         )}
       </div>
 
@@ -3122,6 +3129,14 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
           {config.notes && (<><dt>Note</dt><dd>{config.notes}</dd></>)}
         </dl>
       </div>
+      {/* L'avviso del promemoria si ripete qui: è l'ultima cosa che il cliente
+          vede prima di confermare, anche se l'occasione l'ha cambiata dopo
+          aver lasciato l'email. */}
+      {!staff && avvisoPromemoria(config.occasion) && (
+        <div className="cfg-field">
+          <p className="hint cfg-reminder-note">{avvisoPromemoria(config.occasion)}</p>
+        </div>
+      )}
       <div className="summary-box" style={{ background: 'var(--cream-warm)', borderColor: 'rgba(124,183,215,0.2)' }}>
         {sconto > 0 && (
           <p style={{ margin: '0 0 0.3rem', fontSize: '0.9rem', color: 'var(--grey)' }}>
@@ -3153,6 +3168,38 @@ function StepReview({ config, total, sconto = 0, set, staff }) {
             </button>
           </div>
           {!config.pagamentoStaff && <p className="hint">Scegli una delle due opzioni per creare l’ordine.</p>}
+        </div>
+      )}
+
+      {/* Al banco il cliente l'avviso non lo vede sullo schermo: lo staff
+          decide (acceso di partenza) e glielo dice. Spento per gli ordini di
+          prova, che altrimenti mettevano in coda promemoria veri. */}
+      {staff && avvisoPromemoria(config.occasion) && (
+        <div className="cfg-field">
+          <label>📧 Promemoria tra un anno</label>
+          <div className="toggle-row">
+            <button
+              type="button"
+              className={`toggle-pill ${config.promemoria !== false ? 'active' : ''}`}
+              aria-pressed={config.promemoria !== false}
+              onClick={() => set({ promemoria: true })}
+            >
+              Sì, mandalo
+            </button>
+            <button
+              type="button"
+              className={`toggle-pill ${config.promemoria === false ? 'active' : ''}`}
+              aria-pressed={config.promemoria === false}
+              onClick={() => set({ promemoria: false })}
+            >
+              No
+            </button>
+          </div>
+          <p className="hint">
+            {config.promemoria === false
+              ? 'Nessuna mail tra un anno. «No» va bene per gli ordini di prova o se il cliente non la vuole.'
+              : `Tra un anno gli scriviamo per ricordargli ${testiPromemoria(config.occasion).ricorrenza} (30 e 14 giorni prima). Diglielo: può toglierlo con un clic dalla mail.`}
+          </p>
         </div>
       )}
 
