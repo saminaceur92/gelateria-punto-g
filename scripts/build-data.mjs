@@ -61,6 +61,17 @@ const splitLower = (s) => (s || '').split(',').map((x) => x.trim().toLowerCase()
 // Come splitLower ma senza minuscolizzare: i colori sono etichette da mostrare
 // così come sono ("Rosa", "Arcobaleno", ...).
 const splitList = (s) => (s || '').split(',').map((x) => x.trim()).filter(Boolean);
+// Diete (vegan / senza zuccheri aggiunti), come `dieta` in live.js: se la
+// colonna non c'è ancora vale quanto dichiarato nella copia di sicurezza.
+// Senza, nel primo istante (prima dei dati live) chi sceglie Vegan trovava
+// basi, coperture e decorazioni spente anche quando erano adatte.
+const dieta = (row, fbList) => {
+  const fb = (fbList || []).find((x) => x.id === row.id) || {};
+  return {
+    vegan: row.vegan != null ? !!row.vegan : !!fb.vegan,
+    senzaZucchero: row.senza_zucchero != null ? !!row.senza_zucchero : !!fb.senzaZucchero,
+  };
+};
 
 // Legge una tabella (solo righe attive, ordinate). Resiliente: in caso di errore
 // restituisce [] così quella sezione usa il fallback statico.
@@ -125,6 +136,7 @@ try {
     priceDelta: num(c.supplemento),
     color: c.colore || null,
     allergeni: splitLower(c.allergeni),
+    ...dieta(c, fbCake.cakeCrumbles),
   }));
   const cakeScritte = await optionalTable('scritte', fbCake.cakeScritte, (s) => ({
     id: s.id,
@@ -189,6 +201,8 @@ try {
       name: r.gusto,
       color: r.colore || '#f5d97a',
       allergeni: splitLower(r.allergeni_certi),
+      vegan: !!r.vegan,
+      senzaZucchero: !!r.senza_zucchero,
     }))
     : gustiTorte.map((f) => ({
       name: f.nome,
@@ -221,13 +235,17 @@ try {
     cakeFlavors,
     cakeBases: basi.map((b) => ({
       id: b.id, name: b.nome, desc: b.descrizione || '', priceDelta: num(b.supplemento), color: b.colore, allergeni: b.allergeni != null ? splitLower(b.allergeni) : (BASE_ALLERG[b.id] || []),
+      ...dieta(b, fbCake.cakeBases),
     })),
     cakeCrumbles,
     cakeFillings: farciture.map((f) => ({
       id: f.id, name: f.nome, desc: f.descrizione || '', priceDelta: num(f.supplemento), color: f.colore ?? null, allergeni: f.allergeni != null ? splitLower(f.allergeni) : (FILL_ALLERG[f.id] || []),
+      ...dieta(f, fbCake.cakeFillings),
     })),
+    // `foto`: la foto di esempio della copertura (come live.js).
     cakeCoverings: coperture.map((c) => ({
-      id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []),
+      id: c.id, name: c.nome, desc: c.descrizione || '', priceDelta: num(c.supplemento), color: c.colore ?? null, foto: c.foto || null, allergeni: c.allergeni != null ? splitLower(c.allergeni) : (COV_ALLERG[c.id] || []),
+      ...dieta(c, fbCake.cakeCoverings),
     })),
     // `supplemento`, `scelta_colore` e `colori` arrivano con la migrazione del 04-08:
     // finché non c'è si ottengono 0 / false / lista di sicurezza, mai un errore.
@@ -240,6 +258,7 @@ try {
       allergeni: d.allergeni != null ? splitLower(d.allergeni) : (DECO_ALLERG[d.id] || []),
       colorChoice: !!d.scelta_colore,
       colors: d.colori != null ? splitList(d.colori) : (DECO_COLORS[d.id] || []),
+      ...dieta(d, fbCake.cakeDecorations),
     })),
     cakeScritte,
     cakeExtras,
