@@ -16,8 +16,13 @@ import { registraAttivita } from '../lib/codiciStaff';
  *  - descrizione: cosa sta per succedere, in parole semplici
  *  - onFatto(persona): chiamata SOLO se il codice è giusto
  *  - onAnnulla()
+ *  - verifica(pin): facoltativa. Sostituisce la verifica standard (che firma
+ *    `azione` nello storico) con un'altra chiamata al database che accetta
+ *    il codice, per esempio quella che MOSTRA i codici dello staff. Deve
+ *    tornare { ok, motivo } come le altre.
+ *  - titolo: facoltativo (di base "Il tuo codice")
  */
-export default function ChiediCodice({ azione, dettaglio, descrizione, onFatto, onAnnulla }) {
+export default function ChiediCodice({ azione, dettaglio, descrizione, onFatto, onAnnulla, verifica, titolo = 'Il tuo codice' }) {
   const [pin, setPin] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -37,7 +42,7 @@ export default function ChiediCodice({ azione, dettaglio, descrizione, onFatto, 
     setBusy(true);
     setErr('');
     // La verifica e la registrazione avvengono insieme, lato database.
-    const r = await registraAttivita(p, azione, dettaglio);
+    const r = verifica ? await verifica(p) : await registraAttivita(p, azione, dettaglio);
     setBusy(false);
     if (!r?.ok) {
       setErr(r?.motivo || 'Codice non riconosciuto.');
@@ -54,7 +59,7 @@ export default function ChiediCodice({ azione, dettaglio, descrizione, onFatto, 
         <button type="button" className="codice-chiudi" onClick={onAnnulla} aria-label="Annulla">
           <X size={18} />
         </button>
-        <h3>Il tuo codice</h3>
+        <h3>{titolo}</h3>
         <p>{descrizione}</p>
         <input
           ref={input}
