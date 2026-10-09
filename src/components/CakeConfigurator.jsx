@@ -12,6 +12,7 @@ import {
   dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE, taglieDelTipo, tagliaEquivalente,
   formeDelTipo, formaEquivalente, FORMA_PREDEFINITA,
 } from '../lib/misureTorta';
+import { CODICI_RIFIUTO, indicePasso, PASSO_DEL_CAMPO, riallineaConfig } from '../lib/riallineaListino';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
 
@@ -72,12 +73,15 @@ const MAX_DECORAZIONI = 5;
 // scelte (lista vuota = nessuna decorazione), serve solo come card da toccare.
 const NO_DECO = 'nessuna';
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
+// Note e indirizzo: tetti uguali a quelli del server (MAX_NOTE e
+// MAX_INDIRIZZO in supabase/functions/_shared/valida.ts). Il testo viaggia
+// nei metadata di Stripe, che hanno un limite (al massimo 50 pezzi da 500
+// caratteri): mille caratteri di note bastano e avanzano, e un tetto che il
+// sito non fa superare è meglio di un pagamento rifiutato.
+const MAX_NOTE = 1000;
+const MAX_INDIRIZZO = 300;
 // Tetto di sicurezza per gli extra: nessuno ordina 50 kg di salame dal sito.
 const MAX_EXTRA_QTY = 20;
-// Note aggiuntive: mille caratteri bastano e avanzano. Senza tetto una nota
-// lunghissima poteva far fallire il pagamento: viaggia quattro volte nei dati
-// che il sito passa a Stripe (metadata, al massimo 50 pezzi da 500 caratteri).
-const MAX_NOTE = 1000;
 
 // Stili della scritta: arrivano dalla tabella `scritte` (opzionale). Se manca —
 // o è vuota — si usa questa copia di sicurezza, così il passo funziona sempre.
@@ -143,12 +147,12 @@ const matchColor = (colors, value) => {
 // listino. Gli id non più a menù spariscono: un ordine dell'anno scorso o una
 // decorazione tolta dalla dashboard non devono rompere niente.
 // La lista si ripulisce PRIMA di leggere il listino, con gli stessi passi del
-// server (decorationsOf in supabase/functions/_shared/price.ts): niente vuoti,
-// niente 'nessuna', niente doppioni (raddoppierebbero il supplemento) e mai più
-// di MAX_DECORAZIONI. È da qui che passa il totale mostrato al cliente: se qui
-// si contasse una decorazione in più di là, il prezzo pagato non sarebbe quello
-// visto sul sito. Il tetto si applica agli id, non alle righe trovate, perché
-// così fa il server.
+// server (validaOrdine in supabase/functions/_shared/valida.ts): niente vuoti,
+// niente 'nessuna', niente doppioni (raddoppierebbero il supplemento). È da qui
+// che passa il totale mostrato al cliente: se qui si contasse una decorazione
+// in più di là, il prezzo pagato non sarebbe quello visto sul sito. Oltre
+// MAX_DECORAZIONI il server rifiuta l'ordine: il passo delle decorazioni non
+// ne fa scegliere di più.
 const chosenDecorations = (decorations, cakeDecorations) => {
   const ids = [];
   for (const raw of decorations || []) {
@@ -331,6 +335,30 @@ function addWorkingHours(from, hoursNeeded, orari) {
   return cur;
 }
 
+// Un tipo con la base nel nome (BASE_OBBLIGATA) si può fare solo se quella
+// base è accesa, cioè fra le basi del listino: senza il salame al cioccolato
+// niente "Torta gelato con base Salame al cioccolato". Se i titolari spengono
+// la base dalla dashboard il tipo non si propone (StepType), non si riprende
+// da "Rifai questa torta" e, se era già scelto, si toglie (effetto nel
+// configuratore). Prima il sito imponeva lo stesso la base spenta, il server
+// la rifiutava e il cliente girava a vuoto al pagamento, senza uscirne.
+const tipoFattibile = (typeId, cakeBases) =>
+  !BASE_OBBLIGATA[typeId] || (cakeBases || []).some((b) => b.id === BASE_OBBLIGATA[typeId]);
+
+// I passi effettivi per una torta (STEPS meno quelli che non servono), con un
+// listino a scelta. ⚠️ Stessa regola di `steps` nel configuratore: serve
+// dopo un rifiuto del server, per sapere su che passo atterrare con la torta
+// GIÀ sistemata e il listino appena riletto (come fa applicaConsigliata).
+const passiPer = (cfg, cakeBases, cakeCrumbles) => {
+  const conCrumble = cfg.baseId === CRUMBLE_BASE_ID && (cakeCrumbles || []).length > 0;
+  const baseImposta = BASE_OBBLIGATA[cfg.type] || '';
+  const baseImpostaOk =
+    !!baseImposta &&
+    tipoFattibile(cfg.type, cakeBases) &&
+    !conflictsAllergies((cakeBases || []).find((b) => b.id === baseImposta), cfg.allergies, cfg.diets);
+  return STEPS.filter((s) => (s !== 'crumble' || conCrumble) && (s !== 'base' || !baseImpostaOk));
+};
+
 // Campi che si possono precompilare da fuori: dai link "alternative" (allergie)
 // e dal link "Rifai questa torta" del promemoria compleanno. Fuori da questa
 // lista non si precompila nulla: dati di contatto e date si reinseriscono sempre.
@@ -400,7 +428,7 @@ function makeInitialConfig(cake, initial = {}) {
   for (const k of PREFILL_KEYS) {
     const v = initial[k];
     if (v === undefined || v === null) continue;
-    if (k === 'type' && !exists(cake.cakeTypes, v)) continue;
+    if (k === 'type' && (!exists(cake.cakeTypes, v) || !tipoFattibile(v, cake.cakeBases))) continue;
     if (k === 'shape' && !exists(cake.cakeShapes, v)) continue;
     if (k === 'sizeId' && !exists(cake.cakeSizes, v)) continue;
     if (k === 'baseId' && !exists(cake.cakeBases, v)) continue;
@@ -474,12 +502,22 @@ function makeInitialConfig(cake, initial = {}) {
       // colore e allergeni aggiornati di oggi (non quelli salvati allora).
       // Confronto senza maiuscole/minuscole: i nomi si modificano dalla dashboard
       // (es. "Fior di latte" → "Fior di Latte") e l'ordine è di un anno fa.
+      // Mai più gusti di quanti il tipo ne ammette: fino all'agosto 2026 le
+      // torte normali ne avevano 3, e il server oltre il massimo rifiuta.
       base.flavors = (Array.isArray(v) ? v : [])
         .map((f) => {
           const n = String(f?.name || '').trim().toLowerCase();
           return (cake.cakeFlavors || []).find((x) => x.name.trim().toLowerCase() === n);
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .slice(0, maxFlavorsFor(base.type));
+      continue;
+    }
+    // Occasione: solo se è ancora fra quelle a menù (una spenta il server la
+    // rifiuterebbe). La scritta: entro i caratteri dell'input.
+    if (k === 'occasion' && !(cake.cakeOccasions || []).includes(v)) continue;
+    if (k === 'message') {
+      base.message = String(v).slice(0, MAX_MESSAGE);
       continue;
     }
     base[k] = v;
@@ -678,9 +716,13 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   // solo se quella base è compatibile con le intolleranze dichiarate: se non lo
   // è, il passo resta e il cliente vede la carta sbarrata col perché — meglio
   // che imporgli di nascosto un ingrediente che ha detto di non poter mangiare.
+  // E solo se è accesa (tipoFattibile): una base spenta dalla dashboard non si
+  // impone mai, il server la rifiuterebbe a ogni pagamento.
   const baseImposta = BASE_OBBLIGATA[config.type] || '';
+  const tipoOk = tipoFattibile(config.type, cakeBases);
   const baseImpostaOk =
     !!baseImposta &&
+    tipoOk &&
     !conflictsAllergies(
       cakeBases.find((b) => b.id === baseImposta),
       config.allergies,
@@ -693,6 +735,20 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseImpostaOk, baseImposta, config.baseId]);
+
+  // Tipo scelto quando la sua base era accesa, poi spenta: succede se il
+  // listino vero arriva dopo la scelta (un "Rifai questa torta" aperto al
+  // volo, la dashboard al banco) o se il salame finisce a metà ordine. Quella
+  // torta oggi non si fa: il tipo si toglie, con la base che non c'è più, e si
+  // torna al primo passo, dove non è più proposto. Senza questo comparirebbe
+  // il passo della base e si potrebbe ordinare una "Torta gelato con base
+  // Salame al cioccolato" con sotto un'altra base.
+  useEffect(() => {
+    if (tipoOk) return;
+    set((c) => ({ type: '', ...(c.baseId === baseImposta ? { baseId: '', crumbleId: '' } : {}) }));
+    setStep(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoOk]);
 
   const steps = useMemo(
     () => STEPS.filter((s) => (s !== 'crumble' || showCrumble) && (s !== 'base' || !baseImpostaOk)),
@@ -748,6 +804,16 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.type, config.shape, cakeShapes]);
 
+  // Gusti e tipo devono andare d'accordo: le alte ne hanno fino a 4, le altre
+  // 2. Chi sceglie un'alta, mette 4 strati e poi torna indietro e passa a una
+  // torta normale, resta coi primi 2 (quelli in basso). Senza questo il
+  // server rifiuterebbe il pagamento: lì il massimo è controllato.
+  useEffect(() => {
+    const max = maxFlavorsFor(config.type);
+    if (config.flavors.length > max) set((c) => ({ flavors: c.flavors.slice(0, max) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.type, config.flavors.length]);
+
   // Funnel: si conta il passo che ENTRA IN SCENA, non il click su "Avanti".
   // I passi effettivi sono 11/12/13 a seconda della torta e chi sceglie una
   // consigliata salta avanti: contando "Avanti" quel percorso sparirebbe.
@@ -789,7 +855,9 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       decos.reduce((s, d) => s + (d.priceDelta ?? 0), 0);
     // I gusti sono TUTTI compresi nel prezzo della torta (nessun supplemento per
     // gli strati in più) e la candelina è un regalo della gelateria.
-    // ⚠️ Stessa regola lato server: supabase/functions/_shared/price.ts.
+    // ⚠️ Stessa regola lato server: prezzoOrdine in
+    // supabase/functions/_shared/valida.ts (tests/pagamenti.test.mjs ne
+    // controlla la parità su migliaia di torte a caso).
     if (config.photo) p += 5;
     if (config.delivery) p += DELIVERY_FEE; // consegna a domicilio
     // Extra dell'ordine (salame al kg, cabaret di pasticcini): prezzo × quantità
@@ -884,8 +952,11 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     }
   }, [step, steps, config, staff, earliestISO, cakeSizes, cakeShapes]);
 
-  const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  // Cambiando passo l'avviso di un pagamento non riuscito si chiude: dopo un
+  // rifiuto del server porta il cliente al passo da sistemare, lì serve; più
+  // avanti resterebbe appeso su tutti i passi.
+  const next = () => { setSubmitError(''); setStep((s) => Math.min(s + 1, steps.length - 1)); };
+  const back = () => { setSubmitError(''); setStep((s) => Math.max(s - 1, 0)); };
 
   // Gli strati si possono ripetere (crema, cioccolato, crema) e l'ordine è
   // quello con cui si toccano: toccare un gusto AGGIUNGE uno strato in cima,
@@ -1284,12 +1355,19 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     try {
       sessionStorage.setItem('pg_order_delivery', config.delivery ? '1' : '0');
       traccia(EV.TORTA_CHECKOUT_AVVIATO);
-      // Il server ricalcola il prezzo da `config` (computeOrder): deve ricevere
-      // gli extra definitivi, altrimenti Stripe farebbe pagare un altro totale.
+      // Il server controlla e ricalcola tutto da `config` (computeOrder): deve
+      // ricevere gli extra definitivi, altrimenti Stripe farebbe pagare un
+      // altro totale. Riepilogo, mail e dettagli dell'ordine li scrive lui;
+      // di `insert` usa solo gli URL delle foto già caricate su Storage.
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         // Il codice sconto va mandato: il server lo riverifica da capo e
         // ricalcola l'importo. Non mandiamo mai un totale, solo le scelte.
-        body: { config: { ...cfg, scontoCodice: config.sconto?.codice || null }, insert: insertBase },
+        // La foto viaggia come sì/no: al server serve solo sapere se c'è
+        // (+5 €), e la foto intera (1-2 MB da telefono) è già su Storage.
+        body: {
+          config: { ...cfg, photo: !!cfg.photo, scontoCodice: config.sconto?.codice || null },
+          insert: insertBase,
+        },
       });
       if (error) throw error;
       // Verso Stripe: la guardia resta ALZATA di proposito, la pagina sta per
@@ -1298,20 +1376,61 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       throw new Error(data?.error || 'Risposta non valida dal server');
     } catch (e) {
       traccia(EV.TORTA_CHECKOUT_ERRORE);
-      // Il server rifiuta la taglia se il listino è cambiato mentre il cliente
-      // sceglieva, per esempio perché sono appena state accese le taglie delle
-      // torte alte. La risposta (409, codice 'taglia_non_valida') la manda
-      // create-checkout. Si rilegge il listino: l'effetto su tagliaEquivalente
-      // aggiorna la taglia, o riporta al passo persone se non ce n'è una
-      // uguale, e il totale si ricalcola. Senza questo il cliente leggeva
-      // "Edge Function returned a non-2xx status code" e restava bloccato.
+      // Il server rifiuta una scelta che il listino non permette più: una
+      // copertura spenta mentre il cliente sceglieva, una taglia cambiata
+      // (le taglie delle alte appena accese), una forma tolta per quel tipo
+      // di torta… La risposta di create-checkout ha un `codice` (vedi
+      // CODICI_RIFIUTO), il `campo` (il passo) e la `voce` rifiutata. Si
+      // rilegge il listino, si toglie dalla torta quello che non c'è più
+      // (riallineaConfig) e si riporta il cliente al passo da sistemare, col
+      // messaggio del server. Senza questo leggeva "Edge Function returned a
+      // non-2xx status code" e restava bloccato.
       let risposta = null;
       try { risposta = await e?.context?.json?.(); } catch { /* corpo non leggibile */ }
-      if (risposta?.codice === 'taglia_non_valida') {
-        await cake.ricarica?.();
-        setSubmitError('Il listino delle taglie è appena cambiato e abbiamo aggiornato la tua torta: controlla taglia e prezzo, poi conferma di nuovo.');
+      if (CODICI_RIFIUTO.has(risposta?.codice)) {
+        const nuovi = (await cake.ricarica?.()) || cake;
+        const listino = { ...nuovi, cakeScritte: scritteOf(nuovi) };
+        const { patch, passo } = riallineaConfig(cfg, listino, risposta, {
+          isTall: isTallType, maxGusti: maxFlavorsFor, normalizeFont,
+          baseObbligata: (t) => BASE_OBBLIGATA[t] || '',
+        });
+        if (Object.keys(patch).length) set(patch);
+        if (passo) {
+          // I passi della torta NUOVA: la correzione può far comparire o
+          // sparire il passo del crumble o della base (come per le consigliate).
+          const futuri = passiPer({ ...cfg, ...patch }, nuovi.cakeBases, nuovi.cakeCrumbles);
+          const i = indicePasso(futuri, passo);
+          if (i >= 0) setStep(i);
+        }
+        // Taglia sostituita con una equivalente: il messaggio di sempre, si
+        // resta al riepilogo col prezzo nuovo. Negli altri casi parla il
+        // server; se col listino nuovo è cambiato anche altro (si riparte da
+        // un passo prima di quello rifiutato) lo si dice.
+        const ALTRO = ' Col listino di oggi è cambiato anche altro: controlla le scelte.';
+        // Rifiutata la base che il tipo porta nel nome: il tipo se n'è andato
+        // con lei e si riparte dal primo passo. Lo si dice col nome della
+        // torta, che è quello che il cliente ha scelto (la base non l'ha vista).
+        const imposta = BASE_OBBLIGATA[cfg.type];
+        const tipoConLaBase = patch.type === '' && risposta.campo === 'base' && !!imposta && String(risposta.voce) === imposta;
+        if (risposta.codice === 'taglia_non_valida' && patch.sizeId) {
+          setSubmitError('Il listino delle taglie è appena cambiato e abbiamo aggiornato la tua torta: controlla taglia e prezzo, poi conferma di nuovo.'
+            + (passo ? ALTRO : ''));
+        } else if (tipoConLaBase) {
+          const nome = cakeTypes.find((t) => t.id === cfg.type)?.name;
+          setSubmitError(`${nome ? `«${nome}»` : 'Questa torta'} oggi non si può ordinare: la sua base non è più disponibile. Scegli un altro tipo di torta e conferma di nuovo.`);
+        } else {
+          const passoDelCampo = PASSO_DEL_CAMPO[risposta.campo];
+          setSubmitError((risposta.error || 'Una delle scelte non è più disponibile: controlla la torta e conferma di nuovo.')
+            + (passo && passoDelCampo && passo !== passoDelCampo ? ALTRO : ''));
+        }
+      } else if (risposta?.error) {
+        // Ogni altra risposta del server ha un messaggio in italiano per il cliente.
+        setSubmitError(risposta.error);
       } else {
-        setSubmitError(e?.message || 'Errore durante il pagamento. Riprova.');
+        console.warn('[ordine] pagamento non avviato:', e?.message);
+        setSubmitError(/^Functions/.test(e?.name || '')
+          ? 'Non siamo riusciti ad aprire il pagamento. Controlla la connessione e riprova.'
+          : e?.message || 'Errore durante il pagamento. Riprova.');
       }
       setSubmitting(false);
       invioInCorso.current = false;
@@ -1609,12 +1728,15 @@ function StepHeader({ stepKey, num, title, lead }) {
 }
 
 function StepType({ config, set }) {
-  const { cakeTypes, cakeSizes } = useCakeData();
+  const { cakeTypes, cakeSizes, cakeBases } = useCakeData();
+  // Un tipo con la base nel nome si propone solo se quella base è accesa
+  // (tipoFattibile): spento il salame, sparisce la torta col salame.
+  const tipi = cakeTypes.filter((t) => tipoFattibile(t.id, cakeBases));
   return (
     <>
       <StepHeader stepKey="type" title="Che torta vuoi creare?" lead="Scegli la base, poi la rendiamo unica insieme." />
       <div className="opt-grid cols-2">
-        {cakeTypes.map((t) => {
+        {tipi.map((t) => {
           // "Da" = prezzo base + la taglia più economica fra quelle che il
           // cliente vedrà al passo persone. Con le taglie delle alte accese, per
           // le alte si parte dalla taglia alta più economica.
@@ -2661,8 +2783,12 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
             placeholder="Via e numero civico, città, campanello…"
             value={config.deliveryAddress}
             onChange={(e) => set({ deliveryAddress: e.target.value })}
+            maxLength={MAX_INDIRIZZO}
             required
           />
+          {config.deliveryAddress.length > MAX_INDIRIZZO * 0.8 && (
+            <p className="hint">{config.deliveryAddress.length}/{MAX_INDIRIZZO} caratteri</p>
+          )}
           <div className="delivery-zones">
             <span className="delivery-zones-title">Zone servite:</span>
             <ul>
@@ -2736,6 +2862,11 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
           maxLength={MAX_NOTE}
           onChange={(e) => set({ notes: e.target.value })}
         />
+        {/* Il contatore compare solo vicino al limite: per due righe di note
+            sarebbe solo rumore. */}
+        {config.notes.length > MAX_NOTE * 0.8 && (
+          <p className="hint">{config.notes.length}/{MAX_NOTE} caratteri</p>
+        )}
         <div className="cfg-avviso cfg-avviso-dolce" role="note">
           <span className="cfg-avviso-ico" aria-hidden="true">💙</span>
           <div>
