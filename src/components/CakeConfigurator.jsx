@@ -8,7 +8,10 @@ import { logAction } from '../lib/log';
 import { traccia, tracciaUnaVolta, tracciaConsigliata, EV, EV_PASSO } from '../lib/analytics';
 import { uploadCakePhotos, ruotaFoto } from '../lib/cakePhoto';
 import { catturaTorta3D, ridimensiona, SFONDO_FOTO } from '../lib/cakeSnapshot';
-import { dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE, taglieDelTipo, tagliaEquivalente } from '../lib/misureTorta';
+import {
+  dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE, taglieDelTipo, tagliaEquivalente,
+  formeDelTipo, formaEquivalente, FORMA_PREDEFINITA,
+} from '../lib/misureTorta';
 import CakePreview from './CakePreview';
 import Lightbox from './Lightbox';
 
@@ -48,6 +51,12 @@ const StepsCtx = createContext(STEPS);
  * una torta che si contraddice nel nome.
  */
 const BASE_OBBLIGATA = { crock: 'glutenfree' };
+// La base di partenza: "Senza base", se c'è. Non "la prima della lista":
+// l'ordine delle basi lo decidono i titolari con le frecce della dashboard,
+// e spostarne una in cima non deve cambiare la base pre-scelta né il prezzo
+// mostrato fin dal primo passo (la Classica costa 1 € in più).
+const BASE_PREDEFINITA = 'cacao';
+const basePredefinita = (basi) => (basi || []).find((b) => b.id === BASE_PREDEFINITA) || (basi || [])[0];
 // Le torte "Alte" (semifreddo e gelato) consentono 4 gusti; le altre (basse) 2.
 // Non e' un obbligo: si puo' fare una torta a un gusto solo. Il numero
 // consigliato (GUSTI_CONSIGLIATI) e' quello che rende meglio in vetrina.
@@ -65,6 +74,10 @@ const NO_DECO = 'nessuna';
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
 // Tetto di sicurezza per gli extra: nessuno ordina 50 kg di salame dal sito.
 const MAX_EXTRA_QTY = 20;
+// Note aggiuntive: mille caratteri bastano e avanzano. Senza tetto una nota
+// lunghissima poteva far fallire il pagamento: viaggia quattro volte nei dati
+// che il sito passa a Stripe (metadata, al massimo 50 pezzi da 500 caratteri).
+const MAX_NOTE = 1000;
 
 // Stili della scritta: arrivano dalla tabella `scritte` (opzionale). Se manca —
 // o è vuota — si usa questa copia di sicurezza, così il passo funziona sempre.
@@ -337,7 +350,10 @@ const PREFILL_KEYS = [
 function makeInitialConfig(cake, initial = {}) {
   const base = {
     type: '',
-    shape: cake.cakeShapes[0]?.id || 'tonda',
+    // La tonda se c'è, non "la prima della lista": riordinare le forme dalla
+    // dashboard non deve cambiare la forma pre-scelta né il prezzo iniziale.
+    // Se per il tipo scelto poi non vale, la sistema l'effetto delle forme.
+    shape: (cake.cakeShapes.find((s) => s.id === FORMA_PREDEFINITA) || cake.cakeShapes[0])?.id || FORMA_PREDEFINITA,
     sizeId: '', // scelta esplicita: sblocca "Sorprendimi" e le regole legate alle persone
     allergies: initial.allergies || [], // allergeni da evitare (ingrigiscono le scelte)
     // Il passo allergie va risposto: o si sceglie almeno un allergene, o si
@@ -345,7 +361,7 @@ function makeInitialConfig(cake, initial = {}) {
     noAllergies: false,
     diets: [],           // preferenze alimentari: vegan, senza zuccheri aggiunti
     flavors: [], // [{name,color}]
-    baseId: cake.cakeBases[0]?.id || '',
+    baseId: basePredefinita(cake.cakeBases)?.id || '',
     crumbleId: '', // tipo di crumble: usato solo con la base crumble croccante
     fillingId: 'nessuna',
     coveringId: '',
@@ -570,7 +586,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       const patch = {};
       const base = cakeBases.find((b) => b.id === c.baseId);
       if (conflictsAllergies(base, c.allergies, c.diets)) {
-        patch.baseId = cakeBases.find((b) => !conflictsAllergies(b, c.allergies, c.diets))?.id || '';
+        // La base di partenza se va bene, altrimenti la prima compatibile.
+        patch.baseId = basePredefinita(cakeBases.filter((b) => !conflictsAllergies(b, c.allergies, c.diets)))?.id || '';
         patch.crumbleId = '';
       }
       const crumble = cakeCrumbles.find((x) => x.id === c.crumbleId);
@@ -714,6 +731,23 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.type, config.sizeId, cakeSizes]);
 
+  // Stessa cosa per la FORMA: dal tab Dimensioni una forma si può spegnere
+  // solo per le torte alte o solo per le normali (formeDelTipo). Se il tipo
+  // cambia e la forma scelta non vale più, si passa alla tonda (o alla prima
+  // ammessa) e si torna al passo della forma, perché il cliente la veda e il
+  // prezzo cambi davanti ai suoi occhi. Vale anche per le consigliate (che
+  // portano a gelato o semifreddo), per "Rifai questa torta" e per il listino
+  // che arriva da Supabase dopo il primo render. Se scatta anche l'effetto
+  // della taglia, Math.min riporta al passo più indietro dei due.
+  useEffect(() => {
+    const giusta = formaEquivalente(cakeShapes, config.shape, isTallType(config.type));
+    if (!giusta || giusta === config.shape) return;
+    set({ shape: giusta });
+    const passoForma = steps.indexOf('shape');
+    if (passoForma >= 0) setStep((s) => Math.min(s, passoForma));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.type, config.shape, cakeShapes]);
+
   // Funnel: si conta il passo che ENTRA IN SCENA, non il click su "Avanti".
   // I passi effettivi sono 11/12/13 a seconda della torta e chi sceglie una
   // consigliata salta avanti: contando "Avanti" quel percorso sparirebbe.
@@ -826,6 +860,8 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       case 'allergies': return config.noAllergies || config.allergies.length > 0;
       case 'shape':
         return !!config.shape &&
+          // la forma dev'essere fra quelle del suo gruppo (torte normali o alte)
+          formeDelTipo(cakeShapes, isTallType(config.type)).some((s) => s.id === config.shape) &&
           (config.shape !== 'rettangolare' || personeOf(size) >= RECT_MIN_PERSONE);
       case 'flavors': return config.flavors.length >= 1;
       case 'filling': return !!config.fillingId;
@@ -846,7 +882,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
       case 'review': return !staff || config.pagamentoStaff === 'pagata' || config.pagamentoStaff === 'ritiro';
       default: return true;
     }
-  }, [step, steps, config, staff, earliestISO, cakeSizes]);
+  }, [step, steps, config, staff, earliestISO, cakeSizes, cakeShapes]);
 
   const next = () => setStep((s) => Math.min(s + 1, steps.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -918,11 +954,13 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // La rettangolare resta riservata alle torte grandi.
     const size = cakeSizes.find((s) => s.id === config.sizeId);
     const rettOk = personeOf(size) >= RECT_MIN_PERSONE;
+    // Solo le forme del suo gruppo: torte normali o alte (formeDelTipo).
+    const formeTipo = formeDelTipo(cakeShapes, isTallType(config.type));
     const dichiarata =
       recipe.shape &&
-      cakeShapes.some((s) => s.id === recipe.shape) &&
+      formeTipo.some((s) => s.id === recipe.shape) &&
       (recipe.shape !== 'rettangolare' || rettOk);
-    const altreForme = cakeShapes.filter(
+    const altreForme = formeTipo.filter(
       (s) => s.id !== 'cuore' && (s.id !== 'rettangolare' || rettOk)
     );
     const formaSorpresa = dichiarata
@@ -1609,6 +1647,12 @@ function StepShape({ config, set, consigliata }) {
   } = useCakeData();
   const size = cakeSizes.find((s) => s.id === config.sizeId);
   const persone = personeOf(size);
+  // Solo le forme accese per il gruppo di questa torta (normali o alte): dal
+  // tab Dimensioni una forma si può spegnere per uno solo dei due.
+  const forme = formeDelTipo(cakeShapes, isTallType(config.type));
+  // La frase di sempre nomina tutte e quattro le forme: se una manca, una
+  // frase che non promette niente.
+  const tutteLeForme = ['tonda', 'cuore', 'quadrata', 'rettangolare'].every((id) => forme.some((s) => s.id === id));
   // Quale gruppo di consigliate è aperto ('' = nessuno, si vedono solo i tasti).
   const [gruppoAperto, setGruppoAperto] = useState('');
 
@@ -1652,9 +1696,15 @@ function StepShape({ config, set, consigliata }) {
 
   return (
     <>
-      <StepHeader stepKey="shape" title="Che forma vuoi?" lead="Tonda, a cuore, quadrata o rettangolare per i buffet più generosi." />
+      <StepHeader
+        stepKey="shape"
+        title="Che forma vuoi?"
+        lead={tutteLeForme
+          ? 'Tonda, a cuore, quadrata o rettangolare per i buffet più generosi.'
+          : 'Scegli fra le forme disponibili per questa torta.'}
+      />
       <div className="opt-grid cols-2">
-        {cakeShapes.map((sh) => {
+        {forme.map((sh) => {
           const blocked = sh.id === 'rettangolare' && persone > 0 && persone < RECT_MIN_PERSONE;
           return (
             <button
@@ -2683,6 +2733,7 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
         <textarea
           placeholder="Allergie, intolleranze, preferenze decorative…"
           value={config.notes}
+          maxLength={MAX_NOTE}
           onChange={(e) => set({ notes: e.target.value })}
         />
         <div className="cfg-avviso cfg-avviso-dolce" role="note">

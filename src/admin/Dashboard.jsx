@@ -11,6 +11,7 @@ import PromemoriaPanel from './PromemoriaPanel';
 import StatistichePanel from './StatistichePanel';
 import MisurePanel from './MisurePanel';
 import StatoTaglieAlte from './StatoTaglieAlte';
+import OrdinaLista from './OrdinaLista';
 import CambiaMioCodice from './CambiaMioCodice';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
@@ -35,6 +36,21 @@ const ALLERGENI_OPTIONS = [
   { value: 'Solfiti', emoji: '🍷' },
 ];
 
+// Le categorie della carta del gelato, nell'ordine in cui le mostra il sito
+// (MENU_CATS in src/data/live.js). Nella lista delle frecce («↕ Cambia
+// ordine») un gusto si sposta solo dentro la sua categoria: è l'unico ordine
+// che conta, nella carta come nella pagina /allergeni.
+const CATEGORIE_CARTA = [
+  { value: 'crema', label: 'Creme Classiche' },
+  { value: 'golosone', label: 'Golosoni' },
+  { value: 'frutta-vegan', label: 'Frutta e Vegan' },
+  { value: 'base', label: 'Basi' },
+  { value: 'leccornie', label: 'Altre Leccornie' },
+];
+// I gusti del configuratore torte: quelli spuntati "Per torte".
+const perTorte = (r) => !!r.per_torte;
+const nomeGusto = (r) => r.gusto || 'gusto';
+
 // Tab Dimensioni: i due listini di taglie. `alta` è la colonna di `dimensioni`
 // (vedi migrations/2026-09-14-taglie-alte.sql e src/lib/misureTorta.js).
 const GRUPPI_TAGLIE = [
@@ -48,7 +64,7 @@ const GRUPPI_TAGLIE = [
     chiave: 'alte',
     alta: true,
     titolo: 'Torte alte',
-    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Le taglie nuove nascono spente. Appena ne accendi una, le alte si vendono solo nelle taglie alte accese: prepara prima tutte quelle che vuoi vendere (nome, prezzo, misure), poi accendile.',
+    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Le taglie nuove nascono spente. Appena ne accendi una, le alte si vendono solo nelle taglie alte accese: prepara prima tutte quelle che vuoi vendere (nome, prezzo, misure), poi accendile. Le forme per le alte si scelgono con gli interruttori qui sotto, anche quando le alte usano ancora le taglie normali.',
   },
 ];
 
@@ -61,6 +77,10 @@ export default function Dashboard() {
   const [mioCodice, setMioCodice] = useState(false);
   // Sale a ogni modifica delle taglie: la griglia delle misure si ricarica.
   const [versioneTaglie, setVersioneTaglie] = useState(0);
+  // Scheda Gusti: il riquadro dell'ordine dei gusti nelle torte si ricarica
+  // quando la lista sotto salva (un gusto spuntato "Per torte", rinominato…).
+  const [versioneGusti, setVersioneGusti] = useState(0);
+  const [ordineTorteAperto, setOrdineTorteAperto] = useState(false);
   // Chi sta prendendo l'ordine al banco (nome, dal codice personale).
   const [chiediCodice, setChiediCodice] = useState(false);
   const [operatore, setOperatore] = useState(null);
@@ -116,7 +136,12 @@ export default function Dashboard() {
         props: {
           table: 'allergeni_prodotti',
           title: 'Gusti e allergeni',
-          subtitle: 'Lista unica: alimenta sia la carta del gelato (menu) sia la pagina pubblica "Allergeni". Per ogni gusto imposta categoria, colore, allergeni e flag dieta. ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
+          subtitle: 'Lista unica: alimenta sia la carta del gelato (menu) sia la pagina pubblica "Allergeni". Per ogni gusto imposta categoria, colore, allergeni e flag dieta. L\'ordine nella carta si cambia con «↕ Cambia ordine»; quello nel configuratore torte nel riquadro qui sopra. ⚠️ Dato di sicurezza: verifica sempre prima di pubblicare.',
+          // Nella carta i gusti stanno per categoria: le frecce li spostano
+          // solo dentro la loro.
+          ordinabile: true,
+          ambitoOrdine: (r) => r.categoria,
+          ambitiOrdine: CATEGORIE_CARTA,
           fields: [
             { key: 'categoria', label: 'Categoria', type: 'select', options: [
               { value: 'base', label: 'Basi' },
@@ -142,7 +167,9 @@ export default function Dashboard() {
             { key: 'senza_zucchero', label: 'Senza zuccheri', type: 'checkbox' },
             { key: 'per_torte', label: '🎂 Per torte', type: 'checkbox' },
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
-            { key: 'ordine', label: 'Ordine', type: 'number' },
+            // Niente più casella "Ordine": l'ordine si cambia con le frecce
+            // (due comandi per la stessa cosa si contraddirebbero, e "Salva"
+            // riscriverebbe il numero vecchio sopra quello nuovo).
           ],
           newRow: () => ({ categoria: 'crema', gusto: 'Nuovo gusto', descrizione: '', colore: '#f5d97a', tag: null, base: 'Bianca', ingredienti: '', allergeni_certi: '', allergeni_tracce: '', vegan: false, senza_glutine: true, senza_lattosio: false, senza_zucchero: false, per_torte: false, attivo: true, ordine: 100 }),
         },
@@ -153,6 +180,7 @@ export default function Dashboard() {
         props: {
           table: 'basi',
           title: 'Basi delle torte',
+          ordinabile: true,
           subtitle: 'Come nella scheda "Gusti e allergeni": gli allergeni PRESENTI spengono la base nel configuratore a chi li ha dichiarati; le possibili TRACCE non la spengono, ma compaiono nel quaderno allergeni.',
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
@@ -173,6 +201,7 @@ export default function Dashboard() {
         props: {
           table: 'crumble',
           title: 'Tipi di crumble',
+          ordinabile: true,
           subtitle: 'Compaiono nel configuratore solo a chi sceglie la base "Crumble croccante": aggiungi o disattiva i tipi che hai in laboratorio. Allergeni come nei gusti: i PRESENTI spengono il crumble a chi li ha dichiarati, le possibili TRACCE compaiono solo nel quaderno allergeni.',
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
@@ -193,6 +222,7 @@ export default function Dashboard() {
         props: {
           table: 'farciture',
           title: 'Inserto',
+          ordinabile: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
@@ -209,6 +239,7 @@ export default function Dashboard() {
         props: {
           table: 'coperture',
           title: 'Coperture / glasse',
+          ordinabile: true,
           subtitle: 'Coperture legate alla grafica 3D: attiva o disattiva quelle disponibili. La "Foto di esempio" è una vostra foto vera di quella copertura: chi la sceglie nel configuratore può aprirla per capire come viene.',
           locked: true,
           fields: [
@@ -228,6 +259,7 @@ export default function Dashboard() {
         props: {
           table: 'decorazioni',
           title: 'Decorazioni',
+          ordinabile: true,
           subtitle: 'Decorazioni legate alla grafica 3D: attiva o disattiva quelle disponibili. Il supplemento si somma al prezzo della torta. Se la decorazione esiste in più colori, spunta "Colore a scelta" ed elenca qui i colori: il cliente sceglierà il suo.',
           locked: true,
           fields: [
@@ -253,11 +285,12 @@ export default function Dashboard() {
           table: 'scritte',
           title: 'Scritte sulla torta',
           subtitle: "Gli stili di scrittura fra cui il cliente sceglie per la dedica: nessuno costa di più, cambia solo l'aspetto. Il carattere è un dato tecnico (es. 'Caveat', cursive): se non sei sicura, lascialo com'è.",
+          // L'ordine si cambia con le frecce: la casella "Ordine" non c'è più.
+          ordinabile: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'font_family', label: 'Carattere (tecnico)', type: 'text', placeholder: "'Caveat', cursive" },
             { key: 'esempio', label: 'Esempio', type: 'text', placeholder: 'Auguri!' },
-            { key: 'ordine', label: 'Ordine', type: 'number' },
             { key: 'maiuscolo', label: 'Tutto maiuscolo', type: 'checkbox' },
             { key: 'corsivo', label: 'Inclinato', type: 'checkbox' },
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
@@ -274,12 +307,13 @@ export default function Dashboard() {
           table: 'extra',
           title: 'Extra da aggiungere alla torta',
           subtitle: 'Quello che il cliente può mettere nel suo ordine oltre alla torta: salame dolce, cabaret di pasticcini… Scrivi il prezzo di UNA unità e come la vendi (al kg, a cabaret).',
+          // L'ordine si cambia con le frecce: la casella "Ordine" non c'è più.
+          ordinabile: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
             { key: 'prezzo', label: 'Prezzo €', type: 'number' },
             { key: 'unita', label: 'Unità', type: 'text', placeholder: 'al kg / a cabaret' },
-            { key: 'ordine', label: 'Ordine', type: 'number' },
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
             { key: 'attivo', label: 'Attivo', type: 'checkbox' },
           ],
@@ -292,6 +326,7 @@ export default function Dashboard() {
         props: {
           table: 'tipi_torta',
           title: 'Tipi di torta',
+          ordinabile: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
@@ -308,6 +343,8 @@ export default function Dashboard() {
         props: {
           table: 'dimensioni',
           title: 'Dimensioni torta',
+          // Ognuna delle due griglie (normali, alte) ordina solo le sue taglie.
+          ordinabile: true,
           subtitle: 'Le taglie fra cui sceglie il cliente e quanto costano in più. Le misure, forma per forma, si scrivono nella tabella qui sotto.',
           // Il diametro non è più qui: è la colonna "Tonda" della griglia
           // Misure per forma (MisurePanel), accanto alle altre forme.
@@ -324,7 +361,11 @@ export default function Dashboard() {
         props: {
           table: 'forme',
           title: 'Forme torta',
-          subtitle: 'Forme legate alla grafica 3D: attiva o disattiva quelle disponibili.',
+          ordinabile: true,
+          // L'interruttore di questa scheda è quello GENERALE. Quelli per
+          // gruppo (solo normali / solo alte) stanno nel tab Dimensioni,
+          // sotto il nome di ogni forma (MisurePanel).
+          subtitle: 'Forme legate alla grafica 3D: attiva o disattiva quelle disponibili. Questo è l\'interruttore generale: una forma spenta qui non la vede nessuno. Per spegnerla solo per le torte normali o solo per le alte usa gli interruttori sotto il nome della forma, nella scheda Dimensioni.',
           locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
@@ -341,6 +382,7 @@ export default function Dashboard() {
         props: {
           table: 'occasioni',
           title: 'Occasioni',
+          ordinabile: true,
           fields: [{ key: 'nome', label: 'Nome', type: 'text' }],
           newRow: () => ({ nome: '' }),
         },
@@ -551,6 +593,38 @@ export default function Dashboard() {
                 <MisurePanel versione={versioneTaglie} alta={g.alta} />
               </section>
             ))}
+          </div>
+        ) : active === 'allergeni' ? (
+          // Gusti: in cima l'ordine dei gusti nel configuratore torte, che è
+          // SEPARATO da quello della carta (colonna ordine_torte): nella carta
+          // i gusti stanno per categoria, nel configuratore in una griglia
+          // unica, e i titolari vogliono poter mettere la Nutella prima del
+          // Fior di Latte senza scombinare la carta. Chiuso finché non serve.
+          <div className="adm-stack">
+            <details
+              className="gusti-torte"
+              open={ordineTorteAperto}
+              onToggle={(e) => setOrdineTorteAperto(e.currentTarget.open)}
+            >
+              <summary>🎂 Ordine dei gusti nel configuratore torte</summary>
+              <p className="gusti-torte-testo">
+                L'ordine in cui i gusti «Per torte» compaiono a chi compone una torta. È separato dalla
+                carta del gelato: qui sposti un gusto per le torte e la carta resta com'è. Un gusto
+                appena spuntato «Per torte» parte in fondo.
+              </p>
+              {ordineTorteAperto && (
+                <OrdinaLista
+                  table="allergeni_prodotti"
+                  chiave="ordine_torte"
+                  titolo="Gusti nel configuratore torte"
+                  universo={perTorte}
+                  etichetta={nomeGusto}
+                  versione={versioneGusti}
+                  avvisoMigrazione="L'ordine dei gusti nelle torte si attiva eseguendo una volta su Supabase la migrazione migrations/2026-10-09-dashboard-ottobre.sql. Fino ad allora vale l'ordine della carta."
+                />
+              )}
+            </details>
+            <TableEditor key={current.key} {...current.props} onChange={() => setVersioneGusti((v) => v + 1)} />
           </div>
         ) : (
           <TableEditor key={current.key} {...current.props} />

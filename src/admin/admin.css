@@ -86,6 +86,42 @@
 
 /* Righe */
 .adm-rows { display: flex; flex-direction: column; gap: .5rem; }
+/* Nascoste mentre è aperta la lista delle frecce («↕ Cambia ordine») */
+.adm-rows[hidden] { display: none; }
+
+/* «↕ Cambia ordine» nella testata della scheda, con la nota quando è spento */
+.adm-ordine { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.adm-ordine-nota { font-size: .78rem; color: #8a5a00; }
+
+/* ───────── Ordine delle liste: lista compatta con le frecce ▲ ▼ ─────────
+   Una voce = una riga. Frecce da 44px e touch-action: manipulation, così i
+   tocchi veloci da telefono spostano invece di ingrandire la pagina. */
+.ol { display: grid; gap: .6rem; }
+.ol-testa { display: flex; align-items: center; justify-content: space-between; gap: .6rem .9rem; flex-wrap: wrap; }
+.ol-aiuto { margin: 0; font-size: .86rem; color: #6b5d4f; }
+.ol-stato { font-weight: 600; color: var(--v-deep); }
+.ol-stato.ok { color: #2f7d4f; }
+.ol-sezione { display: grid; gap: .3rem; }
+.ol-sez-tit { margin: .5rem 0 .1rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--v-deep); }
+.ol-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.ol-voce { display: flex; align-items: center; gap: .6rem; padding: .2rem .3rem .2rem .6rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; scroll-margin: 5rem 0 1rem; }
+.ol-voce.off { background: var(--cream); }
+.ol-voce.off .ol-nome { color: #9a9186; }
+.ol-pos { min-width: 1.5rem; text-align: right; font-size: .78rem; font-weight: 700; color: #9a9186; font-variant-numeric: tabular-nums; }
+.ol-segno { width: 1.3rem; flex-shrink: 0; text-align: center; }
+.ol-pallino { width: 14px; height: 14px; margin: 0 .15rem; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .14); }
+.ol-nome { flex: 1; min-width: 0; font-size: .92rem; overflow-wrap: anywhere; }
+.ol-nome small { font-size: .76rem; color: #7a7166; }
+.ol-frecce { display: flex; gap: .3rem; flex-shrink: 0; }
+.ol-freccia { min-width: 44px; min-height: 44px; padding: 0; font-size: .95rem; line-height: 1; color: var(--v-deep); touch-action: manipulation; }
+.ol-freccia:focus-visible { outline: 2px solid var(--v-deep); outline-offset: 1px; }
+
+/* Scheda Gusti: riquadro dell'ordine dei gusti nel configuratore torte */
+.gusti-torte { border: 1px solid var(--line); border-radius: 16px; background: #fff; padding: 0 1.2rem; }
+.gusti-torte > summary { cursor: pointer; padding: .95rem 0; font-weight: 700; color: var(--v-deep); }
+.gusti-torte[open] { padding-bottom: 1.1rem; }
+.gusti-torte[open] > summary { margin-bottom: .2rem; }
+.gusti-torte-testo { margin: 0 0 .9rem; max-width: 70ch; font-size: .86rem; color: #7a7166; }
 .adm-row { display: flex; align-items: center; gap: .8rem; padding: .6rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .adm-row.off { opacity: .55; background: #faf7fb; }
 .adm-fields { display: flex; flex-wrap: wrap; gap: .6rem; flex: 1; }
@@ -167,13 +203,32 @@
 .ord-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .ord-actions select { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
 .ord-riepilogo { background: #faf7fb; border: 1px solid var(--line); border-radius: 8px; padding: .8rem; font-size: .82rem; white-space: pre-wrap; font-family: inherit; margin: .7rem 0 0; color: #444; }
-.ord-note { font-size: .85rem; color: #555; margin: .5rem 0 0; }
-.ord-lab-preview { margin: .5rem 0 0; font-size: .85rem; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 8px; padding: .35rem .6rem; }
+/* pre-wrap: le note scritte su più righe restano su più righe; anywhere: un
+   link lunghissimo va a capo invece di allargare la card. */
+.ord-lab-preview { margin: .5rem 0 0; font-size: .85rem; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 8px; padding: .35rem .6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Note del CLIENTE in evidenza nella card: azzurro del negozio, così non si
+   confondono con l'ambra delle note di laboratorio, che sono dello staff. */
+.ord-note-cliente { margin: .5rem 0 0; font-size: .88rem; color: var(--ink); background: #eef6fb; border: 1px solid #b9d9ea; border-left: 4px solid var(--v-deep); border-radius: 8px; padding: .45rem .65rem; }
+.ord-note-cliente p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.ord-note-tit { display: block; margin-bottom: .15rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--v-deep); }
 .ord-lab { margin: .7rem 0 0; }
-.ord-lab > label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .3rem; }
-.ord-lab > label span { font-weight: 400; color: #999; }
-.ord-lab textarea { width: 100%; min-height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font: inherit; font-size: .85rem; resize: vertical; box-sizing: border-box; }
-.ord-lab .adm-btn-save { margin-top: .4rem; }
+.ord-lab > label, .ord-future > label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .3rem; }
+.ord-lab > label span, .ord-future > label span { font-weight: 400; color: #999; }
+.ord-lab textarea, .ord-future textarea { width: 100%; min-height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font: inherit; font-size: .85rem; resize: vertical; box-sizing: border-box; }
+.ord-lab .adm-btn-save, .ord-future .adm-btn-save { margin-top: .4rem; }
+/* «Note future»: pulsante che apre e chiude il riquadro, con un pallino se
+   sull'ordine c'è già qualcosa di scritto. Chiuso di default. */
+.ord-btn-future { display: inline-flex; align-items: center; gap: .4rem; }
+.ord-btn-future.aperto { background: #eef6fb; border-color: var(--v-deep); color: var(--v-deep); }
+.ord-pallino { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--v-deep); flex-shrink: 0; }
+.ord-future { margin: .7rem 0 0; background: #f6fafc; border: 1px dashed #b9d9ea; border-radius: 10px; padding: .6rem .7rem; }
+/* `hidden` va ribadito: una regola di classe con display vincerebbe sul browser. */
+.ord-future[hidden] { display: none; }
+.ord-nota-avviso { margin: .4rem 0 0; font-size: .8rem; color: #8a5a00; background: #fff7e6; border-radius: 8px; padding: .35rem .6rem; }
+.ord-nota-avviso .adm-link { padding: 0; font-size: inherit; }
+
+/* Testo solo per i lettori di schermo (es. "ci sono note scritte" sul pallino). */
+.adm-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .ord-row { display: flex; gap: 1rem; align-items: flex-start; }
 .ord-img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #faf7fb; flex-shrink: 0; }
 /* La miniatura è un link alla foto grande (dal 29-08): il link prende il posto
@@ -482,6 +537,9 @@
   /* Intestazione card: titolo e conteggio impilati */
   .adm-card-head { flex-direction: column; gap: .4rem; }
   .adm-count { text-align: left; }
+  /* «↕ Cambia ordine», «Salva tutto» e il conteggio vanno a capo se serve */
+  .adm-head-destra { flex-wrap: wrap; gap: .5rem .8rem; }
+  .gusti-torte { padding: 0 .9rem; border-radius: 14px; }
 
   /* Righe editor: intestazione (interruttore a sx, azioni a dx) e sotto i campi
      a TUTTA larghezza impilati, invece che schiacciati in una colonnina centrale */
@@ -499,6 +557,8 @@
   .ord-sort { margin-left: 0; }
   .ord-top { flex-direction: column; gap: .4rem; }
   .ord-badges { justify-content: flex-start; }
+  /* 16px: sotto questa soglia iOS ingrandisce la pagina a ogni tocco */
+  .ord-lab textarea, .ord-future textarea { font-size: 16px; }
 
   /* PDF + QR: tutto impilato e a tutta larghezza */
   .doc-current { flex-wrap: wrap; }
@@ -749,7 +809,34 @@
 .mis-no { display: inline-block; padding-top: .45rem; font-size: .78rem; color: #9a9186; }
 .mis-err { display: block; margin-top: .25rem; font-size: .72rem; color: #b03a2e; }
 
+/* Interruttore di una forma per un gruppo (torte normali / alte), sotto il
+   nome della forma. È tutto un pulsante, levetta e scritta: si tocca bene
+   anche col dito. Stessi colori degli interruttori delle schede. */
+.mis-sw { display: flex; align-items: center; gap: .45rem; min-height: 40px; margin-top: .25rem; padding: .25rem 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.mis-sw:disabled { cursor: not-allowed; opacity: .55; }
+.mis-sw:focus-visible { outline: 2px solid var(--v-deep); outline-offset: 2px; border-radius: 8px; }
+.mis-sw-pista { position: relative; flex-shrink: 0; width: 40px; height: 22px; border-radius: 999px; background: #d7cfdb; transition: background .2s; }
+.mis-sw.on .mis-sw-pista { background: #46c46a; }
+.mis-sw-pallino { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .2s; }
+.mis-sw.on .mis-sw-pallino { left: 21px; }
+.mis-sw-stato { font-size: .72rem; font-weight: 500; color: #7a7166; white-space: nowrap; }
+.mis-sw.on .mis-sw-stato { color: #2f7d4f; }
+/* Forma che il cliente di questo gruppo non vede: colonna attenuata, caselle
+   ancora scrivibili (le misure si preparano prima di accenderla). */
+.mis-tabella thead th.off .mis-forma { color: #9a9186; }
+.mis-tabella td.off { background: #faf8f4; }
+.mis-tabella td.off .mis-cella input:not(:focus) { color: #7a7166; background: #faf8f4; }
+/* Striscia degli interruttori: da telefono (l'intestazione della tabella è
+   nascosta) e, da computer, solo quando la tabella non c'è. */
+.mis-forme-switch { display: none; margin: 0 0 .9rem; padding: .45rem .8rem .35rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.mis-forme-switch.sempre { display: grid; }
+.mis-fs-tit { margin: 0 0 .1rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #7a7166; }
+.mis-forme-switch .mis-sw { width: 100%; min-height: 44px; margin: 0; border-top: 1px dashed var(--line); }
+.mis-forme-switch .mis-sw:first-of-type { border-top: 0; }
+.mis-sw-nome { flex: 1; min-width: 0; font-size: .92rem; }
+
 @media (max-width: 640px) {
+  .mis-forme-switch { display: grid; }
   .mis-tabella thead { display: none; }
   .mis-tabella, .mis-tabella tbody, .mis-tabella tr { display: block; width: 100%; }
   /* border-box: con width 100% + padding la scheda sforava di 26px a destra */

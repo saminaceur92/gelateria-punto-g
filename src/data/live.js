@@ -5,6 +5,8 @@
 
 import { supabase } from '../lib/supabase';
 import * as fbCake from './fallback/cakeOptions';
+import { gruppiForma } from '../lib/misureTorta';
+import { ordinaGustiTorte } from '../lib/riordina';
 
 // Gli allergeni restano gestiti da codice (dato tecnico/di sicurezza): li
 // sovrapponiamo ai dati live cercandoli nel fallback per nome (gusti) o id.
@@ -41,7 +43,8 @@ export async function fetchMenu() {
       .from('allergeni_prodotti')
       .select('*')
       .eq('attivo', true)
-      .order('ordine');
+      .order('ordine')
+      .order('id'); // a pari numero, sempre lo stesso ordine
     if (error || !data) return null;
     const dietOf = (r) => [
       r.vegan && { short: 'VEG', label: 'Vegan' },
@@ -121,8 +124,11 @@ export async function fetchCakeOptions() {
       : fbCake.cakeAllergens;
     // Gusti torte: dalla lista unica "Gusti e allergeni" (flag per_torte). Colore e
     // allergeni presi da lì. Fallback ai vecchi gusti_torte finché nessuno è spuntato.
+    // L'ordine dei gusti nelle torte (ordine_torte) si applica più sotto, in JS:
+    // un .order('ordine_torte') qui, prima della migrazione, darebbe errore e
+    // il configuratore ripiegherebbe in silenzio sui vecchi gusti_torte.
     const { data: apRows } = await supabase
-      .from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine');
+      .from('allergeni_prodotti').select('*').eq('attivo', true).order('ordine').order('id');
     const splitLower = (s) => (s || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
     // Diete (vegan / senza zuccheri aggiunti): le colonne `vegan` e
     // `senza_zucchero` sulle tabelle dei componenti torta sono NUOVE. Finché la
@@ -143,7 +149,7 @@ export async function fetchCakeOptions() {
     // si usa la copia di sicurezza, così il configuratore funziona anche prima
     // della migrazione 2026-07-26-crumble.sql.
     const { data: crumbleRows, error: eCrumble } = await supabase
-      .from('crumble').select('*').eq('attivo', true).order('ordine');
+      .from('crumble').select('*').eq('attivo', true).order('ordine').order('id');
     const cakeCrumbles = (!eCrumble && crumbleRows && crumbleRows.length)
       ? crumbleRows.map((c) => ({
         id: c.id,
@@ -159,8 +165,8 @@ export async function fetchCakeOptions() {
     // `crumble`). Le leggiamo insieme e, se mancano o sono vuote, si usa la copia
     // di sicurezza: il sito funziona anche PRIMA che la migrazione venga eseguita.
     const [rScritte, rExtra] = await Promise.all([
-      supabase.from('scritte').select('*').eq('attivo', true).order('ordine'),
-      supabase.from('extra').select('*').eq('attivo', true).order('ordine'),
+      supabase.from('scritte').select('*').eq('attivo', true).order('ordine').order('id'),
+      supabase.from('extra').select('*').eq('attivo', true).order('ordine').order('id'),
     ]);
     const cakeScritte = (!rScritte.error && rScritte.data && rScritte.data.length)
       ? rScritte.data.map((s) => ({
@@ -185,12 +191,17 @@ export async function fetchCakeOptions() {
         step: num(e.passo ?? e.step) || (/kg/i.test(e.unita || '') ? 0.5 : 1),
       }))
       : safeList(fbCake.cakeExtras);
-    const perTorte = (apRows || []).filter((r) => r.per_torte);
+    // Nell'ordine scelto per le torte (dashboard, scheda Gusti), separato da
+    // quello della carta. Prima della migrazione vale quello della carta.
+    const perTorte = ordinaGustiTorte((apRows || []).filter((r) => r.per_torte));
     const cakeFlavors = perTorte.length
       ? perTorte.map((r) => ({ name: r.gusto, color: r.colore || '#f5d97a', allergeni: splitLower(r.allergeni_certi), vegan: !!r.vegan, senzaZucchero: !!r.senza_zucchero }))
       : gt.map((f) => ({ name: f.nome, color: f.colore, tags: f.tags || [], allergeni: FLAV_ALLERG[f.nome] || [] }));
     return {
-      cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento) })),
+      // perNormali / perAlte: la forma si può scegliere per le torte normali e
+      // per le alte (interruttori del tab Dimensioni, vedi formeDelTipo in
+      // src/lib/misureTorta.js). Prima della migrazione valgono true.
+      cakeShapes: forme.map((s) => ({ id: s.id, name: s.nome, desc: s.descrizione || '', emoji: s.emoji || '', priceDelta: num(s.supplemento), ...gruppiForma(s) })),
       cakeTypes: tipi.map((t) => ({ id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore, allergeni: splitLower(t.allergeni) })),
       cakeSizes: dim.map((s) => {
         // `misure`: le forme diverse dalla tonda (vedi src/lib/misureTorta.js).

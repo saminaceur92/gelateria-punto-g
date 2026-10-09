@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { caricaFotoFile, eliminaFotoFile } from '../lib/galleryFoto';
+import OrdinaLista from './OrdinaLista';
 
 /**
  * Editor generico di una tabella di contenuti.
@@ -142,12 +143,17 @@ function messaggioErrore(msg = '') {
 // come la griglia delle misure sotto le taglie.
 // rowFilter: facoltativo, (riga) => true/false. Mostra solo una parte della
 // tabella, es. le taglie delle torte alte in una sezione e le normali in un'altra.
-export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [], onChange, rowFilter }) {
+// ordinabile: c'è «↕ Cambia ordine», che al posto delle righe mostra la lista
+// compatta con le frecce ▲ ▼ (OrdinaLista). ambitoOrdine (riga => chiave) e
+// ambitiOrdine ([{ value, label }]): le voci si spostano solo dentro il loro
+// gruppo, es. la categoria della carta del gelato.
+export default function TableEditor({ table, title, subtitle, fields, newRow, locked = false, excludeIds = [], onChange, rowFilter, ordinabile = false, ambitoOrdine, ambitiOrdine }) {
   const [rows, setRows] = useState([]);
   const [dirty, setDirty] = useState({}); // id -> true
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [ordinando, setOrdinando] = useState(false); // lista delle frecce aperta
   const excludeKey = excludeIds.join('|');
   const rowLabel = (r) => r.nome || r.gusto || r.titolo || r.codice || r.giorno || r.etichetta || 'voce';
   const visibili = rowFilter ? rows.filter(rowFilter) : rows;
@@ -165,7 +171,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
 
   async function load() {
     setError('');
-    const { data, error } = await supabase.from(table).select('*').order('ordine', { ascending: true });
+    // A pari `ordine` decide l'id, come sul sito: senza, due voci con lo
+    // stesso numero comparivano qui in un ordine a caso, diverso da quello
+    // che vede il cliente.
+    const { data, error } = await supabase.from(table).select('*').order('ordine', { ascending: true }).order('id', { ascending: true });
     // Tabella non ancora creata: messaggio comprensibile invece dell'errore Postgres.
     if (error) {
       setError(/does not exist|schema cache/i.test(error.message)
@@ -205,6 +214,12 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
   // Tutte le righe modificate in un colpo solo: prima c'era soltanto il Salva
   // per riga, e dopo dieci ritocchi toccava andarli a cercare uno per uno.
   const daSalvare = visibili.filter((r) => dirty[r.id]);
+  // L'ordine si cambia solo senza modifiche in sospeso: uscendo dalla lista
+  // delle frecce la scheda si ricarica, e le modifiche non salvate andrebbero
+  // perse.
+  const ordineBloccato = daSalvare.length > 0;
+  const nascostiOrdine = new Set(excludeKey.split('|').filter(Boolean));
+  const visibileOrdine = (r) => (!rowFilter || rowFilter(r)) && !nascostiOrdine.has(String(r.id));
   async function saveAll() {
     setBusy(true);
     setError('');
@@ -282,7 +297,20 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
           {subtitle && <p>{subtitle}</p>}
         </div>
         <div className="adm-head-destra">
-          {daSalvare.length > 0 && (
+          {ordinabile && !ordinando && (
+            <span className="adm-ordine">
+              <button
+                type="button"
+                className="adm-btn"
+                onClick={() => setOrdinando(true)}
+                disabled={busy || !loaded || ordineBloccato}
+              >
+                ↕ Cambia ordine
+              </button>
+              {ordineBloccato && <span className="adm-ordine-nota">Salva prima le modifiche</span>}
+            </span>
+          )}
+          {!ordinando && daSalvare.length > 0 && (
             <button type="button" className="adm-btn adm-btn-save" onClick={saveAll} disabled={busy}>
               💾 Salva tutto ({daSalvare.length})
             </button>
@@ -294,7 +322,29 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
       {error && <div className="adm-error">⚠️ {error}</div>}
       {!loaded && <div className="adm-muted">Caricamento…</div>}
 
-      <div className="adm-rows">
+      {/* Lista delle frecce al posto delle righe: legge e salva da sola.
+          Con «Fine» si torna alle righe, ricaricate con l'ordine nuovo. */}
+      {ordinando && (
+        <OrdinaLista
+          table={table}
+          titolo={title}
+          // Con rowFilter (le due griglie delle taglie) ogni lista numera
+          // solo le sue righe: ordinare le normali non tocca le alte, e le
+          // due liste aperte insieme non si pestano i piedi.
+          universo={rowFilter}
+          visibile={visibileOrdine}
+          ambito={ambitoOrdine}
+          ambiti={ambitiOrdine}
+          etichetta={rowLabel}
+          onCambio={() => onChange?.()}
+          onFine={() => {
+            setOrdinando(false);
+            load();
+          }}
+        />
+      )}
+
+      <div className="adm-rows" hidden={ordinando}>
         {visibili.map((row) => (
           <div key={row.id} className={`adm-row ${row.attivo ? '' : 'off'}`}>
             <button
@@ -413,7 +463,7 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
         ))}
       </div>
 
-      {locked ? (
+      {ordinando ? null : locked ? (
         <p className="adm-locked-note">🔒 Queste voci sono legate alla grafica 3D: puoi <strong>attivarle o disattivarle</strong> in base a cosa hai disponibile. Per aggiungerne di nuove serve il supporto 3D.</p>
       ) : (
         <button type="button" className="adm-btn adm-btn-add" onClick={addRow} disabled={busy}>
