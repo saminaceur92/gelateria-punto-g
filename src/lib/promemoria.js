@@ -111,15 +111,85 @@ export async function statoPromemoria() {
   }
 }
 
-/** Elenco promemoria (più vicini prima). */
+// Supabase restituisce al massimo 1000 righe per richiesta (impostazione «Max
+// rows» dell'API, 1000 di partenza) e oltre taglia senza dire niente. La coda
+// non si svuota mai (ogni ordine di compleanno o anniversario aggiunge due
+// righe, e lo storico resta): con una richiesta sola, prima o poi sparirebbero
+// proprio le feste in arrivo. Per questo la lista si legge in tre pezzi,
+// ognuno con un range:
+//  1. TUTTE le mail ancora da spedire o da sistemare (in coda o in errore), a
+//     pagine da 1000;
+//  2. le altre mail degli stessi ordini (es. la «30 giorni prima» già partita
+//     mentre la «14 giorni prima» è in coda), così ogni festa è completa;
+//  3. lo storico più recente, fino a 1000 mail: le più vecchie restano nel
+//     database, il gestionale lo dice.
+const PAGINA = 1000;
+export const STORICO_MAX = 1000;
+// Ordini per richiesta nel pezzo 2: gli id finiscono nell'indirizzo della
+// richiesta, che deve restare corto.
+const ORDINI_PER_RICHIESTA = 100;
+
+/**
+ * Elenco promemoria per il gestionale. → { data, error, storicoTagliato }
+ * (storicoTagliato = ci sono mail più vecchie di quelle mostrate nello storico).
+ */
 export async function listaPromemoria() {
   if (!supabase) return { data: [], error: 'Supabase non configurato' };
-  const { data, error } = await supabase
-    .from('promemoria_compleanno')
-    .select('*')
-    .order('invio_previsto', { ascending: true });
-  if (error) return { data: [], error: error.message };
-  return { data: data || [], error: null };
+  const tabella = () => supabase.from('promemoria_compleanno').select('*');
+  try {
+    // 1 e 3 insieme. Le pagine del pezzo 1 vanno in ordine fisso (data, poi
+    // id): con tante mail nello stesso giorno l'ordine potrebbe cambiare da
+    // una pagina all'altra, e qualche riga salterebbe o si ripeterebbe.
+    const leggiDaFare = async () => {
+      const righe = [];
+      for (let da = 0; ; da += PAGINA) {
+        const { data, error } = await tabella()
+          .in('stato', ['in_attesa', 'errore'])
+          .order('invio_previsto', { ascending: true })
+          .order('id', { ascending: true })
+          .range(da, da + PAGINA - 1);
+        if (error) return { error };
+        righe.push(...(data || []));
+        if (!data || data.length < PAGINA) return { data: righe };
+      }
+    };
+    const [daFare, storico] = await Promise.all([
+      leggiDaFare(),
+      tabella()
+        .in('stato', ['inviato', 'annullato'])
+        .order('invio_previsto', { ascending: false })
+        .range(0, STORICO_MAX - 1),
+    ]);
+    if (daFare.error) return { data: [], error: daFare.error.message };
+    if (storico.error) return { data: [], error: storico.error.message };
+
+    // 2. Le altre mail degli ordini che hanno qualcosa in coda.
+    const ordini = [...new Set(daFare.data.map((r) => r.ordine_id))];
+    const gruppi = [];
+    for (let i = 0; i < ordini.length; i += ORDINI_PER_RICHIESTA) {
+      gruppi.push(ordini.slice(i, i + ORDINI_PER_RICHIESTA));
+    }
+    const fratelli = await Promise.all(gruppi.map((g) => tabella()
+      .in('ordine_id', g)
+      .in('stato', ['inviato', 'annullato'])
+      .range(0, PAGINA - 1)));
+    const errFratelli = fratelli.find((r) => r.error);
+    if (errFratelli) return { data: [], error: errFratelli.error.message };
+
+    // Una riga può arrivare due volte (es. partita proprio fra la lettura 1 e
+    // la 2): ne resta una, quella dell'ultima lettura.
+    const perId = new Map();
+    for (const r of [...(storico.data || []), ...daFare.data, ...fratelli.flatMap((f) => f.data || [])]) {
+      perId.set(r.id, r);
+    }
+    return {
+      data: [...perId.values()],
+      error: null,
+      storicoTagliato: (storico.data || []).length >= STORICO_MAX,
+    };
+  } catch (e) {
+    return { data: [], error: e?.message || 'Lettura dei promemoria non riuscita' };
+  }
 }
 
 /**

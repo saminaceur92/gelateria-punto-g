@@ -11,6 +11,7 @@ import {
   riattivaEmail,
   rimettiInCoda,
   statoPromemoria,
+  STORICO_MAX,
   togliRicorrenza,
 } from '../lib/promemoria';
 import { puoRimettere, raggruppaPromemoria, testiPromemoria } from '../lib/promemoriaRegole';
@@ -202,10 +203,11 @@ export default function PromemoriaPanel() {
   const [configurato, setConfigurato] = useState(true);
   const [stato, setStato] = useState({ migrata: true, templatePronto: true });
   const [tuttoStorico, setTuttoStorico] = useState(false);
+  const [storicoTagliato, setStoricoTagliato] = useState(false);
   const [nuovoStop, setNuovoStop] = useState('');
 
   const ricarica = useCallback(async () => {
-    const [{ data: d, error }, conf, st] = await Promise.all([
+    const [{ data: d, error, storicoTagliato: tagliato }, conf, st] = await Promise.all([
       listaPromemoria(), promemoriaConfigurato(), statoPromemoria(),
     ]);
     // Tabella non ancora creata: messaggio comprensibile.
@@ -213,6 +215,7 @@ export default function PromemoriaPanel() {
       ? 'Scheda non ancora attiva: esegui su Supabase la migrazione migrations/2026-07-26-promemoria-compleanno.sql.'
       : error || '');
     setRows(d);
+    setStoricoTagliato(Boolean(tagliato));
     setConfigurato(conf);
     setStato(st);
     setDisiscritti(st.migrata ? (await listaDisiscritti()).data : []);
@@ -345,6 +348,11 @@ export default function PromemoriaPanel() {
                 <button type="button" className="adm-btn prom-altri" onClick={() => setTuttoStorico((v) => !v)}>
                   {tuttoStorico ? 'Mostra solo i più recenti' : `Mostra tutto lo storico (${storico.length})`}
                 </button>
+              )}
+              {storicoTagliato && (
+                <p className="adm-muted prom-spiega prom-altri">
+                  Qui ci sono le ultime {STORICO_MAX} mail dello storico: le più vecchie restano salvate nel database.
+                </p>
               )}
             </>
           )}
