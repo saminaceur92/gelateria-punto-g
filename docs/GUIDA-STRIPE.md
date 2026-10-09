@@ -118,8 +118,14 @@ Non passarla su WhatsApp o email: usala direttamente nel comando qui sotto.
 https://bqmoxdeagqpzvcblpcbm.supabase.co/functions/v1/stripe-webhook
 ```
 
-Evento da ascoltare: **solo** `checkout.session.completed`.
-Salva e copia il **signing secret** (`whsec_…`).
+Eventi da ascoltare, **questi due**:
+
+- `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
+
+Il secondo serve ai metodi di pagamento "differiti" (bonifico, SEPA…): lì il primo evento arriva
+quando i soldi non sono ancora incassati, e l'ordine nasce solo col secondo. Con le carte non
+cambia niente. Salva e copia il **signing secret** (`whsec_…`).
 
 **c. Secret e redeploy:**
 
@@ -137,6 +143,11 @@ npx supabase functions deploy stripe-webhook --no-verify-jwt --project-ref bqmox
 > ⚠️ **Quando comprate il dominio definitivo**, `SITE_URL` va aggiornato qui, altrimenti dopo
 > il pagamento il cliente viene rimandato al vecchio indirizzo.
 
+> Facoltativo: `PUBLIC_SUPABASE_URL` = l'indirizzo di Supabase che usa il **sito**
+> (`VITE_SUPABASE_URL`), se un giorno non coincidesse più con quello del progetto (per esempio
+> con un dominio personalizzato per Supabase). Serve a `create-checkout` per riconoscere le
+> foto caricate dal sito: senza, le foto con un indirizzo diverso verrebbero scartate.
+
 ### 8. Prova finale con soldi veri — 🛠️ Tu
 
 In Live le carte di test non funzionano più: serve un ordine vero, di importo piccolo.
@@ -150,6 +161,40 @@ In Live le carte di test non funzionano più: serve un ordine vero, di importo p
 
 Il rimborso restituisce l'importo ma **non** la commissione: la prova costa qualche decina di
 centesimi. È il modo più economico per dormire tranquilli.
+
+---
+
+## Come viaggia un ordine pagato (dal 9 ottobre 2026)
+
+1. **Il sito** manda a `create-checkout` solo le **scelte** della torta (e gli indirizzi delle
+   foto già caricate). Non manda prezzi, e il testo per il laboratorio non lo scrive più lui.
+2. **`create-checkout`** rilegge il listino da Supabase e **controlla ogni scelta**: deve
+   esistere, essere accesa e rispettare le regole del configuratore (taglie delle alte, forme per
+   gruppo, rettangolare da 15 persone, colori delle decorazioni, passi degli extra, gusti…). Se
+   qualcosa non va risponde con un codice (`taglia_non_valida`, `forma_non_valida`,
+   `opzione_non_disponibile`, `scelta_non_valida`, `dati_incompleti`) e il sito riporta il
+   cliente al passo da sistemare, col listino aggiornato. Se il listino non si legge risponde
+   503 e **nessun pagamento parte** (prima quel pezzo di torta valeva 0 €).
+3. Poi calcola l'importo, verifica il codice sconto e **scrive lui la riga ordine**: riepilogo per
+   il laboratorio (stesse etichette di sempre, note e indirizzo del cliente fra «»), mail di
+   conferma, dettagli con la scomposizione del prezzo (`dettagli.prezzi`) e `dettagli.autore =
+   'server'`. La riga viaggia nei metadata della sessione Stripe, in formato `v = 2`: JSON in
+   solo ASCII a pezzi `d0, d1…` (le emoji non si rompono più a metà), più `importo_cent`,
+   `sconto_codice`/`sconto_euro` e gli indirizzi delle foto.
+4. **`stripe-webhook`**, a pagamento **incassato**, salva la riga in `ordini` prendendo dai metadata
+   **solo** le colonne della torta e del cliente: stato, totale, sconto e campi Stripe li scrive
+   lui; `note_lab`, `creato_da`, `promemoria_ok` e simili non arrivano mai dal browser. Lo stesso
+   pagamento non crea due ordini (vincolo unico su `stripe_session_id`). Se il salvataggio
+   fallisce riprova con una riga ridotta che dice di controllare il pagamento su Stripe; se
+   fallisce anche quella risponde errore e Stripe ritenta più tardi.
+
+**Ordine di rilascio:** prima la migrazione `migrations/2026-10-09-pagamenti-blindati.sql` nel SQL
+Editor (controllo finale: tutte le righe come scritto fra parentesi), poi le due funzioni
+(comandi del passo 7c, in qualsiasi ordine fra loro), poi il sito. Le funzioni nuove capiscono le
+sessioni aperte da quelle vecchie e viceversa. Infine l'evento in più del passo 7b.
+
+**Prove:** mai "Invia evento di prova" del pannello Stripe sull'endpoint live (creerebbe un ordine
+finto con Telegram e mail). Le prove automatiche stanno in `tests/` (`node --test tests/*.test.mjs`).
 
 ---
 
@@ -183,8 +228,9 @@ vostro. Fai presente al titolare di parlarne col suo commercialista **prima** di
 - [ ] Metodi di pagamento attivi
 - [ ] Dicitura estratto conto riconoscibile
 - [ ] Tu nel team come sviluppatore
+- [ ] Migrazione `2026-10-09-pagamenti-blindati.sql` eseguita, controllo finale tutto come atteso
 - [ ] Chiavi Live nei secret Supabase e funzioni ridistribuite
-- [ ] Webhook attivo su `checkout.session.completed`
+- [ ] Webhook attivo su `checkout.session.completed` e `checkout.session.async_payment_succeeded`
 - [ ] Ordine di prova completato, verificato e rimborsato
 - [ ] Commercialista informato
 
