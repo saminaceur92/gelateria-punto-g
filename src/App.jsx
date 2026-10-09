@@ -17,6 +17,7 @@ import PaymentResult from './components/PaymentResult';
 import PromemoriaStop from './components/PromemoriaStop';
 import { CakeDataProvider } from './data/CakeDataProvider';
 import { tortaDaToken } from './lib/promemoria';
+import { leggiLinkPromemoria } from './lib/promemoriaRegole';
 import { tracciaUnaVolta, EV } from './lib/analytics';
 
 export default function App() {
@@ -25,11 +26,11 @@ export default function App() {
   const openCfg = (initial) => setCfg({ open: true, initial: initial && initial.allergies ? initial : undefined });
   const closeCfg = () => setCfg((c) => ({ ...c, open: false }));
 
-  // Promemoria compleanno: ?torta=<token> riapre il configuratore con la torta
-  // dell'anno scorso già impostata, ?stop=<token> disiscrive dai promemoria.
-  const [stopToken, setStopToken] = useState(
-    () => new URLSearchParams(window.location.search).get('stop'),
-  );
+  // Promemoria compleanno e anniversario: ?torta=<token> riapre il
+  // configuratore con la torta dell'anno scorso già impostata; ?togli=<token>
+  // toglie solo quella festa, ?stop=<token> tutti i promemoria (sempre dopo
+  // un clic di conferma, vedi PromemoriaStop).
+  const [linkProm, setLinkProm] = useState(() => leggiLinkPromemoria(window.location.search));
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get('torta');
     if (!token) return;
@@ -86,11 +87,11 @@ export default function App() {
         <CakeConfigurator open={cfg.open} initial={cfg.initial} onClose={closeCfg} />
       </CakeDataProvider>
       <PaymentResult result={payResult} delivery={payDelivery} onClose={clearPayResult} />
-      {stopToken && (
+      {linkProm && (
         <PromemoriaStop
-          token={stopToken}
+          link={linkProm}
           onClose={() => {
-            setStopToken(null);
+            setLinkProm(null);
             window.history.replaceState({}, '', window.location.pathname);
           }}
         />

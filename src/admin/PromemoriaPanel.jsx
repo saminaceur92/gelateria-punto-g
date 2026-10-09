@@ -6,7 +6,7 @@ import {
   listaPromemoria,
   promemoriaConfigurato,
   provaPromemoria,
-  riattivaPromemoria,
+  rimettiInCoda,
 } from '../lib/promemoria';
 
 const STATI = {
@@ -149,7 +149,7 @@ export default function PromemoriaPanel() {
               type="button"
               className="adm-btn"
               disabled={busy}
-              onClick={() => azione(() => riattivaPromemoria(r.id, r.invio_previsto))}
+              onClick={() => azione(() => rimettiInCoda(r.id))}
             >
               Rimetti in coda
             </button>
