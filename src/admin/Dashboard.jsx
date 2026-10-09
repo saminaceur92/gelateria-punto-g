@@ -13,6 +13,8 @@ import MisurePanel from './MisurePanel';
 import StatoTaglieAlte from './StatoTaglieAlte';
 import OrdinaLista from './OrdinaLista';
 import CambiaMioCodice from './CambiaMioCodice';
+import CollaborazioniPanel from './CollaborazioniPanel';
+import useNuoveCollaborazioni from './useNuoveCollaborazioni';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 import { playPing } from '../lib/ping';
@@ -69,9 +71,11 @@ const GRUPPI_TAGLIE = [
 ];
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isOwner } = useAuth();
   const [cats, setCats] = useState([]);
   const [active, setActive] = useState('ordini');
+  // Proposte «Collabora con noi» ancora da leggere: solo per i titolari.
+  const [nuoveCollab, ricontaCollab] = useNuoveCollaborazioni(isOwner, active);
   const [cfgOpen, setCfgOpen] = useState(false);
   // "Il mio codice": ognuno cambia il proprio, senza passare dal SQL Editor.
   const [mioCodice, setMioCodice] = useState(false);
@@ -540,6 +544,19 @@ export default function Dashboard() {
           📦 Ordini
           {newCount > 0 && <span className="adm-badge-new">{newCount > 9 ? '9+' : newCount}</span>}
         </button>
+        {/* Solo i titolari: le proposte contengono dati personali. Il numero
+            non pulsa e non suona, quello resta agli ordini. */}
+        {isOwner && (
+          <button
+            className={`adm-tab ${active === 'collaborazioni' ? 'active' : ''}`}
+            onClick={() => setActive('collaborazioni')}
+          >
+            🤝 Collaborazioni
+            {nuoveCollab > 0 && (
+              <span className="adm-badge-new adm-badge-calmo">{nuoveCollab > 9 ? '9+' : nuoveCollab}</span>
+            )}
+          </button>
+        )}
         {sections.map((s) => (
           <button
             key={s.key}
@@ -554,6 +571,10 @@ export default function Dashboard() {
       <main className="adm-main">
         {active === 'ordini' ? (
           <OrdersPanel key={ordersKey} />
+        ) : active === 'collaborazioni' ? (
+          isOwner
+            ? <CollaborazioniPanel onCambio={ricontaCollab} />
+            : <p className="adm-muted">Scheda riservata ai titolari.</p>
         ) : active === 'documenti' ? (
           <DocumentiPanel />
         ) : active === 'gallery' ? (

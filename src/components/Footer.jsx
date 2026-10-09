@@ -39,6 +39,7 @@ export default function Footer() {
               <li><a href="/galleria">Gallery</a></li>
               <li><a href="#contatti">Contatti</a></li>
               <li><a href="/consegna">Ordina a domicilio</a></li>
+              <li><a href="/collabora" data-ev="collabora_footer">Collabora con noi</a></li>
               <li><a href="/allergeni" data-ev="allergeni_footer">Allergeni</a></li>
             </ul>
           </div>

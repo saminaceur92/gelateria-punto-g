@@ -1,0 +1,355 @@
+/* ===========================================================
+   PAGINA /collabora — «Collabora con noi»
+   Questo file lo carica SOLO la pagina (import in src/pages/Collabora.jsx):
+   chi apre la home non scarica gli stili del modulo. Il riquadro d'invito
+   della home e .collabora-accento stanno in global.css.
+
+   Classi proprie (collabora-*, clb-*): niente .cfg-field del configuratore,
+   che si sta cambiando per conto suo. Colori solo dalla palette del negozio
+   (azzurro + legno + panna), mai il viola di una volta.
+   =========================================================== */
+
+.collabora-page { background: var(--cream); min-height: 100vh; }
+
+.collabora-main {
+  padding-top: clamp(1.8rem, 4vw, 3rem);
+  /* Su iPhone l'ultima riga non deve finire sotto la barra di sistema. */
+  padding-bottom: calc(clamp(2.5rem, 6vw, 4rem) + env(safe-area-inset-bottom));
+}
+
+/* Telefono: invito sopra, modulo sotto. Computer: affiancati. */
+.collabora-griglia {
+  display: grid;
+  gap: clamp(1.8rem, 4vw, 3rem);
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .collabora-griglia { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+}
+.collabora-griglia > * { min-width: 0; }
+
+/* ── L'invito ─────────────────────────────────────────────── */
+.collabora-intro h1 {
+  font-size: clamp(2.1rem, 5vw, 3.4rem);
+  margin: 0.8rem 0 0.9rem;
+}
+
+/* "Scrivi la tua proposta": solo quando il modulo sta SOTTO l'invito. */
+.collabora-vai {
+  margin-top: 1.3rem;
+  width: 100%;
+  justify-content: center;
+}
+@media (min-width: 960px) {
+  .collabora-vai { display: none; }
+}
+
+.collabora-perchi {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+.collabora-perchi li { display: flex; gap: 0.85rem; align-items: flex-start; }
+.collabora-ico {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--sage);
+  color: var(--violet-deep);
+  display: grid;
+  place-items: center;
+}
+.collabora-perchi strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.08rem;
+  line-height: 1.25;
+  color: var(--ink);
+  margin-top: 0.1rem;
+}
+.collabora-perchi-testo { display: block; color: var(--grey); font-size: 0.95rem; line-height: 1.45; }
+
+.collabora-voce {
+  margin-top: 1.8rem;
+  padding-top: 1.2rem;
+  border-top: 1px dashed rgba(50, 40, 31, 0.18);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+.collabora-voce p { margin: 0; font-size: 0.95rem; }
+
+/* I chip WhatsApp vengono da global.css (pagina galleria): qui alti 44px,
+   la misura minima per un dito. */
+.collabora-voce .canale-chip,
+.clb-avviso .canale-chip {
+  min-height: 44px;
+  padding-inline: 1.1rem;
+  font-size: 0.92rem;
+}
+
+/* ── La scheda del modulo ─────────────────────────────────── */
+.collabora-card {
+  /* Le coppie di campi si affiancano in base alla larghezza della SCHEDA,
+     non dello schermo: fra 960 e 1100px la scheda è stretta anche su un
+     computer. Dove il browser non lo capisce restano una sotto l'altra. */
+  container-type: inline-size;
+  background: var(--surface);
+  border: 1px solid rgba(44, 118, 153, 0.14);
+  border-radius: var(--radius);
+  padding: clamp(1.25rem, 3.5vw, 2.2rem);
+  /* Il filetto legno in alto, come una targhetta sul banco. */
+  box-shadow: inset 0 4px 0 var(--orange), var(--shadow);
+}
+
+.clb-form { display: grid; gap: 1.3rem; }
+
+.clb-testa h2 { font-size: clamp(1.45rem, 3vw, 1.9rem); }
+.clb-testa p { margin-top: 0.35rem; font-size: 0.9rem; color: var(--grey); }
+
+.clb-ast { color: #9a6a2f; font-weight: 700; }
+
+/* Il tipo: pillole grandi da toccare (44px), radio vere sotto. */
+.clb-tipi { border: 0; margin: 0; padding: 0; min-width: 0; }
+.clb-tipi legend,
+.clb-campo label {
+  display: block;
+  padding: 0;
+  margin-bottom: 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.clb-pillole { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.clb-pillola { position: relative; display: inline-flex; }
+.clb-pillola input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.clb-pillola span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.55rem 1.05rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(50, 40, 31, 0.16);
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.93rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.clb-pillola:hover span { border-color: var(--violet-deep); }
+.clb-pillola input:checked + span {
+  background: var(--violet-deep);
+  border-color: var(--violet-deep);
+  color: var(--cream);
+}
+.clb-pillola input:focus-visible + span {
+  outline: 3px solid rgba(44, 118, 153, 0.45);
+  outline-offset: 2px;
+}
+.clb-tipi.ha-errore .clb-pillola input:not(:checked) + span { border-color: #d39a9a; }
+
+/* Campi */
+.clb-coppia { display: grid; gap: 1.3rem; }
+@container (min-width: 520px) {
+  .clb-coppia { grid-template-columns: 1fr 1fr; gap: 1rem; }
+}
+.clb-campo { min-width: 0; }
+.clb-facolt { font-weight: 500; font-size: 0.85rem; color: var(--grey); }
+
+.clb-campo input,
+.clb-campo textarea {
+  display: block;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1.5px solid rgba(50, 40, 31, 0.16);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  /* 16px a TUTTE le larghezze: sotto, iOS ingrandisce la pagina a ogni tocco. */
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.clb-campo textarea { min-height: 9.5rem; resize: vertical; }
+.clb-campo input:focus,
+.clb-campo textarea:focus {
+  outline: none;
+  border-color: var(--violet-deep);
+  box-shadow: 0 0 0 4px rgba(44, 118, 153, 0.14);
+}
+.clb-campo.ha-errore input,
+.clb-campo.ha-errore textarea { border-color: #b03a3a; background: #fffafa; }
+.clb-campo.ha-errore input:focus,
+.clb-campo.ha-errore textarea:focus { box-shadow: 0 0 0 4px rgba(176, 58, 58, 0.14); }
+
+.clb-piede {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin-top: 0.35rem;
+}
+.clb-aiuto { margin: 0; font-size: 0.86rem; line-height: 1.45; color: var(--grey); }
+.clb-errore { margin: 0; font-size: 0.88rem; font-weight: 600; line-height: 1.4; color: #b03a3a; }
+.clb-tipi .clb-errore { margin-top: 0.45rem; }
+.clb-conta {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--grey);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Trappola per i programmi: fuori dallo schermo, mai display:none. */
+.clb-trappola {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Spunta privacy: tutta la riga si tocca. */
+.clb-privacy {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: var(--cream);
+  border: 1px solid rgba(44, 118, 153, 0.18);
+}
+.clb-privacy.ha-errore { border-color: #d39a9a; background: #fff7f6; }
+.clb-spunta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 0.97rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.clb-spunta input {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 0.1rem 0 0;
+  accent-color: var(--violet-deep);
+  cursor: pointer;
+}
+.clb-privacy .clb-aiuto,
+.clb-privacy .clb-errore { margin: 0.2rem 0 0 calc(22px + 0.75rem); }
+.clb-privacy .clb-errore { margin-top: 0.45rem; }
+
+/* Il link dell'informativa è un link iubenda (si apre sopra la pagina): il
+   loro script gli mette uno stile da bottone bianco, qui torna un link come
+   gli altri. Stessa correzione del piè di pagina, in global.css. */
+.clb-spunta a.iubenda-embed,
+.clb-privacy .clb-spunta a.iubenda-embed[style],
+.collabora-legale a.iubenda-embed,
+.collabora-page .collabora-legale a.iubenda-embed[style] {
+  background: none !important;
+  background-image: none !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font: inherit !important;
+  line-height: inherit !important;
+  color: var(--violet-deep) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+}
+
+/* Errore che non riguarda un campo (server giù, troppe proposte…) */
+.clb-avviso {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: #fdf3f2;
+  border: 1px solid #e8b9b4;
+}
+.clb-avviso p { margin: 0 0 0.75rem; font-size: 0.95rem; font-weight: 600; line-height: 1.45; color: #8f2f2f; }
+
+/* Invio */
+.clb-azioni { display: grid; gap: 0.75rem; justify-items: start; }
+.clb-invia {
+  width: 100%;
+  justify-content: center;
+  padding-block: 1rem;
+  font-size: 1rem;
+}
+@container (min-width: 520px) {
+  .clb-invia { width: auto; }
+}
+.clb-invia[aria-disabled='true'] {
+  opacity: 0.75;
+  cursor: progress;
+  transform: none;
+  box-shadow: var(--shadow);
+}
+.clb-riassunto { font-size: 0.9rem; }
+.clb-alt { margin: 0; font-size: 0.92rem; color: var(--grey); }
+.clb-alt a { color: var(--violet-deep); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Grazie */
+.clb-grazie {
+  display: grid;
+  justify-items: center;
+  gap: 0.8rem;
+  padding: clamp(1rem, 4vw, 2rem) 0.25rem;
+  text-align: center;
+}
+.clb-grazie-ico {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: var(--sage);
+  color: var(--violet-deep);
+  display: grid;
+  place-items: center;
+}
+.clb-grazie h2 { font-size: clamp(1.6rem, 4vw, 2.2rem); outline: none; }
+.clb-grazie p { max-width: 42ch; font-size: 1rem; line-height: 1.55; }
+.clb-grazie-dove { font-size: 0.95rem; overflow-wrap: anywhere; }
+.clb-grazie .btn { margin-top: 0.4rem; }
+
+/* Riga legale in fondo: le pagine non hanno il piè di pagina del sito. */
+.collabora-legale {
+  margin-top: clamp(2.4rem, 5vw, 3.5rem);
+  padding-top: 1.2rem;
+  border-top: 1px solid rgba(50, 40, 31, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1.2rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--grey);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clb-pillola span,
+  .clb-campo input,
+  .clb-campo textarea { transition: none; }
+}

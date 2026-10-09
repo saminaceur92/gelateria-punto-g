@@ -62,6 +62,8 @@ const PAGINE = {
   galleria: 'Galleria delle foto',
   consegna: 'Consegna a domicilio',
   allergeni: 'Carta degli allergeni',
+  // Senza questa riga la pagina comparirebbe come una seconda "Altre pagine".
+  collabora: 'Collabora con noi',
   altro: 'Altre pagine',
 };
 

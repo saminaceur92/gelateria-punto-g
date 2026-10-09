@@ -8,6 +8,7 @@ import Services from './components/Services';
 import Menu from './components/Menu';
 import CakeCTA from './components/CakeCTA';
 import Gallery from './components/Gallery';
+import CollaboraInvito from './components/CollaboraInvito';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
 import WhatsAppFab from './components/WhatsAppFab';
@@ -75,6 +76,8 @@ export default function App() {
         <Services onOpenConfigurator={openCfg} />
         <Menu />
         <Gallery />
+        {/* Invito a collaborare: il modulo vero è nella pagina /collabora. */}
+        <CollaboraInvito />
         <Contact />
       </main>
       <Footer />

@@ -60,6 +60,10 @@ export const EV = Object.freeze({
   WHATSAPP_CONSEGNA: 'whatsapp_consegna',
   WHATSAPP_GALLERIA: 'whatsapp_galleria',
   WHATSAPP_POST_ORDINE: 'whatsapp_post_ordine',
+  WHATSAPP_COLLABORA: 'whatsapp_collabora',
+  // Proposta arrivata davvero (la conta il modulo dopo la risposta del
+  // database, non il tocco su "Invia"; il doppione non si conta).
+  COLLABORA_INVIATA: 'collabora_inviata',
   TELEFONO: 'telefono',
   MAPPA_CONTATTI: 'mappa_contatti',
   MAPPA_FOOTER: 'mappa_footer',
@@ -163,6 +167,11 @@ export const EV = Object.freeze({
   GALLERIA_VEDI_TUTTE: 'galleria_vedi_tutte',
   FOTO_APERTA: 'foto_aperta',
   PREFERISCO_SCRIVERE: 'preferisco_scrivere',
+  // «Collabora con noi»: da dove si arriva alla pagina /collabora.
+  // NAV_COLLABORA è solo il menu del telefono (in quello grande non c'è).
+  NAV_COLLABORA: 'nav_collabora',
+  COLLABORA_HOME: 'collabora_home',
+  COLLABORA_FOOTER: 'collabora_footer',
 
   // Allergeni
   ALLERGENI_NAVBAR: 'allergeni_navbar',
@@ -260,15 +269,18 @@ const ATTIVO =
 
 /* ───────── Contesto: pagina, dispositivo, provenienza ───────── */
 
-/** Whitelist di 4 pagine + "altro": l'URL non deve mai diventare un dato libero. */
+/** Whitelist di 5 pagine + "altro": l'URL non deve mai diventare un dato libero. */
 function paginaCorrente() {
   // Solo pathname. Mai search, mai hash: lì dentro girano i token personali
   // ?torta= e ?stop=. I rewrite /v2…/v8 di vercel.json cadono su "altro", ed
   // è giusto così: meglio una voce generica che un URL salvato in tabella.
+  // La stessa lista sta nel database (registra_evento e il vincolo su
+  // statistiche_sito.pagina): una pagina nuova va aggiunta in entrambi.
   const p = location.pathname;
   if (p.startsWith('/allergeni')) return 'allergeni';
   if (p.startsWith('/galleria')) return 'galleria';
   if (p.startsWith('/consegna')) return 'consegna';
+  if (p.startsWith('/collabora')) return 'collabora';
   if (p === '/' || p === '') return 'home';
   return 'altro';
 }
