@@ -1229,6 +1229,19 @@
   accent-color: var(--violet-deep, #2c7699);
   cursor: pointer;
 }
+/* "Ruota" e "Rimuovi foto" sulla stessa riga. */
+.photo-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.photo-editor .photo-hint-ruota {
+  margin: 0;
+  text-align: center;
+  color: var(--violet-deep, #2c7699);
+  font-weight: 600;
+}
 
 /* ===== Cake 3D scene ===== */
 .cake3d-stage {
@@ -1246,6 +1259,23 @@
   width: 100% !important;
   height: 100% !important;
   outline: none;
+}
+/* Pannello di prova della scheda video (solo con ?diag3d=1). */
+.cake3d-diag {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 6;
+  margin: 0;
+  padding: 0.35rem 0.45rem;
+  max-height: 100%;
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1d2b33;
+  font: 9px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  pointer-events: none;
 }
 .cake3d-spin-toggle {
   position: absolute;

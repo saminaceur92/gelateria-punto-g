@@ -6,7 +6,7 @@ import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { traccia, tracciaUnaVolta, tracciaConsigliata, EV, EV_PASSO } from '../lib/analytics';
-import { uploadCakePhotos } from '../lib/cakePhoto';
+import { uploadCakePhotos, ruotaFoto } from '../lib/cakePhoto';
 import { catturaTorta3D, ridimensiona, SFONDO_FOTO } from '../lib/cakeSnapshot';
 import { dimensioneTesto, misuraTesto, personeOf, RECT_MIN_PERSONE, taglieDelTipo, tagliaEquivalente } from '../lib/misureTorta';
 import CakePreview from './CakePreview';
@@ -3030,6 +3030,11 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
   const cropKind = shape === 'cuore' ? 'heart' : shape === 'quadrata' || shape === 'rettangolare' ? 'rect' : 'circle';
   const cropRef = useRef(null);
   const [dim, setDim] = useState(null);
+  // Foto com'era prima delle rotazioni e quanti quarti di giro le sono stati
+  // dati: ogni tocco su "Ruota" gira l'ORIGINALE, così la qualità non cala a
+  // forza di ricomprimere. `ultima` riconosce una foto nuova o tolta.
+  const sorgente = useRef(null);
+  const [ruotando, setRuotando] = useState(false);
 
   useEffect(() => {
     if (!value) { setDim(null); return; }
@@ -3037,6 +3042,26 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
     im.onload = () => setDim({ w: im.naturalWidth, h: im.naturalHeight });
     im.src = value;
   }, [value]);
+
+  const ruota = async () => {
+    if (!value || ruotando) return;
+    if (!sorgente.current || sorgente.current.ultima !== value) {
+      sorgente.current = { originale: value, quarti: 0, ultima: value };
+    }
+    const quarti = (sorgente.current.quarti + 1) % 4;
+    setRuotando(true);
+    try {
+      const girata = await ruotaFoto(sorgente.current.originale, quarti);
+      sorgente.current = { ...sorgente.current, quarti, ultima: girata };
+      onChange(girata);
+      // Il ritaglio di prima non vale più per la foto girata: si riparte dal centro.
+      onTransform({ ...DEFAULT_PHOTO_TF });
+    } catch {
+      // foto non leggibile: resta com'era
+    } finally {
+      setRuotando(false);
+    }
+  };
 
   const onFile = (file) => {
     if (!file) return;
@@ -3137,9 +3162,26 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
         <p className="hint" style={{ textAlign: 'center' }}>
           Trascina per posizionare · slider per lo zoom
         </p>
-        <button type="button" className="toggle-pill" onClick={() => onChange(null)}>
-          Rimuovi foto
-        </button>
+        {/* Sulla rettangolare il riquadro è orizzontale: una foto verticale ci
+            entra solo a striscia, girata invece si stende lungo la torta. */}
+        {shape === 'rettangolare' && dim && dim.h > dim.w && (
+          <p className="hint photo-hint-ruota">Foto verticale? Girala con ↻ e si stende lungo la torta.</p>
+        )}
+        <div className="photo-azioni">
+          <button
+            type="button"
+            className="toggle-pill"
+            onClick={ruota}
+            disabled={ruotando}
+            aria-label="Ruota la foto di 90 gradi"
+            title="Ruota la foto di 90°"
+          >
+            ↻ Ruota
+          </button>
+          <button type="button" className="toggle-pill" onClick={() => onChange(null)}>
+            Rimuovi foto
+          </button>
+        </div>
       </div>
     );
   }
