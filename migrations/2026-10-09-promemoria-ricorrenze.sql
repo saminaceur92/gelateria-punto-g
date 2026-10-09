@@ -246,6 +246,23 @@ create trigger crea_promemoria_compleanno_trg
   after insert on public.ordini
   for each row execute function public.crea_promemoria_compleanno();
 
+-- Anniversari ordinati col sito NUOVO prima di questa migrazione (se il sito
+-- è andato online prima): il cliente l'avviso l'ha visto, ma il trigger
+-- vecchio non li conosceva. Solo quelli con dettagli.promemoria = true, cioè
+-- dal sito nuovo; valgono tutte le altre regole (annullati, disiscritti…).
+do $$
+declare n integer;
+begin
+  select coalesce(sum(public.accoda_promemoria(o.id)), 0) into n
+    from public.ordini o
+   where public.promemoria_occasione(o.dettagli ->> 'occasion') = 'Anniversario'
+     and o.dettagli ->> 'promemoria' = 'true'
+     and not exists (select 1 from public.promemoria_compleanno p where p.ordine_id = o.id);
+  if n > 0 then
+    raise notice 'Promemoria di anniversario recuperati: %', n;
+  end if;
+end $$;
+
 -- ── 4. Se l'ordine cambia, i promemoria non ancora partiti lo seguono ──
 -- Annullato → si fermano. Rimesso fra quelli da fare → ripartono. Email, data,
 -- occasione o nome corretti → si aggiornano. Quelli già inviati non si toccano,
