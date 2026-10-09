@@ -9,7 +9,7 @@
 import Stripe from 'https://esm.sh/stripe@17.7.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { computeOrder, type CakeConfig } from '../_shared/price.ts';
+import { computeOrder, TagliaNonValida, type CakeConfig } from '../_shared/price.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   httpClient: Stripe.createFetchHttpClient(),
@@ -93,6 +93,12 @@ Deno.serve(async (req) => {
 
     return json({ url: session.url });
   } catch (e) {
+    // Taglia non più valida per questo tipo di torta (listino cambiato mentre
+    // il cliente sceglieva): risposta riconoscibile, il sito rilegge le taglie
+    // e chiede di confermare di nuovo. Non è un guasto, quindi niente log d'errore.
+    if (e instanceof TagliaNonValida) {
+      return json({ error: e.message, codice: e.codice }, 409);
+    }
     console.error('create-checkout error:', e);
     return json({ error: (e as Error)?.message ?? 'Errore interno' }, 500);
   }

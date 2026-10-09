@@ -200,7 +200,15 @@ try {
       id: t.id, name: t.nome, desc: t.descrizione || '', basePrice: num(t.prezzo_base), img: t.immagine || '/torte.jpg', color: t.colore, allergeni: splitLower(t.allergeni),
     })),
     cakeSizes: dimensioni.map((s) => {
-      const o = { id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento) };
+      // Stessi campi di live.js. Senza `alta`, quando i titolari accendono le
+      // taglie delle torte alte la copia inclusa nel sito le mescolerebbe a
+      // quelle normali (vedi taglieDelTipo in src/lib/misureTorta.js); senza
+      // `misure`, cuore, quadrata e rettangolare resterebbero senza misura.
+      const o = {
+        id: s.id, label: s.etichetta, diameter: num(s.diametro), priceDelta: num(s.supplemento),
+        misure: s.misure && typeof s.misure === 'object' ? s.misure : {},
+        alta: !!s.alta,
+      };
       if (s.popolare) o.popular = true;
       return o;
     }),

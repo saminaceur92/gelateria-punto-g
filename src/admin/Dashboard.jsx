@@ -10,6 +10,7 @@ import CodiciPanel from './CodiciPanel';
 import PromemoriaPanel from './PromemoriaPanel';
 import StatistichePanel from './StatistichePanel';
 import MisurePanel from './MisurePanel';
+import StatoTaglieAlte from './StatoTaglieAlte';
 import CakeConfigurator from '../components/CakeConfigurator';
 import { CakeDataProvider } from '../data/CakeDataProvider';
 import { playPing } from '../lib/ping';
@@ -46,7 +47,7 @@ const GRUPPI_TAGLIE = [
     chiave: 'alte',
     alta: true,
     titolo: 'Torte alte',
-    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Finché qui non ne accendi almeno una, sul sito le alte usano le taglie normali.',
+    sotto: 'Alta semifreddo e Alta Gelato: sono in pratica una torta doppia, quindi hanno taglie, prezzi e misure loro. Le taglie nuove nascono spente. Appena ne accendi una, le alte si vendono solo nelle taglie alte accese: prepara prima tutte quelle che vuoi vendere (nome, prezzo, misure), poi accendile.',
   },
 ];
 
@@ -528,6 +529,7 @@ export default function Dashboard() {
                 <header className="dim-gruppo-head">
                   <h2>{g.titolo}</h2>
                   <p>{g.sotto}</p>
+                  {g.alta && <StatoTaglieAlte versione={versioneTaglie} />}
                 </header>
                 <TableEditor
                   key={`${current.key}-${g.chiave}`}
@@ -535,8 +537,10 @@ export default function Dashboard() {
                   title={`Taglie · ${g.titolo.toLowerCase()}`}
                   rowFilter={(r) => Boolean(r.alta) === g.alta}
                   // Solo le alte scrivono la colonna: prima della migrazione
-                  // le normali si aggiungono come sempre.
-                  newRow={() => ({ ...current.props.newRow(), ...(g.alta ? { alta: true } : {}) })}
+                  // le normali si aggiungono come sempre. Le alte nascono
+                  // SPENTE: accenderne una toglie alle alte le taglie normali,
+                  // e una riga vuota a +0 € diventerebbe la loro unica taglia.
+                  newRow={() => ({ ...current.props.newRow(), ...(g.alta ? { alta: true, attivo: false } : {}) })}
                   onChange={() => setVersioneTaglie((v) => v + 1)}
                 />
                 <MisurePanel versione={versioneTaglie} alta={g.alta} />
