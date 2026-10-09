@@ -79,7 +79,9 @@ async function priceOf(
 ): Promise<number> {
   if (!id) return 0;
   const { data } = await supabase.from(table).select(column).eq('id', id).maybeSingle();
-  return data ? num((data as Record<string, unknown>)[column]) : 0;
+  // `as unknown` prima: con una colonna scelta a runtime supabase-js non sa
+  // dedurre il tipo della riga, e il cast diretto fa fallire `deno check`.
+  return data ? num((data as unknown as Record<string, unknown>)[column]) : 0;
 }
 
 async function nameOf(
@@ -90,7 +92,7 @@ async function nameOf(
 ): Promise<string> {
   if (!id) return '';
   const { data } = await supabase.from(table).select(col).eq('id', id).maybeSingle();
-  return data ? String((data as Record<string, unknown>)[col] ?? '') : '';
+  return data ? String((data as unknown as Record<string, unknown>)[col] ?? '') : '';
 }
 
 // Quantità leggibile: 1 → "1", 0.5 → "0,5" (virgola, come si scrive in italiano).
