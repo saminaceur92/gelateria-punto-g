@@ -417,6 +417,24 @@ p {
   margin-top: 0.6rem;
 }
 
+/* «Collabora con noi»: voce secondaria, solo nel menu del telefono e sotto
+   "Crea la tua torta". Nel menu grande del computer non c'è: le otto voci
+   stanno già al pelo su una riga (vedi .nav-links). Piccola e sottolineata,
+   così non ruba la scena alle voci principali; alta 44px per il dito. */
+.mobile-menu-nav a.mobile-menu-sec {
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--cream); /* pieno: velato scende sotto il contrasto minimo sull'azzurro */
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  margin-top: 0.2rem;
+}
+
 /* ===========================================================
    HERO
    =========================================================== */
@@ -1413,6 +1431,66 @@ p {
 @media (max-width: 800px) {
   .gallery-grid { grid-template-columns: repeat(2, 1fr); }
   .g1, .g2, .g3, .g4, .g5, .g6 { grid-column: span 1; grid-row: span 2; }
+}
+
+/* ===========================================================
+   COLLABORA CON NOI — riquadro nella home (#collabora)
+   Sta fra la gallery e i contatti. Il modulo vero è nella pagina
+   /collabora, con gli stili suoi in src/styles/collabora.css.
+   =========================================================== */
+.collabora-invito {
+  background: var(--cream);
+  padding-bottom: clamp(3.5rem, 7vw, 6rem);
+}
+
+.collabora-invito-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1.4rem, 4vw, 3rem);
+  padding: clamp(1.6rem, 4vw, 2.8rem) clamp(1.3rem, 4vw, 3rem);
+  background: var(--cream-warm);
+  border: 1px solid rgba(192, 137, 76, 0.3);
+  border-radius: var(--radius);
+  /* Filetto legno in alto: lo stesso della scheda del modulo. */
+  box-shadow: inset 0 4px 0 var(--orange), 0 16px 32px -24px rgba(50, 40, 31, 0.4);
+}
+
+.collabora-invito h2 {
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  margin: 0.8rem 0 0.6rem;
+}
+
+/* Enfasi col colore e non col corsivo: Baloo 2 il corsivo non ce l'ha. */
+.collabora-accento { color: var(--violet-deep); }
+
+.collabora-invito-testo p { max-width: 58ch; }
+
+.collabora-invito-chi {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+.collabora-invito-chi li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: var(--cream);
+  border: 1px solid rgba(44, 118, 153, 0.2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.collabora-invito-chi svg { color: var(--violet-deep); flex-shrink: 0; }
+
+/* Telefono: tutto impilato, pulsante a tutta larghezza. */
+@media (max-width: 760px) {
+  .collabora-invito-box { grid-template-columns: 1fr; }
+  .collabora-invito-btn { width: 100%; justify-content: center; white-space: normal; text-align: center; }
 }
 
 /* ===========================================================

@@ -13,11 +13,14 @@ const Allergeni = lazy(() => import('./pages/Allergeni'));
 // /galleria (non /gallery: quella è la cartella delle immagini in public/)
 const Galleria = lazy(() => import('./pages/Galleria'));
 const Consegna = lazy(() => import('./pages/Consegna'));
+// «Collabora con noi»: il modulo (e i suoi stili) si scarica solo qui.
+const Collabora = lazy(() => import('./pages/Collabora'));
 const path = window.location.pathname;
 const isAdmin = path.startsWith('/admin');
 const isAllergeni = path.startsWith('/allergeni');
 const isGalleria = path.startsWith('/galleria');
 const isConsegna = path.startsWith('/consegna');
+const isCollabora = path.startsWith('/collabora');
 
 // Statistiche del sito: si accende per tutti tranne che in dashboard, perché
 // il titolare che gira fra le sue schede non è traffico e falserebbe i suoi
@@ -49,6 +52,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     ) : isConsegna ? (
       <Suspense fallback={<div style={{ padding: 40, fontFamily: 'system-ui' }}>Caricamento…</div>}>
         <Consegna />
+      </Suspense>
+    ) : isCollabora ? (
+      <Suspense fallback={<div style={{ padding: 40, fontFamily: 'system-ui' }}>Caricamento…</div>}>
+        <Collabora />
       </Suspense>
     ) : (
       <App />

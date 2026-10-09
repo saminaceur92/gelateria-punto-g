@@ -587,6 +587,54 @@
   .stat-riga-extra { order: 3; flex-basis: 100%; }
 }
 
+/* ───────── Scheda Collaborazioni (solo titolari) ─────────
+   Le proposte dal modulo «Collabora con noi» del sito. Il numero sulla
+   scheda è fermo e color legno: il rosso che pulsa resta agli ordini. */
+.adm-badge-new.adm-badge-calmo { animation: none; background: #9a6a2f; }
+.collab-lista { display: flex; flex-direction: column; gap: .8rem; }
+.collab-card { display: grid; gap: .7rem; border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; }
+/* Da leggere: filetto legno a sinistra, si trova a colpo d'occhio */
+.collab-card.collab-nuova { border-color: #e2c49c; box-shadow: inset 4px 0 0 #c0894c; }
+.collab-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.collab-chi { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.collab-chi strong { font-size: 1rem; overflow-wrap: anywhere; }
+.collab-azienda { font-size: .88rem; color: #555; overflow-wrap: anywhere; }
+.collab-chi .adm-muted { font-size: .8rem; }
+.collab-badges { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: flex-end; }
+.collab-silenziata { font-size: .72rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #f3efe8; color: #6b5d4f; border: 1px dashed #c9bfae; white-space: nowrap; cursor: help; }
+.collab-contatti { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.collab-contatti .adm-btn { display: inline-flex; align-items: center; gap: .3rem; text-decoration: none; }
+/* L'indirizzo si seleziona con un tocco, per chi risponde da Gmail sul web */
+.collab-email { font-size: .82rem; color: #777; overflow-wrap: anywhere; user-select: all; }
+/* Il testo com'è arrivato: a capo conservati, link NON cliccabili */
+.collab-msg { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .92rem; line-height: 1.55; color: var(--ink); background: var(--cream); border: 1px solid var(--line); border-radius: 10px; padding: .75rem .85rem; }
+.collab-azioni { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.collab-stato { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; color: #555; }
+.collab-stato select { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; background: #fff; }
+.collab-elimina { margin-left: auto; }
+.collab-nota label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .3rem; }
+.collab-nota label span { font-weight: 400; color: #999; }
+.collab-nota textarea { width: 100%; min-height: 52px; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font: inherit; font-size: .85rem; resize: vertical; box-sizing: border-box; }
+.collab-nota .adm-btn-save { margin-top: .4rem; }
+.collab-privacy { margin: 0; font-size: .74rem; color: #9a9186; }
+.collab-vuoto { margin: .4rem 0 0; }
+.collab-legenda { margin: 1rem 0 0; font-size: .8rem; max-width: 70ch; }
+
+@media (max-width: 640px) {
+  .collab-top { flex-direction: column; gap: .4rem; }
+  .collab-badges { justify-content: flex-start; }
+  /* Comandi alti 44px: si usano col dito, spesso al banco */
+  .collab-contatti .adm-btn,
+  .collab-azioni .adm-btn,
+  .collab-stato select { min-height: 44px; }
+  .collab-stato { flex: 1 1 100%; }
+  .collab-stato select { flex: 1; }
+  .collab-elimina { margin-left: 0; }
+  /* 16px: sotto questa soglia iOS ingrandisce la pagina a ogni tocco */
+  .collab-nota textarea,
+  .collab-stato select { font-size: 16px; }
+}
+
 /* ── Foto della gallery (scheda "🖼️ Foto della gallery") ─────────── */
 .adm-sub {
   margin: 1.4rem 0 0.6rem;

@@ -114,6 +114,11 @@ export default function Navbar({ onOpenConfigurator }) {
               >
                 Crea la tua torta
               </a>
+              {/* Solo qui e non nell'array `links`: il menu grande del
+                  computer è già pieno, una nona voce andrebbe a capo. */}
+              <a className="mobile-menu-sec" href="/collabora" data-ev="nav_collabora" onClick={() => setOpen(false)}>
+                Collabora con noi
+              </a>
             </nav>
           </motion.div>
         )}
