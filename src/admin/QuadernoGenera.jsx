@@ -16,7 +16,7 @@ const NOMI_TABELLE = {
   tipi_torta: 'Tipi di torta',
   basi: 'Basi',
   crumble: 'Crumble',
-  farciture: 'Farciture',
+  farciture: 'Inserto',
   coperture: 'Coperture',
   decorazioni: 'Decorazioni',
   extra: 'Extra',

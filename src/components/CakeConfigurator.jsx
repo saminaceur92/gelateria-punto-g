@@ -549,16 +549,14 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  useEffect(() => {
-    // Esc chiude il configuratore, ma non quando sopra c'è la finestra delle
-    // proposte extra: lì l'Esc chiude solo quella (vedi ProposteExtra).
-    const onKey = (e) => e.key === 'Escape' && !showProposte && onClose();
-    if (open) window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, showProposte]);
+  // Il configuratore si chiude SOLO con la ✕ (richiesta dei titolari): niente
+  // Esc e niente clic fuori. Una torta lasciata a metà da un tocco sbagliato
+  // sul bordo, specie da telefono, era tutta da rifare. Le finestre interne
+  // (proposte extra, info allergeni) si chiudono ancora come prima: lì non si
+  // perde niente.
 
   // Configuratore chiuso: si conta alla chiusura dell'overlay, così valgono
-  // tutte le uscite (✕, Esc, clic fuori, "Torna al sito") con un punto solo e
+  // tutte le uscite (✕ e "Torna al sito") con un punto solo e
   // senza toccare i loro handler. Il pagamento non passa di qui: il redirect a
   // Stripe scarica la pagina e React non esegue le pulizie.
   useEffect(() => {
@@ -1330,7 +1328,6 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
-        onClick={(e) => e.target === e.currentTarget && onClose()}
         role="dialog"
         aria-modal="true"
         aria-label="Configuratore torte"
@@ -3134,7 +3131,9 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
         style={{ display: 'none' }}
       />
       <span className="photo-drop-icon" aria-hidden="true">🖼️</span>
-      <span className="photo-drop-label">Tocca per caricare una foto</span>
+      {/* Lo spazio fra le due scritte serve: la regola .cfg-field label le
+          mette sulla stessa riga, e senza si leggeva "fotoo trascinala qui". */}
+      <span className="photo-drop-label">Tocca per caricare una foto</span>{" "}
       <span className="photo-drop-hint">o trascinala qui</span>
     </label>
   );
