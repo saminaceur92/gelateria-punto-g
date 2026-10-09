@@ -65,6 +65,10 @@ const NO_DECO = 'nessuna';
 const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
 // Tetto di sicurezza per gli extra: nessuno ordina 50 kg di salame dal sito.
 const MAX_EXTRA_QTY = 20;
+// Note aggiuntive: mille caratteri bastano e avanzano. Senza tetto una nota
+// lunghissima poteva far fallire il pagamento: viaggia quattro volte nei dati
+// che il sito passa a Stripe (metadata, al massimo 50 pezzi da 500 caratteri).
+const MAX_NOTE = 1000;
 
 // Stili della scritta: arrivano dalla tabella `scritte` (opzionale). Se manca —
 // o è vuota — si usa questa copia di sicurezza, così il passo funziona sempre.
@@ -2683,6 +2687,7 @@ function StepDetails({ config, set, staff, orari, earliestISO, earliestMin }) {
         <textarea
           placeholder="Allergie, intolleranze, preferenze decorative…"
           value={config.notes}
+          maxLength={MAX_NOTE}
           onChange={(e) => set({ notes: e.target.value })}
         />
         <div className="cfg-avviso cfg-avviso-dolce" role="note">

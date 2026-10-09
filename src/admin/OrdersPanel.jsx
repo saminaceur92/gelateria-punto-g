@@ -4,6 +4,7 @@ import { logAction } from '../lib/log';
 import { playPing } from '../lib/ping';
 import ChiediCodice from './ChiediCodice';
 import { linkDownloadFoto } from '../lib/cakePhoto';
+import { noteClienteDi, fondiAggiornamento, notaDaSalvare, bozzaSuperata } from '../lib/noteOrdine';
 
 const STATI = [
   { value: 'da_fare', label: 'Da fare', color: '#b651e4' },
@@ -50,6 +51,25 @@ function urgency(ritiro) {
 // Ordine "scaduto": ritiro già passato e ancora da gestire (non chiuso).
 const isScaduto = (o) => !FINALI.includes(o.stato) && urgency(o.ritiro_data)?.label === 'Scaduto';
 
+// Le due note dello staff su un ordine. Si scrivono e si salvano allo stesso
+// modo; cambiano solo la voce nello storico e cosa si salva quando il testo è
+// vuoto: le note di laboratorio '' come hanno sempre fatto, le note future
+// (colonna nuova, migrazione 2026-10-09-dashboard-ottobre) "nessuna nota".
+const NOTE_STAFF = {
+  note_lab: { log: 'Nota ordine aggiornata', vuota: '' },
+  note_future: { log: 'Note future aggiornate', vuota: null },
+};
+const chiaveNota = (id, colonna) => `${id}:${colonna}`;
+
+// Gli errori del database arrivano in inglese: se manca la colonna delle note
+// future, il problema è la migrazione non ancora eseguita, e va detto così.
+function messaggioNota(msg = '') {
+  if (/note_future/.test(msg) && /does not exist|schema cache|could not find/i.test(msg)) {
+    return 'Le «Note future» non sono ancora attive: va eseguita una volta su Supabase la migrazione migrations/2026-10-09-dashboard-ottobre.sql.';
+  }
+  return msg;
+}
+
 export default function OrdersPanel() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,8 +77,14 @@ export default function OrdersPanel() {
   const [filter, setFilter] = useState('da_fare');
   const [sortBy, setSortBy] = useState('ritiro');
   const [openId, setOpenId] = useState(null);
-  const [labDraft, setLabDraft] = useState({}); // id -> testo nota in modifica
-  const [labSaved, setLabSaved] = useState(null); // id appena salvato (feedback)
+  // Note dello staff in modifica (laboratorio e «Note future»), per ordine e
+  // colonna: `id:colonna` → { testo, base }. `base` è il testo salvato quando
+  // si è cominciato a scrivere: se intanto cambia da un altro dispositivo, lo
+  // si dice prima di sovrascriverlo.
+  const [bozze, setBozze] = useState({});
+  const [notaSalvata, setNotaSalvata] = useState(null); // `id:colonna` appena salvata (feedback)
+  // «Note future» aperte (id → true): chiuse di default, si aprono col pulsante.
+  const [futureAperte, setFutureAperte] = useState({});
   const [alertOrder, setAlertOrder] = useState(null); // nuovo ordine arrivato live
 
   async function load() {
@@ -85,16 +111,9 @@ export default function OrdersPanel() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ordini' }, (payload) => {
         // Alcuni aggiornamenti automatici (esito mail, retry, stato) possono
         // arrivare come payload parziali. Fondiamo i dati invece di sostituire
-        // l'intero ordine, così dettagli e foto cialda non spariscono dalla UI.
-        setOrders((os) => os.map((x) => {
-          if (x.id !== payload.new.id) return x;
-          const next = { ...x, ...payload.new };
-          next.dettagli = {
-            ...(x.dettagli || {}),
-            ...(payload.new.dettagli || {}),
-          };
-          return next;
-        }));
+        // l'intero ordine, così dettagli e foto cialda non spariscono dalla UI
+        // (vedi fondiAggiornamento in src/lib/noteOrdine.js).
+        setOrders((os) => os.map((x) => (x.id === payload.new.id ? fondiAggiornamento(x, payload.new) : x)));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'ordini' }, (payload) => {
         setOrders((os) => os.filter((x) => x.id !== payload.old.id));
@@ -153,17 +172,54 @@ export default function OrdersPanel() {
     });
   }
 
-  async function saveLab(id) {
-    const note_lab = labDraft[id] ?? '';
-    const { error } = await supabase.from('ordini').update({ note_lab }).eq('id', id);
-    if (error) { setError(error.message); return; }
+  // Testo di una nota dello staff come si vede nella casella: la bozza, se
+  // la si sta scrivendo, altrimenti quello salvato.
+  const testoNota = (o, colonna) => bozze[chiaveNota(o.id, colonna)]?.testo ?? o[colonna] ?? '';
+  const notaCambiata = (o, colonna) => testoNota(o, colonna) !== (o[colonna] ?? '');
+  const scriviNota = (o, colonna, testo) => setBozze((b) => {
+    const k = chiaveNota(o.id, colonna);
+    return { ...b, [k]: { testo, base: b[k] ? b[k].base : (o[colonna] ?? '') } };
+  });
+  const scartaBozza = (id, colonna) => setBozze((b) => {
+    const n = { ...b };
+    delete n[chiaveNota(id, colonna)];
+    return n;
+  });
+
+  async function salvaNota(id, colonna) {
     const o = orders.find((x) => x.id === id);
-    setOrders((os) => os.map((x) => (x.id === id ? { ...x, note_lab } : x)));
-    setLabDraft((d) => { const n = { ...d }; delete n[id]; return n; });
-    logAction('Nota ordine aggiornata', o?.cliente_nome || 'ordine');
-    setLabSaved(id);
-    setTimeout(() => setLabSaved((s) => (s === id ? null : s)), 2000);
+    if (!o) return;
+    const k = chiaveNota(id, colonna);
+    const { log, vuota } = NOTE_STAFF[colonna];
+    const valore = notaDaSalvare(testoNota(o, colonna), vuota);
+    setError('');
+    const { data, error } = await supabase.from('ordini').update({ [colonna]: valore }).eq('id', id).select('id');
+    if (error) { setError(messaggioNota(error.message)); return; }
+    // Un aggiornamento fermato dai permessi non dà errore: semplicemente non
+    // tocca nessuna riga. Senza questo controllo comparirebbe "Salvata".
+    if (!data?.length) {
+      setError('Nota non salvata: il database non ha accettato la modifica. Esci e rientra col tuo codice, poi riprova.');
+      return;
+    }
+    setOrders((os) => os.map((x) => (x.id === id ? { ...x, [colonna]: valore } : x)));
+    scartaBozza(id, colonna);
+    logAction(log, o.cliente_nome || 'ordine');
+    setNotaSalvata(k);
+    setTimeout(() => setNotaSalvata((s) => (s === k ? null : s)), 2000);
   }
+
+  // Avviso sotto la casella quando un altro dispositivo ha salvato un testo
+  // diverso mentre qui si scriveva: salvando, vince l'ultimo.
+  const avvisoSuperata = (o, colonna) => (
+    bozzaSuperata(bozze[chiaveNota(o.id, colonna)], o[colonna]) && (
+      <p className="ord-nota-avviso" role="status">
+        Nel frattempo da un altro dispositivo è stato salvato un testo diverso: se salvi, il tuo lo sostituisce.{' '}
+        <button type="button" className="adm-link" onClick={() => scartaBozza(o.id, colonna)}>
+          Mostra quello salvato
+        </button>
+      </p>
+    )
+  );
 
   // Filtro per stato (+ vista trasversale "Scaduto")
   let shown = orders;
@@ -244,6 +300,13 @@ export default function OrdersPanel() {
           // Solo la foto caricata dal cliente per la cialda è scaricabile.
           // `o.immagine` resta invece la miniatura del modello 3D.
           const fotoCialda = o.dettagli?.fotoCialdaUrl || null;
+          // Le note del cliente stanno nella card, sempre in vista: prima si
+          // leggevano solo aprendo «Dettagli», ed era facile non vederle.
+          const notaCliente = noteClienteDi(o);
+          // «Note future»: il pulsante compare solo quando la colonna esiste
+          // (migrazione eseguita). Prima, select('*') non restituisce la chiave.
+          const conFuture = 'note_future' in o;
+          const futureAperta = !!futureAperte[o.id];
 
           return (
             <div key={o.id} className={`ord-card ${overdue ? 'scaduto' : ''}`} style={{ borderLeftColor: borderCol }}>
@@ -262,6 +325,12 @@ export default function OrdersPanel() {
                   </div>
 
                   {gusti && <div className="ord-gusti">🍰 {gusti}</div>}
+                  {notaCliente && (
+                    <div className="ord-note-cliente" role="note">
+                      <span className="ord-note-tit">💬 Note del cliente</span>
+                      <p>{notaCliente}</p>
+                    </div>
+                  )}
                   {o.note_lab && <div className="ord-lab-preview">📝 {o.note_lab}</div>}
 
                   <div className="ord-info">
@@ -281,6 +350,23 @@ export default function OrdersPanel() {
                     <button className="adm-btn" onClick={() => setOpenId(open ? null : o.id)}>
                       {open ? 'Nascondi' : 'Dettagli'}
                     </button>
+                    {conFuture && (
+                      <button
+                        type="button"
+                        className={`adm-btn ord-btn-future ${futureAperta ? 'aperto' : ''}`}
+                        aria-expanded={futureAperta}
+                        aria-controls={`ord-future-${o.id}`}
+                        onClick={() => setFutureAperte((a) => ({ ...a, [o.id]: !a[o.id] }))}
+                      >
+                        🗒️ Note future
+                        {/* Pallino: su questo ordine c'è già qualcosa di scritto. */}
+                        {o.note_future && (
+                          <span className="ord-pallino">
+                            <span className="adm-sr"> (ci sono note scritte)</span>
+                          </span>
+                        )}
+                      </button>
+                    )}
                     {tel && (
                       <a className="adm-btn" href={`https://api.whatsapp.com/send?phone=${tel}`} target="_blank" rel="noopener noreferrer">
                         WhatsApp
@@ -300,6 +386,32 @@ export default function OrdersPanel() {
                     )}
                     <button className="adm-btn adm-btn-del" onClick={() => remove(o.id)} title="Elimina">🗑</button>
                   </div>
+
+                  {/* Note future: appunti dello staff su QUESTO ordine. Restano
+                      qui: niente Telegram, mail o scontrino (partono tutti
+                      all'arrivo dell'ordine, prima che esistano). */}
+                  {conFuture && (
+                    <div className="ord-future" id={`ord-future-${o.id}`} hidden={!futureAperta}>
+                      <label htmlFor={`ord-future-txt-${o.id}`}>
+                        🗒️ Note future <span>(interne: restano su questo ordine, il cliente non le vede)</span>
+                      </label>
+                      <textarea
+                        id={`ord-future-txt-${o.id}`}
+                        value={testoNota(o, 'note_future')}
+                        placeholder="Es. per la prossima volta: …"
+                        onChange={(e) => scriviNota(o, 'note_future', e.target.value)}
+                      />
+                      {avvisoSuperata(o, 'note_future')}
+                      <button
+                        type="button"
+                        className="adm-btn adm-btn-save"
+                        onClick={() => salvaNota(o.id, 'note_future')}
+                        disabled={!notaCambiata(o, 'note_future')}
+                      >
+                        {notaSalvata === chiaveNota(o.id, 'note_future') ? '✓ Salvate' : 'Salva note future'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -310,20 +422,22 @@ export default function OrdersPanel() {
                       {o.riepilogo.replace(/[*_]/g, '').replace('Stima:', 'Importo pagato:')}
                     </pre>
                   )}
-                  {o.note && <p className="ord-note"><strong>Note cliente:</strong> {o.note}</p>}
+                  {/* Le note del cliente non si ripetono qui: stanno nella card. */}
                   <div className="ord-lab">
-                    <label>📝 Note di laboratorio <span>(interne, non visibili al cliente)</span></label>
+                    <label htmlFor={`ord-lab-txt-${o.id}`}>📝 Note di laboratorio <span>(interne, non visibili al cliente)</span></label>
                     <textarea
-                      value={labDraft[o.id] ?? o.note_lab ?? ''}
+                      id={`ord-lab-txt-${o.id}`}
+                      value={testoNota(o, 'note_lab')}
                       placeholder="Es. allergie, scaffale, da richiamare…"
-                      onChange={(e) => setLabDraft((d) => ({ ...d, [o.id]: e.target.value }))}
+                      onChange={(e) => scriviNota(o, 'note_lab', e.target.value)}
                     />
+                    {avvisoSuperata(o, 'note_lab')}
                     <button
                       className="adm-btn adm-btn-save"
-                      onClick={() => saveLab(o.id)}
-                      disabled={(labDraft[o.id] ?? o.note_lab ?? '') === (o.note_lab ?? '')}
+                      onClick={() => salvaNota(o.id, 'note_lab')}
+                      disabled={!notaCambiata(o, 'note_lab')}
                     >
-                      {labSaved === o.id ? '✓ Salvata' : 'Salva nota'}
+                      {notaSalvata === chiaveNota(o.id, 'note_lab') ? '✓ Salvata' : 'Salva nota'}
                     </button>
                   </div>
                 </>

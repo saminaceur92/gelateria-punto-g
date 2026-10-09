@@ -167,13 +167,32 @@
 .ord-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .ord-actions select { padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 8px; font-size: .85rem; }
 .ord-riepilogo { background: #faf7fb; border: 1px solid var(--line); border-radius: 8px; padding: .8rem; font-size: .82rem; white-space: pre-wrap; font-family: inherit; margin: .7rem 0 0; color: #444; }
-.ord-note { font-size: .85rem; color: #555; margin: .5rem 0 0; }
-.ord-lab-preview { margin: .5rem 0 0; font-size: .85rem; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 8px; padding: .35rem .6rem; }
+/* pre-wrap: le note scritte su più righe restano su più righe; anywhere: un
+   link lunghissimo va a capo invece di allargare la card. */
+.ord-lab-preview { margin: .5rem 0 0; font-size: .85rem; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 8px; padding: .35rem .6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Note del CLIENTE in evidenza nella card: azzurro del negozio, così non si
+   confondono con l'ambra delle note di laboratorio, che sono dello staff. */
+.ord-note-cliente { margin: .5rem 0 0; font-size: .88rem; color: var(--ink); background: #eef6fb; border: 1px solid #b9d9ea; border-left: 4px solid var(--v-deep); border-radius: 8px; padding: .45rem .65rem; }
+.ord-note-cliente p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.ord-note-tit { display: block; margin-bottom: .15rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--v-deep); }
 .ord-lab { margin: .7rem 0 0; }
-.ord-lab > label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .3rem; }
-.ord-lab > label span { font-weight: 400; color: #999; }
-.ord-lab textarea { width: 100%; min-height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font: inherit; font-size: .85rem; resize: vertical; box-sizing: border-box; }
-.ord-lab .adm-btn-save { margin-top: .4rem; }
+.ord-lab > label, .ord-future > label { display: block; font-size: .8rem; font-weight: 600; color: #555; margin-bottom: .3rem; }
+.ord-lab > label span, .ord-future > label span { font-weight: 400; color: #999; }
+.ord-lab textarea, .ord-future textarea { width: 100%; min-height: 56px; border: 1px solid var(--line); border-radius: 8px; padding: .5rem .6rem; font: inherit; font-size: .85rem; resize: vertical; box-sizing: border-box; }
+.ord-lab .adm-btn-save, .ord-future .adm-btn-save { margin-top: .4rem; }
+/* «Note future»: pulsante che apre e chiude il riquadro, con un pallino se
+   sull'ordine c'è già qualcosa di scritto. Chiuso di default. */
+.ord-btn-future { display: inline-flex; align-items: center; gap: .4rem; }
+.ord-btn-future.aperto { background: #eef6fb; border-color: var(--v-deep); color: var(--v-deep); }
+.ord-pallino { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--v-deep); flex-shrink: 0; }
+.ord-future { margin: .7rem 0 0; background: #f6fafc; border: 1px dashed #b9d9ea; border-radius: 10px; padding: .6rem .7rem; }
+/* `hidden` va ribadito: una regola di classe con display vincerebbe sul browser. */
+.ord-future[hidden] { display: none; }
+.ord-nota-avviso { margin: .4rem 0 0; font-size: .8rem; color: #8a5a00; background: #fff7e6; border-radius: 8px; padding: .35rem .6rem; }
+.ord-nota-avviso .adm-link { padding: 0; font-size: inherit; }
+
+/* Testo solo per i lettori di schermo (es. "ci sono note scritte" sul pallino). */
+.adm-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .ord-row { display: flex; gap: 1rem; align-items: flex-start; }
 .ord-img { width: 116px; height: 116px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #faf7fb; flex-shrink: 0; }
 /* La miniatura è un link alla foto grande (dal 29-08): il link prende il posto
@@ -499,6 +518,8 @@
   .ord-sort { margin-left: 0; }
   .ord-top { flex-direction: column; gap: .4rem; }
   .ord-badges { justify-content: flex-start; }
+  /* 16px: sotto questa soglia iOS ingrandisce la pagina a ogni tocco */
+  .ord-lab textarea, .ord-future textarea { font-size: 16px; }
 
   /* PDF + QR: tutto impilato e a tutta larghezza */
   .doc-current { flex-wrap: wrap; }
