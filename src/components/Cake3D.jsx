@@ -33,6 +33,9 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three-stdlib';
 import { messageFontStyle } from '../lib/messageFont';
 import { registraCattura, rimuoviCattura } from '../lib/cakeSnapshot';
+import {
+  finestraFoto, bandaScritta, luminanza, coloreScritta, STILI_SCRITTA, tettoPerLunghezza, adattaScritta,
+} from '../lib/fotoTorta';
 
 /* ============================ utilità colore ============================ */
 
@@ -666,6 +669,23 @@ function decoSpots(shape, R, n, inset = 0.8) {
 function rnd(i, k = 1) {
   const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
   return v - Math.floor(v);
+}
+
+/**
+ * Sequenza di numeri a caso che parte da un seme (mulberry32): stesso seme,
+ * stessa sequenza. Serve alla granella, che prima usava Math.random e quindi
+ * cambiava disposizione a ogni apertura e da un dispositivo all'altro.
+ */
+function sequenzaCaso(testo) {
+  let a = 2166136261;
+  for (const c of String(testo)) { a ^= c.charCodeAt(0); a = Math.imul(a, 16777619); }
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /* ---- geometrie riusate da più decorazioni (costruite una volta sola) ---- */
@@ -1516,13 +1536,16 @@ function Granella({
     // poi, per ogni chicco, scivolo verso l'interno di una quantità a caso.
     const contorno = perimeterPts(shape, R, coverage, 240);
     const larghezza = Math.max(0.06, banda) * R; // spessore della fascia
+    // Stessa torta → stessi chicchi negli stessi posti, su PC come sul
+    // telefono, e la foto dell'ordine uguale all'anteprima vista dal cliente.
+    const caso = sequenzaCaso([shape, nChicchi, colors.join(','), round, sopraCiuffi ? 1 : 0].join('|'));
     let maxExt = 0;
     for (const [px, pz] of contorno) maxExt = Math.max(maxExt, Math.hypot(px, pz));
     const sample = (i) => {
       // Ogni chicco ha la SUA fettina di contorno (i/n + un po' di caso): con
       // il caso puro venivano i grumi — archi fitti di granella e archi nudi —
       // e la fascia sembrava buttata lì storta invece che spolverata in giro.
-      const quota = ((i + Math.random()) / nChicchi) % 1;
+      const quota = ((i + caso()) / nChicchi) % 1;
       const t = quota * contorno.length;
       const i0 = Math.floor(t) % contorno.length;
       const i1 = (i0 + 1) % contorno.length;
@@ -1534,10 +1557,10 @@ function Granella({
       // vanno distribuiti pari, se no si ammucchiano sul lato interno e la fila
       // di panna resta scoperta di fuori.
       const l = Math.hypot(x0, z0) || 1e-3;
-      const dentro = Math.pow(Math.random(), sopraCiuffi ? 1 : 0.7) * larghezza;
+      const dentro = Math.pow(caso(), sopraCiuffi ? 1 : 0.7) * larghezza;
       const k = Math.max(0, (l - dentro) / l);
       // pizzico di disordine, altrimenti sembra tracciata col righello
-      const j = () => (Math.random() - 0.5) * larghezza * 0.28;
+      const j = () => (caso() - 0.5) * larghezza * 0.28;
       return [x0 * k + j(), z0 * k + j(), dentro];
     };
 
@@ -1554,7 +1577,7 @@ function Granella({
         while (inHole() && tries < 30) { [x, z, dentro] = sample(i); tries++; }
         if (inHole()) {
           const e = Math.sqrt((x * x) / (holeW * holeW) + (z * z) / (holeH * holeH)) || 1e-3;
-          const s = (1.05 + Math.random() * 0.12) / e;
+          const s = (1.05 + caso() * 0.12) / e;
           x *= s; z *= s;
         }
         dist = Math.hypot(x, z);
@@ -1567,34 +1590,37 @@ function Granella({
       // filo SOTTO la cima vera dei ciuffi (0.82–0.96): meglio un chicco
       // mezzo affondato nella panna che uno campato in aria.
       const gobba = sopraCiuffi
-        ? Math.sin(Math.PI * Math.min(1, dentro / larghezza)) * (0.82 + Math.random() * 0.14)
+        ? Math.sin(Math.PI * Math.min(1, dentro / larghezza)) * (0.82 + caso() * 0.14)
         : 0;
       const alto = sopraCiuffi ? sopraCiuffi * gobba : 0;
-      const s = sizeMin + Math.random() * Math.max(0, sizeMax - sizeMin);
-      const sy = round ? s * flat : s * (0.55 + Math.random() * 0.5) * flat;
+      const s = sizeMin + caso() * Math.max(0, sizeMax - sizeMin);
+      const sy = round ? s * flat : s * (0.55 + caso() * 0.5) * flat;
       // Il chicco è APPOGGIATO: il centro sale di poco MENO della sua mezza
       // altezza, così la base affonda appena nella panna o nel gelato. Prima
       // saliva di un rialzo fisso a caso (fino a 0.043): sulla granella
       // minuta non si vede, ma smarties e zuccherini — chicchi grossi —
       // restavano campati in aria con l'ombra staccata sotto.
-      const yy = y + pile + alto + sy * 0.72 + Math.random() * 0.012;
+      const yy = y + pile + alto + sy * 0.72 + caso() * 0.012;
       dummy.position.set(x, yy, z);
       // Le lenticchie (smarties, perline) si POSANO di piatto, al massimo un
       // po' storte, come cadono davvero su una torta; le scaglie di granella
       // invece si fermano come capita.
       if (round) {
-        dummy.rotation.set((Math.random() - 0.5) * 0.7, Math.random() * 6.28, (Math.random() - 0.5) * 0.7);
+        dummy.rotation.set((caso() - 0.5) * 0.7, caso() * 6.28, (caso() - 0.5) * 0.7);
       } else {
-        dummy.rotation.set(Math.random() * 3.1, Math.random() * 3.1, Math.random() * 3.1);
+        dummy.rotation.set(caso() * 3.1, caso() * 3.1, caso() * 3.1);
       }
       dummy.scale.set(s, sy, s);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      tmp.copy(cols[(Math.random() * cols.length) | 0]).offsetHSL(0, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.14);
+      tmp.copy(cols[(caso() * cols.length) | 0]).offsetHSL(0, (caso() - 0.5) * 0.06, (caso() - 0.5) * 0.14);
       mesh.setColorAt(i, tmp);
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    // ingombro ricalcolato sui chicchi veri (come in Pieces): con quello di
+    // partenza three poteva scartare la granella credendola fuori inquadratura
+    mesh.computeBoundingSphere();
   }, [shape, R, y, coverage, banda, nChicchi, colors, shiny, round, flat, sizeMin, sizeMax, holeW, holeH, sopraCiuffi]);
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, nChicchi]} castShadow receiveShadow>
@@ -1828,6 +1854,13 @@ function Drips({ shape, R, topEdgeY, color, maxLen }) {
 
 function PhotoDisc({ url, y, foot, transform }) {
   const tex = useLoader(THREE.TextureLoader, url);
+  // La foto di prima si libera quando ne arriva un'altra (ogni "↻ Ruota" è una
+  // foto nuova) o quando la si toglie: la cache di useLoader non scade mai, e
+  // ogni versione teneva occupati circa 10 MB di scheda video.
+  useEffect(() => () => {
+    tex.dispose();
+    useLoader.clear(THREE.TextureLoader, url);
+  }, [tex, url]);
   const tf = transform || { zoom: 1, posX: 50, posY: 50 };
   const geo = useMemo(() => photoGeometry(foot.kind, foot.w, foot.h), [foot.kind, foot.w, foot.h]);
   const border = useMemo(
@@ -1840,20 +1873,12 @@ function PhotoDisc({ url, y, foot, transform }) {
     tex.anisotropy = 8;
     const img = tex.image;
     if (img && img.width && img.height) {
-      const W = img.width;
-      const H = img.height;
-      const a = W / H;
-      const At = foot.aspect;
-      let winWpx, winHpx;
-      if (a >= At) { winHpx = H; winWpx = H * At; } else { winWpx = W; winHpx = W / At; }
-      winWpx /= tf.zoom;
-      winHpx /= tf.zoom;
-      const winW = winWpx / W;
-      const winH = winHpx / H;
-      const winLeft = (tf.posX / 100) * (1 - winW);
-      const winTop = (tf.posY / 100) * (1 - winH);
+      // Stesso ritaglio dell'editor (e della scritta sopra, che ci legge i colori).
+      const f = finestraFoto(img.width, img.height, foot.aspect, tf);
+      const winW = f.w / img.width;
+      const winH = f.h / img.height;
       tex.repeat.set(winW, winH);
-      tex.offset.set(winLeft, 1 - winTop - winH);
+      tex.offset.set(f.x / img.width, 1 - f.y / img.height - winH);
     }
     tex.needsUpdate = true;
   }, [tex, tf.zoom, tf.posX, tf.posY, foot.aspect]);
@@ -1871,8 +1896,20 @@ function PhotoDisc({ url, y, foot, transform }) {
 
 /* ============================ scritta sulla torta ============================ */
 
-function MessageText({ text, font, y, boxW, boxH, z = 0, onDark = false }) {
+/**
+ * Scritta disegnata su una texture e posata sulla torta.
+ * Senza foto: al centro, bianca sul fondo scuro e cioccolato sul chiaro
+ * (onDark). Sopra la foto (ScrittaSullaFoto) arrivano invece il colore già
+ * scelto (`stile`), un tetto al corpo (`tetto`, in frazione dell'altezza del
+ * riquadro), al massimo `maxRighe` righe e `sopraFoto`, che la tiene davanti
+ * alla cialda senza sfarfallii.
+ */
+function MessageText({
+  text, font, y, boxW, boxH, x = 0, z = 0, onDark = false,
+  stile = null, tetto = 0.78, maxRighe = Infinity, lift = 0.025, sopraFoto = false,
+}) {
   const [tex, setTex] = useState(null);
+  const giaFatta = useRef(false);
   useEffect(() => {
     let cancelled = false;
     // stile della scritta: accetta gli id della tabella `scritte`
@@ -1880,8 +1917,13 @@ function MessageText({ text, font, y, boxW, boxH, z = 0, onDark = false }) {
     const f = messageFontStyle(font);
     const upper = f.uppercase;
     const cssAt = (px) => `${f.italic ? 'italic' : 'normal'} ${f.weight} ${px}px ${f.family}`;
+    // su fondo scuro → bianco panna spesso; su fondo chiaro → cioccolato
+    const fill = stile?.fill ?? (onDark ? '#ffffff' : '#4a2a12');
+    const stroke = stile?.stroke ?? (onDark ? 'rgba(28,16,8,0.55)' : 'rgba(255,250,242,0.92)');
+    const strokeK = stile?.strokeK ?? (onDark ? 0.18 : 0.14);
 
     const build = () => {
+      if (cancelled) return;
       // canvas con lo stesso rapporto del riquadro 3D → testo non deformato
       const aspect = boxW / boxH;
       const CW = 1400;
@@ -1893,41 +1935,19 @@ function MessageText({ text, font, y, boxW, boxH, z = 0, onDark = false }) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const content = upper ? text.toUpperCase() : text;
-      const availW = CW * 0.9;
-      const availH = CH * 0.82;
-
-      const wrap = (px) => {
-        ctx.font = cssAt(px);
-        const words = content.split(/\s+/);
-        const lines = [];
-        let cur = '';
-        for (const w of words) {
-          const t = cur ? `${cur} ${w}` : w;
-          if (ctx.measureText(t).width > availW && cur) { lines.push(cur); cur = w; } else cur = t;
-        }
-        if (cur) lines.push(cur);
-        const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
-        return { lines, maxW, totalH: lines.length * px * 1.16 };
-      };
-
-      // auto-fit: font massimo che entra nel riquadro
-      let chosen = null;
-      for (let px = Math.round(CH * 0.78); px >= 14; px -= 2) {
-        const r = wrap(px);
-        if (r.maxW <= availW && r.totalH <= availH) { chosen = { px, ...r }; break; }
-      }
-      if (!chosen) { const r = wrap(14); chosen = { px: 14, ...r }; }
+      const misura = (t, px) => { ctx.font = cssAt(px); return ctx.measureText(t).width; };
+      // auto-fit: il corpo più grande che entra nel riquadro, sotto il tetto
+      const chosen = adattaScritta({
+        testo: content, larghezza: CW * 0.9, altezza: CH * 0.82, misura, corpoMax: CH * tetto, maxRighe,
+      });
 
       ctx.font = cssAt(chosen.px);
       ctx.lineJoin = 'round';
       const lh = chosen.px * 1.16;
-      const startY = CH / 2 - ((chosen.lines.length - 1) * lh) / 2;
-      // su fondo scuro → bianco panna spesso; su fondo chiaro → cioccolato
-      const fill = onDark ? '#ffffff' : '#4a2a12';
-      const stroke = onDark ? 'rgba(28,16,8,0.55)' : 'rgba(255,250,242,0.92)';
-      chosen.lines.forEach((ln, i) => {
+      const startY = CH / 2 - ((chosen.righe.length - 1) * lh) / 2;
+      chosen.righe.forEach((ln, i) => {
         const yy = startY + i * lh;
-        ctx.lineWidth = chosen.px * (onDark ? 0.18 : 0.14);
+        ctx.lineWidth = chosen.px * strokeK;
         ctx.strokeStyle = stroke;
         ctx.strokeText(ln, CW / 2, yy);
         ctx.fillStyle = fill;
@@ -1938,29 +1958,127 @@ function MessageText({ text, font, y, boxW, boxH, z = 0, onDark = false }) {
       t.colorSpace = THREE.SRGBColorSpace;
       t.anisotropy = 8;
       t.needsUpdate = true;
-      if (!cancelled) setTex(t);
+      if (cancelled) { t.dispose(); return; }
+      giaFatta.current = true;
+      setTex(t);
     };
 
-    if (document.fonts && document.fonts.load) {
-      document.fonts.load(cssAt(80), text).then(build).catch(build);
-    } else {
-      build();
-    }
-    return () => { cancelled = true; };
-  }, [text, font, boxW, boxH, onDark]);
+    const carica = () => {
+      if (document.fonts && document.fonts.load) {
+        document.fonts.load(cssAt(80), text).then(build).catch(build);
+      } else {
+        build();
+      }
+    };
+    // La texture si rifà a ogni lettera digitata: dopo la prima si aspetta che
+    // la mano si fermi un attimo, invece di ridisegnarla a ogni tasto.
+    const attesa = setTimeout(carica, giaFatta.current ? 120 : 0);
+    return () => { cancelled = true; clearTimeout(attesa); };
+  }, [text, font, boxW, boxH, onDark, stile?.fill, stile?.stroke, stile?.strokeK, tetto, maxRighe]);
+
+  // La texture vecchia si libera quando arriva la nuova, e l'ultima quando la
+  // scritta sparisce. Prima restavano tutte nella memoria della scheda video,
+  // qualche MB l'una e una per lettera: sui telefoni pesava.
+  useEffect(() => () => tex?.dispose(), [tex]);
 
   if (!tex) return null;
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y + 0.025, z]}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[x, y + lift, z]} renderOrder={sopraFoto ? 3 : 0}>
       <planeGeometry args={[boxW, boxH]} />
-      <meshBasicMaterial map={tex} transparent depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial
+        map={tex}
+        transparent
+        depthWrite={false}
+        toneMapped={false}
+        polygonOffset={sopraFoto}
+        polygonOffsetFactor={sopraFoto ? -1 : 0}
+        polygonOffsetUnits={sopraFoto ? -4 : 0}
+      />
     </mesh>
+  );
+}
+
+/**
+ * Luminanza media (0 nero, 1 bianco) della parte di foto che sta sotto la
+ * fascia della scritta, sullo stesso ritaglio che si vede sulla torta.
+ * null finché non è pronta, o se la foto non si può leggere (un link di
+ * un altro sito senza permesso CORS): in quel caso la scritta resta bianca
+ * col contorno scuro, che si legge quasi ovunque.
+ */
+function useLuminanzaFoto(url, transform, aspect, banda) {
+  const [L, setL] = useState(null);
+  const tf = transform || { zoom: 1, posX: 50, posY: 50 };
+  useEffect(() => {
+    if (!url) { setL(null); return undefined; }
+    let vivo = true;
+    const img = new Image();
+    if (/^https?:/i.test(url)) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (!vivo) return;
+      try {
+        const f = finestraFoto(img.naturalWidth, img.naturalHeight, aspect, tf);
+        const c = document.createElement('canvas');
+        c.width = 48;
+        c.height = 16;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(
+          img,
+          f.x + banda.u0 * f.w, f.y + banda.v0 * f.h,
+          (banda.u1 - banda.u0) * f.w, (banda.v1 - banda.v0) * f.h,
+          0, 0, c.width, c.height,
+        );
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let somma = 0;
+        for (let i = 0; i < d.length; i += 4) somma += luminanza(d[i], d[i + 1], d[i + 2]);
+        setL(somma / (d.length / 4));
+      } catch {
+        setL(null);
+      }
+    };
+    img.onerror = () => { if (vivo) setL(null); };
+    img.src = url;
+    return () => { vivo = false; };
+  }, [url, aspect, tf.zoom, tf.posX, tf.posY, banda.u0, banda.u1, banda.v0, banda.v1]);
+  return L;
+}
+
+/**
+ * Scritta SOPRA la foto su cialda. Prima, con la foto, la scritta non si
+ * disegnava affatto (e su telefono non compariva da nessuna parte). Ora sta
+ * in una fascia della foto (bandaScritta), prende da sola il colore che si
+ * legge meglio sopra quella parte dell'immagine (bianco o cioccolato, sempre
+ * col contorno) e più è lunga più è piccola: richiesta dei titolari.
+ */
+function ScrittaSullaFoto({ text, font, url, transform, foot, y }) {
+  const banda = useMemo(() => bandaScritta(foot.kind), [foot.kind]);
+  const L = useLuminanzaFoto(url, transform, foot.aspect, banda);
+  const stile = STILI_SCRITTA[coloreScritta(L)];
+  // la fascia in coordinate della torta: u verso destra (x), v verso chi guarda (z)
+  const w = (banda.u1 - banda.u0) * foot.w;
+  const h = (banda.v1 - banda.v0) * foot.h;
+  const x = ((banda.u0 + banda.u1) / 2 - 0.5) * foot.w;
+  const z = ((banda.v0 + banda.v1) / 2 - 0.5) * foot.h;
+  return (
+    <MessageText
+      text={text}
+      font={font}
+      y={y}
+      boxW={w}
+      boxH={h}
+      x={x}
+      z={z}
+      stile={stile}
+      tetto={tettoPerLunghezza(text.length)}
+      maxRighe={2}
+      lift={0.035}
+      sopraFoto
+    />
   );
 }
 
 /* ============================ candelina ============================ */
 
-function Candle({ y }) {
+function Candle({ y, x = 0, z = 0 }) {
   const flame = useRef();
   useFrame((state) => {
     if (flame.current) {
@@ -1970,7 +2088,7 @@ function Candle({ y }) {
     }
   });
   return (
-    <group position={[0, y, 0]}>
+    <group position={[x, y, z]}>
       <mesh castShadow position={[0, 0.2, 0]}>
         <cylinderGeometry args={[0.035, 0.035, 0.4, 20]} />
         <meshPhysicalMaterial color="#fff5fa" roughness={0.4} clearcoat={0.4} />
@@ -2120,8 +2238,14 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   const capY = stackTop - capH * 0.35;
   const capBottom = capY - capH * 0.55;
   const hasTopCap = !!useCover || extraCreamCap;
-  // dove poggiano granella/decorazioni/foto/scritta: sopra il bombamento del disco superiore
-  const surfaceY = (hasTopCap ? capY + capH * 0.8 : stackTop) + bandH * 0.06;
+  // dove poggiano granella/decorazioni/foto/scritta: sopra il bombamento del disco superiore.
+  // Almeno 0.02 di stacco. Con tanti gusti gli strati sono sottili e lo stacco
+  // scendeva a 0.009: meno dell'ondulazione del bordo (±0.005) più quel tanto
+  // che i pezzi affondano (i macarons 0.0036). Senza l'anello di ciuffi i pezzi
+  // stanno proprio lì, e sui telefoni, che hanno meno precisione nella
+  // profondità, torta e decorazioni si mescolavano a righe ("senza ciuffi le
+  // decorazioni vengono strane").
+  const surfaceY = (hasTopCap ? capY + capH * 0.8 : stackTop) + Math.max(bandH * 0.06, 0.02);
   // guscio di panna intorno alla torta: un filo più largo dei gusti, così li copre
   const bodyH = layers * bandH;
   const wrapR = R * 1.05;
@@ -2130,7 +2254,13 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // (±1%), e con raggi uguali capitava che la calotta rientrasse sotto il bordo
   // lasciando scoperte delle mezzelune di gelato — sembrava rotta. Così invece
   // la copertura sborda sempre di poco, come una glassa vera.
-  const capR = wrapFull ? wrapR * 0.998 : R * 1.03;
+  // Col guscio di panna (wrapFull: spatolata, cioccolato…) la calotta prende lo
+  // STESSO disegno irregolare del guscio (seme 3.3) e un raggio appena più
+  // grande, così sborda di un filo su tutto il giro. Prima i due bordi, con
+  // semi diversi e raggi quasi uguali, si incrociavano otto volte, e sui
+  // telefoni in quei tratti il bordo della torta sfarfallava a righe.
+  const capR = wrapFull ? wrapR * 1.004 : R * 1.03;
+  const capSeed = wrapFull ? 3.3 : 5.5;
 
   // Geometrie: dischi lisci e netti (Gelopie), leggermente sovrapposti per i solchi.
   const geos = useMemo(() => {
@@ -2138,7 +2268,7 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     for (let i = 0; i < layers; i++) bands.push(makeLayerGeo(shape, R, bandH * OV, i * 1.7 + 1));
     // panna arcobaleno → la stessa panna dipinta a settori di colore
     const rainbow = (g) => (g && creamRainbow ? paintRainbow(g) : g);
-    const capGeo = makeLayerGeo(shape, capR, capH * 1.6, 5.5);
+    const capGeo = makeLayerGeo(shape, capR, capH * 1.6, capSeed);
     return {
       base: makeLayerGeo(shape, R * 0.985, baseH * 1.3, 0.3),
       bands,
@@ -2147,11 +2277,13 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
       // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
       shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
       // calotta di panna aggiunta dalla decorazione su una torta senza copertura
-      creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, wrapR * 0.998, capH * 1.6, 5.5)) : null,
+      // stessi raggio e seme della calotta di copertura: sborda di un filo sul
+      // guscio invece di incrociarlo (naked + panna)
+      creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, capR, capH * 1.6, capSeed)) : null,
     };
   }, [
     shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
-    wrapFull, extraCreamCap, wrapR, capR, bodyH, creamRainbow,
+    wrapFull, extraCreamCap, wrapR, capR, capSeed, bodyH, creamRainbow,
   ]);
 
   // ---- Piatto (vassoio) ORO, con forma dedicata ----
@@ -2300,6 +2432,8 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     coverIsCream || extraCreamCap ? creamColor : useCover ? coverColor : topFlavor.color
   );
   const photoFoot = photoFootprint(shape, R, borderLevel);
+  // dove sta la scritta sopra la foto (serve anche alla candelina, qui sotto)
+  const bandaFoto = bandaScritta(photoFoot.kind);
   // buco ellittico nella granella che segue il contenuto centrale (foto o scritta)
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
   const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
@@ -2486,6 +2620,18 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         </Suspense>
       )}
 
+      {/* ---- Scritta sopra la foto: colore a contrasto, più piccola se lunga ---- */}
+      {hasMessage && photo && (
+        <ScrittaSullaFoto
+          text={message.trim()}
+          font={messageFont}
+          url={photo}
+          transform={photoTransform}
+          foot={photoFoot}
+          y={surfaceY}
+        />
+      )}
+
       {/* ---- Scritta applicata sulla torta (al centro, se non c'è la foto) ---- */}
       {hasMessage && !photo && (
         <MessageText
@@ -2499,13 +2645,29 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         />
       )}
 
-      {/* ---- Candelina ---- */}
-      {candle && <Candle y={surfaceY} />}
+      {/* ---- Candelina ----
+              Di solito al centro. Con la scritta sopra la foto si mette a lato
+              della fascia, alla stessa profondità: al centro, vista di fronte
+              (e quindi in ogni foto dell'ordine), copriva le lettere di mezzo. */}
+      {candle && (hasMessage && photo ? (
+        <Candle
+          y={surfaceY}
+          x={(bandaFoto.u1 - 0.5) * photoFoot.w + 0.06}
+          z={((bandaFoto.v0 + bandaFoto.v1) / 2 - 0.5) * photoFoot.h}
+        />
+      ) : (
+        <Candle y={surfaceY} />
+      ))}
     </group>
   );
 }
 
 /* ============================ scena + canvas ============================ */
+
+// Posa della camera all'apertura e punto attorno a cui gira la torta. Da qui
+// si scatta anche la foto per l'ordine (CaptureBridge).
+const POSA_CAMERA = [0, 2.7, 5.0];
+const BERSAGLIO = [0, -0.04, 0];
 
 function Scene({ spin = true, ...props }) {
   const [reduce, setReduce] = useState(false);
@@ -2535,6 +2697,10 @@ function Scene({ spin = true, ...props }) {
         shadow-camera-top={4}
         shadow-camera-bottom={-4}
         shadow-bias={-0.0004}
+        // spinge un filo l'ombra lungo la normale: sui telefoni, dove l'ombra
+        // si calcola con meno precisione, le superfici piatte (la calotta
+        // senza ciuffi) si riempivano di righine
+        shadow-normalBias={0.02}
       />
       <directionalLight position={[-5, 3, -3]} intensity={0.6} color="#e2efec" />
       <directionalLight position={[0, 2, -6]} intensity={0.5} color="#ffe6c8" />
@@ -2570,11 +2736,61 @@ function Scene({ spin = true, ...props }) {
         dampingFactor={0.08}
         minPolarAngle={Math.PI * 0.26}
         maxPolarAngle={Math.PI * 0.48}
-        target={[0, -0.04, 0]}
+        target={BERSAGLIO}
       />
+      <RotazioneATempo />
     </>
   );
 }
+
+/**
+ * La rotazione automatica di OrbitControls avanza di un passo a OGNI
+ * fotogramma: sui telefoni a 120 Hz la torta girava al doppio, in risparmio
+ * energetico (30 fps) a metà. Qui il passo si riporta al tempo vero, come a
+ * 60 fotogrammi al secondo: stessa velocità su ogni schermo.
+ */
+function RotazioneATempo() {
+  const controls = useThree((s) => s.controls);
+  useFrame((_, dt) => {
+    if (controls) controls.autoRotateSpeed = 1.1 * Math.min(4, dt * 60);
+  });
+  return null;
+}
+
+/**
+ * Pannello di prova, solo con ?diag3d=1 nell'indirizzo: cosa offre la scheda
+ * video del dispositivo. Se dal telefono dei titolari la torta esce ancora
+ * diversa, uno screenshot di questo pannello dice perché (profondità a 16
+ * bit, precisione ridotta, estensioni mancanti) e quale versione del sito
+ * stavano guardando.
+ */
+function leggiInfo3D(renderer) {
+  const gl = renderer.getContext();
+  const caps = renderer.capabilities;
+  let profondita = 'n.d.';
+  try {
+    if (caps.isWebGL2) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      profondita = gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.DEPTH, gl.FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE);
+    } else {
+      profondita = gl.getParameter(gl.DEPTH_BITS);
+    }
+  } catch { /* non tutti i browser lo dicono */ }
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const scheda = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : 'n.d.';
+  const ha = (e) => (gl.getExtension(e) ? 'sì' : 'no');
+  const build = document.querySelector('script[src*="/assets/index-"]')?.src.split('/').pop() || 'sviluppo';
+  return [
+    `sito ${build}`,
+    `WebGL${caps.isWebGL2 ? 2 : 1} · precisione ${caps.precision} · profondità ${profondita} bit`,
+    `scheda ${scheda}`,
+    `dpr ${Math.round(window.devicePixelRatio * 100) / 100} → ${renderer.getPixelRatio()} · canvas ${renderer.domElement.width}×${renderer.domElement.height}`,
+    `float ${ha('EXT_color_buffer_float')} · half-float ${ha('EXT_color_buffer_half_float')}`,
+    `riduci movimento ${window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'sì' : 'no'}`,
+    navigator.userAgent,
+  ].join('\n');
+}
+const DIAG_3D = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('diag3d');
 
 /**
  * Ponte per la foto in alta risoluzione (vedi src/lib/cakeSnapshot.js).
@@ -2583,16 +2799,27 @@ function Scene({ spin = true, ...props }) {
  * lato lungo a `maxPx`), la copia su un canvas 2D con lo sfondo — il WebGL è
  * trasparente e un JPEG trasparente viene nero — poi rimette tutto com'era e
  * ridisegna il fotogramma normale. Sullo schermo non si vede niente.
+ *
+ * La foto si scatta sempre DI FRONTE, dalla posa d'apertura. Prima era il
+ * fotogramma di quell'istante: con la rotazione automatica l'angolo era a
+ * caso, e sulla rettangolare la foto della cialda poteva comparire girata
+ * di traverso (in dashboard sembrava "verticale") e la scritta capovolta.
  */
 function CaptureBridge() {
   const { gl, scene, camera } = useThree();
+  const controls = useThree((s) => s.controls);
   useEffect(() => {
     const el = gl.domElement;
     registraCattura(el, ({ maxPx, sfondo }) => {
       const size = gl.getSize(new THREE.Vector2()); // misura "logica" (CSS)
       const dpr = gl.getPixelRatio();
       const fattore = maxPx / Math.max(size.x, size.y);
+      const posizione = camera.position.clone();
+      const verso = camera.quaternion.clone();
       try {
+        camera.position.set(...POSA_CAMERA);
+        camera.lookAt(controls?.target ?? new THREE.Vector3(...BERSAGLIO));
+        camera.updateMatrixWorld();
         gl.setPixelRatio(1);
         gl.setSize(Math.round(size.x * fattore), Math.round(size.y * fattore), false);
         gl.render(scene, camera);
@@ -2612,19 +2839,24 @@ function CaptureBridge() {
         // quella ingrandita della cattura alloca per un istante un buffer
         // 2048×dpr — abbastanza da far cadere il WebGL sui telefoni economici
         // (anteprima nera). Così invece il canvas torna piccolo subito.
+        // La camera torna dov'era: chi stava girando la torta non nota niente.
+        camera.position.copy(posizione);
+        camera.quaternion.copy(verso);
+        camera.updateMatrixWorld();
         gl.setSize(size.x, size.y, false);
         gl.setPixelRatio(dpr);
         gl.render(scene, camera);
       }
     });
     return () => rimuoviCattura(el);
-  }, [gl, scene, camera]);
+  }, [gl, scene, camera, controls]);
   return null;
 }
 
 export default function Cake3D(props) {
   const [spin, setSpin] = useState(true);
   const stage = useRef(null);
+  const [info3D, setInfo3D] = useState('');
   // La torta 3D si ridisegna 60 volte al secondo. Sulla home ce n'è una anche
   // nella sezione "Crea la tua torta": senza questo controllo continuerebbe a
   // lavorare pure quando è lontanissima dallo schermo, e il sito scatta mentre
@@ -2649,13 +2881,20 @@ export default function Cake3D(props) {
         dpr={[1, 2]}
         frameloop={inVista ? 'always' : 'never'}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
-        camera={{ position: [0, 2.7, 5.0], fov: 30 }}
+        // near/far stretti attorno alla torta (prima 0.1 e 1000, i valori di
+        // base): la precisione della profondità migliora di dieci volte. Sui
+        // telefoni con profondità a 16 bit decorazioni e calotta, a pochi
+        // millesimi l'una dall'altra, si mescolavano a righe. Niente della
+        // scena sta a meno di 3 dalla camera o a più di 9.
+        camera={{ position: POSA_CAMERA, fov: 30, near: 1, far: 20 }}
+        onCreated={DIAG_3D ? ({ gl }) => setInfo3D(leggiInfo3D(gl)) : undefined}
       >
         <Suspense fallback={null}>
           <Scene {...props} spin={spin} />
         </Suspense>
         <CaptureBridge />
       </Canvas>
+      {DIAG_3D && info3D && <pre className="cake3d-diag">{info3D}</pre>}
       <button
         type="button"
         className="cake3d-spin-toggle"

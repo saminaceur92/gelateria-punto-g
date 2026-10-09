@@ -133,6 +133,52 @@ export async function uploadCakePhotos({ customer, preview }) {
 }
 
 /**
+ * La foto girata in senso orario di `quarti` quarti di giro (1 = 90°).
+ * Si girano i PIXEL, non solo l'anteprima: editor, torta 3D, foto per la
+ * cialda che scarica il laboratorio e Telegram la ricevono già nel verso
+ * scelto, e nessuno deve ricordarsi di ruotarla a mano. Richiesta dei
+ * titolari: sulla rettangolare una foto verticale (quella tipica del
+ * telefono) deve potersi stendere in orizzontale lungo la torta.
+ */
+export function ruotaFoto(dataUrl, quarti = 1) {
+  const q = ((quarti % 4) + 4) % 4;
+  if (!dataUrl || q === 0) return Promise.resolve(dataUrl);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // Un errore qui dentro non rifiuterebbe la promessa da solo, e il tasto
+      // "Ruota" resterebbe spento per sempre: succede sugli iPhone quando la
+      // memoria dei canvas è finita e getContext restituisce null.
+      const canvas = document.createElement('canvas');
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        canvas.width = q % 2 ? h : w;
+        canvas.height = q % 2 ? w : h;
+        const ctx = canvas.getContext('2d');
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((q * Math.PI) / 2); // nel canvas un angolo positivo gira in senso orario
+        ctx.drawImage(img, -w / 2, -h / 2);
+        // 0.92: l'editor gira sempre la foto di partenza, non quella già girata,
+        // quindi la ricompressione avviene una volta sola.
+        const girata = canvas.toDataURL('image/jpeg', 0.92);
+        if (!girata.startsWith('data:image/jpeg')) throw new Error('rotazione non riuscita');
+        resolve(girata);
+      } catch (e) {
+        reject(e);
+      } finally {
+        // Safari conta la memoria dei canvas finché non vengono raccolti:
+        // svuotato subito, questo non pesa sulle prossime rotazioni.
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    };
+    img.onerror = () => reject(new Error('foto non leggibile'));
+    img.src = dataUrl;
+  });
+}
+
+/**
  * Link che fa SCARICARE la foto invece di aprirla: Supabase Storage, con
  * `?download=<nome>`, risponde con "Content-Disposition: attachment". Vale per
  * la dashboard e per il messaggio Telegram (lì lo compone il database allo
