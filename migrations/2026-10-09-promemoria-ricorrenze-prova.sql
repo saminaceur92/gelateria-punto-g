@@ -43,9 +43,15 @@ begin
   -- Niente invii veri, niente trigger degli altri, coda vera ferma (10 anni avanti:
   -- l'annullamento finale la rimette com'era).
   perform set_config('app.promemoria_finto', 'on', true);
-  alter table public.ordini disable trigger user;
-  alter table public.ordini enable trigger crea_promemoria_compleanno_trg;
-  alter table public.ordini enable trigger sincronizza_promemoria_trg;
+  begin
+    alter table public.ordini disable trigger user;
+    alter table public.ordini enable trigger crea_promemoria_compleanno_trg;
+    alter table public.ordini enable trigger sincronizza_promemoria_trg;
+  exception when insufficient_privilege or lock_not_available then
+    -- Non si possono spegnere (tabella di un altro proprietario, o occupata):
+    -- si va avanti lo stesso, tanto pg_net spedisce solo dopo il COMMIT.
+    raise notice 'Trigger degli altri non spenti (%): la prova prosegue, non parte niente lo stesso.', sqlerrm;
+  end;
   update public.promemoria_compleanno set invio_previsto = invio_previsto + 3650 where stato = 'in_attesa';
   insert into public.app_config (key, value) values
     ('emailjs_service_id', 'prova'), ('emailjs_template_compleanno', 'prova'),
