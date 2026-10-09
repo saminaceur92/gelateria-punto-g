@@ -80,7 +80,7 @@ export function creaMotoreOrdine({
       await carica();
       avvisa({
         stato: '',
-        avviso: "Nel frattempo questa lista è stata cambiata da un altro dispositivo: l'ho ricaricata. Se serve, ripeti lo spostamento.",
+        avviso: "Nel frattempo questa lista è stata cambiata altrove (per esempio da un altro dispositivo): l'ho ricaricata. Se serve, ripeti lo spostamento.",
       });
       return false;
     }

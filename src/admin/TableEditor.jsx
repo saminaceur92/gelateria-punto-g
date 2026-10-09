@@ -328,6 +328,10 @@ export default function TableEditor({ table, title, subtitle, fields, newRow, lo
         <OrdinaLista
           table={table}
           titolo={title}
+          // Con rowFilter (le due griglie delle taglie) ogni lista numera
+          // solo le sue righe: ordinare le normali non tocca le alte, e le
+          // due liste aperte insieme non si pestano i piedi.
+          universo={rowFilter}
           visibile={visibileOrdine}
           ambito={ambitoOrdine}
           ambiti={ambitiOrdine}

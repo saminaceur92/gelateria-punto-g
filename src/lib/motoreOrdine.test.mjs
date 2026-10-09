@@ -129,7 +129,7 @@ test('lista cambiata da un altro dispositivo: si ricarica e non si scrive niente
   orologio.scatta();
   await finito();
   assert.equal(db.log.scritture.length, 0);
-  assert.match(ultimo.avviso, /cambiata da un altro dispositivo/);
+  assert.match(ultimo.avviso, /cambiata altrove/);
   assert.deepEqual(ids(m.righe), db.ordineSito(), 'la pagina mostra la lista vera');
   assert.equal(m.righe[0].id, 'nocciola-cop');
 });
@@ -182,6 +182,28 @@ test('ordine dei gusti nelle torte: si tocca solo la sua colonna', async () => {
   assert.deepEqual(ordinaComeIlSito([...db.tab.values()].filter((r) => r.per_torte), 'ordine_torte').map((r) => r.id),
     ['nutella', 'fior-di-latte', 'crema']);
   assert.deepEqual([...db.tab.values()].map((r) => r.ordine), [10, 20, 30, 40], 'la carta non si tocca');
+});
+
+test('taglie normali e alte aperte insieme: due liste che non si pestano i piedi', async () => {
+  // Numeri come dopo la pulizia della migrazione: una sola sequenza.
+  const taglie = [
+    ['6', 10, false], ['alta-6', 20, true], ['8', 30, false], ['alta-8', 40, true],
+    ['10', 50, false], ['alta-10', 60, true],
+  ].map(([id, ordine, alta]) => ({ id, ordine, alta }));
+  const db = dbFinto(taglie);
+  const normali = crea(db, { universo: (r) => !r.alta });
+  const alte = crea(db, { universo: (r) => r.alta });
+  await normali.m.carica();
+  await alte.m.carica();
+  normali.m.sposta('8', -1);
+  assert.equal(await normali.m.salvaSubito(), true);
+  assert.ok(db.log.scritture.every(([id]) => !id.startsWith('alta-')), 'ordinando le normali le alte non si toccano');
+  alte.m.sposta('alta-10', -1);
+  assert.equal(await alte.m.salvaSubito(), true, 'nessun falso "cambiata altrove"');
+  assert.equal(alte.ultimo.avviso, '');
+  const ordine = (alta) => db.ordineSito().filter((id) => id.startsWith('alta-') === alta);
+  assert.deepEqual(ordine(false), ['8', '6', '10']);
+  assert.deepEqual(ordine(true), ['alta-6', 'alta-10', 'alta-8']);
 });
 
 test('errore di lettura: messaggio, niente scritture', async () => {

@@ -229,7 +229,8 @@ select '18 · nessun numero doppio nelle liste (gemelle vegetali a parte)',
        case when exists (
          with tutte as (
            select 'tipi_torta' as t, id::text as id, ordine from public.tipi_torta
-           union all select 'dimensioni', id::text, ordine from public.dimensioni
+           -- taglie normali e alte sono due liste separate (si ordinano a parte)
+           union all select 'dimensioni ' || coalesce(alta, false)::text, id::text, ordine from public.dimensioni
            union all select 'forme', id::text, ordine from public.forme
            union all select 'basi', id::text, ordine from public.basi
            union all select 'crumble', id::text, ordine from public.crumble
