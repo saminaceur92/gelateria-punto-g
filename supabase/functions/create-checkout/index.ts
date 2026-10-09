@@ -1,15 +1,36 @@
 // Edge Function: create-checkout
-// Riceve la configurazione + la riga ordine (già costruita dal client, senza
-// immagine). Ricalcola il prezzo LATO SERVER, apre una Stripe Checkout Session
-// e mette la riga ordine nei metadata. L'ordine viene salvato dal webhook SOLO
-// a pagamento avvenuto (stato 'da_fare' → workflow esistente + trigger Telegram).
+// Riceve la configurazione della torta scelta sul sito, la CONTROLLA contro il
+// listino vero, ricalcola il prezzo, scrive la riga ordine (riepilogo per il
+// laboratorio, mail di conferma, dettagli) e apre una Stripe Checkout Session
+// con la riga nei metadata. L'ordine lo salva il webhook SOLO a pagamento
+// avvenuto (stato 'da_fare' → lavorazione + trigger Telegram e mail).
+//
+// Dal browser si prende solo la configurazione: prezzo, riepilogo e mail li
+// scrive il server da ciò che viene davvero pagato. Della vecchia riga
+// `insert` che il sito manda ancora si usano solo gli URL delle foto già
+// caricate su Storage (controllati) e "ho mostrato l'avviso dei promemoria".
+//
+// Risposte per il sito (catch del pagamento in CakeConfigurator.jsx):
+//   200 { url }                                  → si va su Stripe
+//   409/422/400 { error, codice, campo, voce }    → scelta da rifare: il sito
+//        rilegge il listino e riporta al passo `campo` (OrdineRifiutato)
+//   503 { error, codice: 'listino_non_disponibile' } → riprovare fra poco
+//   500 { error }                                → guasto (dettaglio nei log)
 //
 // Deploy:  supabase functions deploy create-checkout
 // Secrets: STRIPE_SECRET_KEY, SITE_URL
+//          PUBLIC_SUPABASE_URL (facoltativo): l'indirizzo del progetto come lo
+//          vede il SITO, se un giorno non coincidesse più con SUPABASE_URL
+//          (dominio personalizzato, prove in locale). Serve a riconoscere gli
+//          URL delle foto caricate dal sito.
 import Stripe from 'https://esm.sh/stripe@17.7.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { computeOrder, TagliaNonValida, type CakeConfig } from '../_shared/price.ts';
+import { computeOrder } from '../_shared/price.ts';
+import { ListinoNonDisponibile } from '../_shared/listino.ts';
+import { OrdineRifiutato } from '../_shared/valida.ts';
+import { avvisoPromemoriaDalBrowser, fotoDalBrowser, rigaOrdine } from '../_shared/ordine.ts';
+import { metadatiOrdine, TroppoTestoPerStripe } from '../_shared/metadati.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   httpClient: Stripe.createFetchHttpClient(),
@@ -18,71 +39,48 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
+const BASI_FOTO = [Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('PUBLIC_SUPABASE_URL') ?? ''];
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Metodo non consentito' }, 405);
 
+  let body: { config?: unknown; insert?: unknown } | null = null;
   try {
-    // La config arriva tale e quale dal configuratore e finisce intera in
-    // computeOrder: `decorations` (array di id) e `decorationColors` (mappa
-    // id → colore) restano array e oggetto dopo il JSON.parse, quindi non serve
-    // ricostruirli. Chi valida cosa: qui si controlla solo che l'ordine abbia il
-    // minimo indispensabile, mentre le decorazioni (doppioni, id sconosciuti,
-    // liste troppo lunghe, campi vecchi decoration/decorationColor) le ripulisce
-    // computeOrder, che è l'unico a decidere il prezzo.
-    const { config, insert } = (await req.json()) as {
-      config: CakeConfig & Record<string, unknown>;
-      insert: Record<string, unknown>;
-    };
+    body = await req.json();
+  } catch {
+    body = null;
+  }
+  const config = body?.config;
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    return json({ error: 'Dati ordine incompleti', codice: 'dati_incompleti', campo: 'details' }, 400);
+  }
 
-    if (
-      !config?.type ||
-      !Array.isArray(config.flavors) || config.flavors.length < 1 ||
-      !insert || !insert.cliente_nome || !insert.cliente_telefono
-    ) {
-      return json({ error: 'Dati ordine incompleti' }, 400);
-    }
+  try {
+    // Controllo + prezzo + sconto: tutto PRIMA di parlare con Stripe, così
+    // una torta "impossibile" non apre nemmeno una sessione di pagamento.
+    const ordine = await computeOrder(supabase, config);
+    if (ordine.amountCents < 50) return json({ error: 'Importo non valido' }, 400);
 
-    const { amountCents, summary, sconto, scontoCodice } = await computeOrder(supabase, config);
-    if (amountCents <= 0) return json({ error: 'Importo non valido' }, 400);
-
-    // La riga ordine (senza immagine) va nei metadata, a pezzi da <500 char.
-    const payload = JSON.stringify(insert);
-    const metadata: Record<string, string> = { chunks: String(Math.ceil(payload.length / 450)) };
-    // Le due foto viaggiano anche fuori dal JSON a pezzi. È una ridondanza
-    // intenzionale: il webhook deve sempre poterle distinguere e reinserire,
-    // anche se una versione precedente del payload non le conteneva.
-    const dettagli = insert.dettagli && typeof insert.dettagli === 'object'
-      ? insert.dettagli as Record<string, unknown>
-      : {};
-    const fotoCialdaUrl = typeof dettagli.fotoCialdaUrl === 'string' ? dettagli.fotoCialdaUrl : '';
-    const tortaConfigurataUrl = typeof dettagli.tortaConfigurataUrl === 'string' ? dettagli.tortaConfigurataUrl : '';
-    if (fotoCialdaUrl) metadata.foto_cialda_url = fotoCialdaUrl.slice(0, 500);
-    if (tortaConfigurataUrl) metadata.torta_configurata_url = tortaConfigurataUrl.slice(0, 500);
-    // Lo sconto DAVVERO applicato viaggia a parte: il webhook lo scrive
-    // sull'ordine e scala il contatore del codice solo a pagamento avvenuto.
-    if (scontoCodice && sconto > 0) {
-      metadata.sconto_codice = scontoCodice;
-      metadata.sconto_euro = sconto.toFixed(2);
-    }
-    for (let i = 0, k = 0; i < payload.length; i += 450, k++) {
-      metadata['d' + k] = payload.slice(i, i + 450);
-    }
+    const riga = rigaOrdine(ordine.validato, ordine.prezzo, ordine.sconto, ordine.totale, {
+      foto: fotoDalBrowser(body?.insert, BASI_FOTO),
+      promemoriaAvviso: avvisoPromemoriaDalBrowser(body?.insert, config),
+    });
+    const metadata = metadatiOrdine(riga, ordine.amountCents, ordine.sconto);
 
     const siteUrl = Deno.env.get('SITE_URL') ?? '';
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       locale: 'it',
-      customer_email: (config.email as string) || undefined,
+      customer_email: String(ordine.validato.canon.email || '') || undefined,
       line_items: [{
         quantity: 1,
         price_data: {
           currency: 'eur',
-          unit_amount: amountCents,
+          unit_amount: ordine.amountCents,
           product_data: {
             name: 'Torta personalizzata — Gelateria Punto Gi',
-            description: summary || undefined,
+            description: ordine.summary || undefined,
           },
         },
       }],
@@ -93,13 +91,26 @@ Deno.serve(async (req) => {
 
     return json({ url: session.url });
   } catch (e) {
-    // Taglia non più valida per questo tipo di torta (listino cambiato mentre
-    // il cliente sceglieva): risposta riconoscibile, il sito rilegge le taglie
-    // e chiede di confermare di nuovo. Non è un guasto, quindi niente log d'errore.
-    if (e instanceof TagliaNonValida) {
-      return json({ error: e.message, codice: e.codice }, 409);
+    // Una scelta che non va (listino cambiato mentre il cliente sceglieva, o
+    // una richiesta manomessa): risposta riconoscibile, non è un guasto. Nei
+    // log solo cosa e dove, mai i dati del cliente.
+    if (e instanceof OrdineRifiutato) {
+      console.warn('ordine rifiutato:', e.codice, e.campo, e.voce ?? '');
+      return json({ error: e.message, codice: e.codice, campo: e.campo, voce: e.voce }, e.status);
     }
+    if (e instanceof TroppoTestoPerStripe) {
+      console.warn('ordine rifiutato: troppo testo per i metadata Stripe');
+      return json({ error: e.message, codice: 'scelta_non_valida', campo: 'details', voce: null }, 422);
+    }
+    if (e instanceof ListinoNonDisponibile) {
+      console.error('listino non disponibile:', e.message);
+      return json({
+        error: 'Non riusciamo a leggere il listino adesso: riprova tra un minuto.',
+        codice: 'listino_non_disponibile',
+      }, 503);
+    }
+    // Errori di Stripe o imprevisti: il dettaglio tecnico solo nei log.
     console.error('create-checkout error:', e);
-    return json({ error: (e as Error)?.message ?? 'Errore interno' }, 500);
+    return json({ error: 'Non siamo riusciti ad aprire il pagamento. Riprova tra poco; se succede ancora, chiamaci.' }, 500);
   }
 });
