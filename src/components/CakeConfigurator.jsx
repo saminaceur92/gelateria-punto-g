@@ -3035,6 +3035,10 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
   // forza di ricomprimere. `ultima` riconosce una foto nuova o tolta.
   const sorgente = useRef(null);
   const [ruotando, setRuotando] = useState(false);
+  // La foto di adesso, letta dopo la rotazione (che richiede un attimo): se
+  // nel frattempo è stata tolta o cambiata, la foto girata non la rimette.
+  const fotoAttuale = useRef(value);
+  fotoAttuale.current = value;
 
   useEffect(() => {
     if (!value) { setDim(null); return; }
@@ -3049,9 +3053,11 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
       sorgente.current = { originale: value, quarti: 0, ultima: value };
     }
     const quarti = (sorgente.current.quarti + 1) % 4;
+    const partenza = value;
     setRuotando(true);
     try {
       const girata = await ruotaFoto(sorgente.current.originale, quarti);
+      if (fotoAttuale.current !== partenza) return;
       sorgente.current = { ...sorgente.current, quarti, ultima: girata };
       onChange(girata);
       // Il ritaglio di prima non vale più per la foto girata: si riparte dal centro.
@@ -3178,7 +3184,7 @@ function PhotoUploader({ value, onChange, transform, onTransform, shape }) {
           >
             ↻ Ruota
           </button>
-          <button type="button" className="toggle-pill" onClick={() => onChange(null)}>
+          <button type="button" className="toggle-pill" onClick={() => onChange(null)} disabled={ruotando}>
             Rimuovi foto
           </button>
         </div>

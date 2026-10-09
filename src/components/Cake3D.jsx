@@ -1854,6 +1854,13 @@ function Drips({ shape, R, topEdgeY, color, maxLen }) {
 
 function PhotoDisc({ url, y, foot, transform }) {
   const tex = useLoader(THREE.TextureLoader, url);
+  // La foto di prima si libera quando ne arriva un'altra (ogni "↻ Ruota" è una
+  // foto nuova) o quando la si toglie: la cache di useLoader non scade mai, e
+  // ogni versione teneva occupati circa 10 MB di scheda video.
+  useEffect(() => () => {
+    tex.dispose();
+    useLoader.clear(THREE.TextureLoader, url);
+  }, [tex, url]);
   const tf = transform || { zoom: 1, posX: 50, posY: 50 };
   const geo = useMemo(() => photoGeometry(foot.kind, foot.w, foot.h), [foot.kind, foot.w, foot.h]);
   const border = useMemo(
@@ -2071,7 +2078,7 @@ function ScrittaSullaFoto({ text, font, url, transform, foot, y }) {
 
 /* ============================ candelina ============================ */
 
-function Candle({ y }) {
+function Candle({ y, x = 0, z = 0 }) {
   const flame = useRef();
   useFrame((state) => {
     if (flame.current) {
@@ -2081,7 +2088,7 @@ function Candle({ y }) {
     }
   });
   return (
-    <group position={[0, y, 0]}>
+    <group position={[x, y, z]}>
       <mesh castShadow position={[0, 0.2, 0]}>
         <cylinderGeometry args={[0.035, 0.035, 0.4, 20]} />
         <meshPhysicalMaterial color="#fff5fa" roughness={0.4} clearcoat={0.4} />
@@ -2270,7 +2277,9 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
       // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
       shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
       // calotta di panna aggiunta dalla decorazione su una torta senza copertura
-      creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, wrapR * 0.998, capH * 1.6, 5.5)) : null,
+      // stessi raggio e seme della calotta di copertura: sborda di un filo sul
+      // guscio invece di incrociarlo (naked + panna)
+      creamCap: extraCreamCap ? rainbow(makeLayerGeo(shape, capR, capH * 1.6, capSeed)) : null,
     };
   }, [
     shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
@@ -2423,6 +2432,8 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     coverIsCream || extraCreamCap ? creamColor : useCover ? coverColor : topFlavor.color
   );
   const photoFoot = photoFootprint(shape, R, borderLevel);
+  // dove sta la scritta sopra la foto (serve anche alla candelina, qui sotto)
+  const bandaFoto = bandaScritta(photoFoot.kind);
   // buco ellittico nella granella che segue il contenuto centrale (foto o scritta)
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
   const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
@@ -2634,8 +2645,19 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         />
       )}
 
-      {/* ---- Candelina ---- */}
-      {candle && <Candle y={surfaceY} />}
+      {/* ---- Candelina ----
+              Di solito al centro. Con la scritta sopra la foto si mette a lato
+              della fascia, alla stessa profondità: al centro, vista di fronte
+              (e quindi in ogni foto dell'ordine), copriva le lettere di mezzo. */}
+      {candle && (hasMessage && photo ? (
+        <Candle
+          y={surfaceY}
+          x={(bandaFoto.u1 - 0.5) * photoFoot.w + 0.06}
+          z={((bandaFoto.v0 + bandaFoto.v1) / 2 - 0.5) * photoFoot.h}
+        />
+      ) : (
+        <Candle y={surfaceY} />
+      ))}
     </group>
   );
 }
