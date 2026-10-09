@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { logAction } from '../lib/log';
 import { gruppiDi } from '../lib/riordina';
@@ -34,6 +34,19 @@ import { creaMotoreOrdine } from '../lib/motoreOrdine';
 
 const tutte = () => true;
 const NESSUN_AMBITO = []; // sempre lo stesso array: le voci non si ricalcolano a ogni render
+
+// Scorre di `dy` pixel il primo contenitore che scorre (di solito la pagina),
+// SENZA animazione: il sito ha lo scorrimento morbido, e durante l'animazione
+// un secondo tocco cadrebbe ancora sulla riga sbagliata.
+function scorriSubito(el, dy) {
+  let box = null;
+  for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+    const s = getComputedStyle(p);
+    if (/(auto|scroll)/.test(s.overflowY) && p.scrollHeight > p.clientHeight) { box = p; break; }
+  }
+  const dove = box || window;
+  try { dove.scrollBy({ top: dy, behavior: 'instant' }); } catch { dove.scrollBy(0, dy); }
+}
 const nomeVoce = (r) => r.nome || r.gusto || r.etichetta || r.titolo || r.codice || r.giorno || 'voce';
 
 export default function OrdinaLista({
@@ -113,12 +126,15 @@ export default function OrdinaLista({
 
   function sposta(gruppo, delta) {
     const { visibile: vis, ambito: amb, etichetta: eti } = props.current;
+    // Dov'era la riga sullo schermo PRIMA della mossa: dopo la si rimette lì.
+    const riga = bottoni.current.get(`${gruppo.id}:${delta}`)?.closest('li');
+    const prima = riga ? riga.getBoundingClientRect().top : null;
     const mossa = motore.current.sposta(gruppo.id, delta, {
       visibile: vis,
       stessoAmbito: amb ? (a, b) => amb(a) === amb(b) : undefined,
       nome: eti(gruppo.riga),
     });
-    if (mossa) dopoMossa.current = { id: gruppo.id, delta };
+    if (mossa) dopoMossa.current = { id: gruppo.id, delta, prima };
   }
 
   // Le voci da mostrare: una per riga, o per coppia originale + gemella
@@ -143,9 +159,13 @@ export default function OrdinaLista({
   }, [righe, chiave, ambiti]);
 
   // Dopo una mossa: il fuoco torna sulla freccia appena usata (o sull'altra,
-  // se la voce è arrivata in cima o in fondo), la riga resta in vista e il
-  // lettore di schermo dice la posizione nuova.
-  useEffect(() => {
+  // se la voce è arrivata in cima o in fondo), la riga resta SOTTO IL DITO e
+  // il lettore di schermo dice la posizione nuova. Sotto il dito vuol dire che
+  // la pagina scorre di quanto si è spostata la riga. Prima restava solo "in
+  // vista": toccando ▲ due volte nello stesso punto, il secondo tocco prendeva
+  // la voce scesa al suo posto e la rimetteva su, e la voce non saliva mai.
+  // useLayoutEffect: si scorre prima che lo schermo si ridisegni, senza salti.
+  useLayoutEffect(() => {
     const m = dopoMossa.current;
     if (!m) return;
     dopoMossa.current = null;
@@ -160,7 +180,13 @@ export default function OrdinaLista({
     if (!b || b.disabled) b = bottoni.current.get(`${m.id}:${-m.delta}`);
     if (b) {
       b.focus({ preventScroll: true });
-      b.closest('li')?.scrollIntoView?.({ block: 'nearest' });
+      const riga = b.closest('li');
+      if (riga && m.prima != null) {
+        const scarto = riga.getBoundingClientRect().top - m.prima;
+        if (Math.abs(scarto) >= 1) scorriSubito(riga, scarto);
+      } else {
+        riga?.scrollIntoView?.({ block: 'nearest' });
+      }
     }
   }, [sezioni]);
 
