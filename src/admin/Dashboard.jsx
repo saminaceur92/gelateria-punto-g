@@ -186,10 +186,10 @@ export default function Dashboard() {
       },
       {
         key: 'farciture',
-        label: 'Farciture',
+        label: 'Inserto',
         props: {
           table: 'farciture',
-          title: 'Farciture',
+          title: 'Inserto',
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
             { key: 'descrizione', label: 'Descrizione', type: 'text' },
@@ -221,11 +221,11 @@ export default function Dashboard() {
       },
       {
         key: 'decorazioni',
-        label: 'Topping',
+        label: 'Decorazioni',
         props: {
           table: 'decorazioni',
-          title: 'Topping / decorazioni',
-          subtitle: 'Topping legati alla grafica 3D: attiva o disattiva quelli disponibili. Il supplemento si somma al prezzo della torta. Se la decorazione esiste in più colori, spunta "Colore a scelta" ed elenca qui i colori: il cliente sceglierà il suo.',
+          title: 'Decorazioni',
+          subtitle: 'Decorazioni legate alla grafica 3D: attiva o disattiva quelle disponibili. Il supplemento si somma al prezzo della torta. Se la decorazione esiste in più colori, spunta "Colore a scelta" ed elenca qui i colori: il cliente sceglierà il suo.',
           locked: true,
           fields: [
             { key: 'nome', label: 'Nome', type: 'text' },
@@ -238,7 +238,7 @@ export default function Dashboard() {
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
             { key: 'scelta_colore', label: '🎨 Colore a scelta', type: 'checkbox' },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuovo topping', descrizione: '', emoji: '✨', supplemento: 0, colori: '', scelta_colore: false, allergeni: '' }),
+          newRow: () => ({ id: uuid(), nome: 'Nuova decorazione', descrizione: '', emoji: '✨', supplemento: 0, colori: '', scelta_colore: false, allergeni: '' }),
         },
       },
       {
