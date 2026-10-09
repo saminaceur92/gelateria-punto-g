@@ -57,12 +57,16 @@ const coloriDi = (d) => (d?.colorChoice ? d.colors || [] : []);
  *                 cakeFillings, cakeCoverings, cakeDecorations, cakeExtras,
  *                 cakeScritte (già con la copia di sicurezza), cakeOccasions
  * @param rifiuto  la risposta del server: { codice, campo, voce }
- * @param opzioni  { isTall(typeId), maxGusti(typeId), normalizeFont(id) }
+ * @param opzioni  { isTall(typeId), maxGusti(typeId), normalizeFont(id),
+ *                 baseObbligata(typeId) → id della base che il tipo porta
+ *                 nel nome (BASE_OBBLIGATA nel configuratore) oppure '' }
  * @returns { patch, passo }  patch da applicare alla config (vuota se nulla
  *          da cambiare) e passo da cui ripartire (null = resta dov'è)
  */
 export function riallineaConfig(config, listino, rifiuto = {}, opzioni = {}) {
-  const { isTall = () => false, maxGusti = () => 2, normalizeFont = (id) => id } = opzioni;
+  const {
+    isTall = () => false, maxGusti = () => 2, normalizeFont = (id) => id, baseObbligata = () => '',
+  } = opzioni;
   const { codice = '', campo = '', voce = null } = rifiuto || {};
   const L = listino || {};
   const c = config || {};
@@ -79,6 +83,17 @@ export function riallineaConfig(config, listino, rifiuto = {}, opzioni = {}) {
   // ── Tipo ──
   let type = c.type || '';
   if (type && (!ha(L.cakeTypes, type) || rifiutata('type', type))) {
+    type = '';
+    cambia('type', '', 'type');
+  }
+  // Tipo con la base nel nome ("Torta gelato con base Salame al cioccolato"):
+  // se quella base non c'è più, o il server l'ha appena rifiutata, se ne va
+  // anche il tipo e si riparte dal primo passo, dove il configuratore non lo
+  // propone più. Togliere solo la base non basta: per questi tipi il passo
+  // della base non c'è e il configuratore la rimetteva da sé, col pagamento
+  // rifiutato a ogni giro.
+  const imposta = type ? baseObbligata(type) : '';
+  if (imposta && (!ha(L.cakeBases, imposta) || rifiutata('base', imposta))) {
     type = '';
     cambia('type', '', 'type');
   }

@@ -338,6 +338,16 @@ function addWorkingHours(from, hoursNeeded, orari) {
   return cur;
 }
 
+// Un tipo con la base nel nome (BASE_OBBLIGATA) si può fare solo se quella
+// base è accesa, cioè fra le basi del listino: senza il salame al cioccolato
+// niente "Torta gelato con base Salame al cioccolato". Se i titolari spengono
+// la base dalla dashboard il tipo non si propone (StepType), non si riprende
+// da "Rifai questa torta" e, se era già scelto, si toglie (effetto nel
+// configuratore). Prima il sito imponeva lo stesso la base spenta, il server
+// la rifiutava e il cliente girava a vuoto al pagamento, senza uscirne.
+const tipoFattibile = (typeId, cakeBases) =>
+  !BASE_OBBLIGATA[typeId] || (cakeBases || []).some((b) => b.id === BASE_OBBLIGATA[typeId]);
+
 // I passi effettivi per una torta (STEPS meno quelli che non servono), con un
 // listino a scelta. ⚠️ Stessa regola di `steps` nel configuratore: serve
 // dopo un rifiuto del server, per sapere su che passo atterrare con la torta
@@ -347,6 +357,7 @@ const passiPer = (cfg, cakeBases, cakeCrumbles) => {
   const baseImposta = BASE_OBBLIGATA[cfg.type] || '';
   const baseImpostaOk =
     !!baseImposta &&
+    tipoFattibile(cfg.type, cakeBases) &&
     !conflictsAllergies((cakeBases || []).find((b) => b.id === baseImposta), cfg.allergies, cfg.diets);
   return STEPS.filter((s) => (s !== 'crumble' || conCrumble) && (s !== 'base' || !baseImpostaOk));
 };
@@ -420,7 +431,7 @@ function makeInitialConfig(cake, initial = {}) {
   for (const k of PREFILL_KEYS) {
     const v = initial[k];
     if (v === undefined || v === null) continue;
-    if (k === 'type' && !exists(cake.cakeTypes, v)) continue;
+    if (k === 'type' && (!exists(cake.cakeTypes, v) || !tipoFattibile(v, cake.cakeBases))) continue;
     if (k === 'shape' && !exists(cake.cakeShapes, v)) continue;
     if (k === 'sizeId' && !exists(cake.cakeSizes, v)) continue;
     if (k === 'baseId' && !exists(cake.cakeBases, v)) continue;
@@ -708,9 +719,13 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
   // solo se quella base è compatibile con le intolleranze dichiarate: se non lo
   // è, il passo resta e il cliente vede la carta sbarrata col perché — meglio
   // che imporgli di nascosto un ingrediente che ha detto di non poter mangiare.
+  // E solo se è accesa (tipoFattibile): una base spenta dalla dashboard non si
+  // impone mai, il server la rifiuterebbe a ogni pagamento.
   const baseImposta = BASE_OBBLIGATA[config.type] || '';
+  const tipoOk = tipoFattibile(config.type, cakeBases);
   const baseImpostaOk =
     !!baseImposta &&
+    tipoOk &&
     !conflictsAllergies(
       cakeBases.find((b) => b.id === baseImposta),
       config.allergies,
@@ -723,6 +738,20 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseImpostaOk, baseImposta, config.baseId]);
+
+  // Tipo scelto quando la sua base era accesa, poi spenta: succede se il
+  // listino vero arriva dopo la scelta (un "Rifai questa torta" aperto al
+  // volo, la dashboard al banco) o se il salame finisce a metà ordine. Quella
+  // torta oggi non si fa: il tipo si toglie, con la base che non c'è più, e si
+  // torna al primo passo, dove non è più proposto. Senza questo comparirebbe
+  // il passo della base e si potrebbe ordinare una "Torta gelato con base
+  // Salame al cioccolato" con sotto un'altra base.
+  useEffect(() => {
+    if (tipoOk) return;
+    set((c) => ({ type: '', ...(c.baseId === baseImposta ? { baseId: '', crumbleId: '' } : {}) }));
+    setStep(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoOk]);
 
   const steps = useMemo(
     () => STEPS.filter((s) => (s !== 'crumble' || showCrumble) && (s !== 'base' || !baseImpostaOk)),
@@ -1366,6 +1395,7 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         const listino = { ...nuovi, cakeScritte: scritteOf(nuovi) };
         const { patch, passo } = riallineaConfig(cfg, listino, risposta, {
           isTall: isTallType, maxGusti: maxFlavorsFor, normalizeFont,
+          baseObbligata: (t) => BASE_OBBLIGATA[t] || '',
         });
         if (Object.keys(patch).length) set(patch);
         if (passo) {
@@ -1380,9 +1410,17 @@ export default function CakeConfigurator({ open, onClose, staff = false, initial
         // server; se col listino nuovo è cambiato anche altro (si riparte da
         // un passo prima di quello rifiutato) lo si dice.
         const ALTRO = ' Col listino di oggi è cambiato anche altro: controlla le scelte.';
+        // Rifiutata la base che il tipo porta nel nome: il tipo se n'è andato
+        // con lei e si riparte dal primo passo. Lo si dice col nome della
+        // torta, che è quello che il cliente ha scelto (la base non l'ha vista).
+        const imposta = BASE_OBBLIGATA[cfg.type];
+        const tipoConLaBase = patch.type === '' && risposta.campo === 'base' && !!imposta && String(risposta.voce) === imposta;
         if (risposta.codice === 'taglia_non_valida' && patch.sizeId) {
           setSubmitError('Il listino delle taglie è appena cambiato e abbiamo aggiornato la tua torta: controlla taglia e prezzo, poi conferma di nuovo.'
             + (passo ? ALTRO : ''));
+        } else if (tipoConLaBase) {
+          const nome = cakeTypes.find((t) => t.id === cfg.type)?.name;
+          setSubmitError(`${nome ? `«${nome}»` : 'Questa torta'} oggi non si può ordinare: la sua base non è più disponibile. Scegli un altro tipo di torta e conferma di nuovo.`);
         } else {
           const passoDelCampo = PASSO_DEL_CAMPO[risposta.campo];
           setSubmitError((risposta.error || 'Una delle scelte non è più disponibile: controlla la torta e conferma di nuovo.')
@@ -1693,12 +1731,15 @@ function StepHeader({ stepKey, num, title, lead }) {
 }
 
 function StepType({ config, set }) {
-  const { cakeTypes, cakeSizes } = useCakeData();
+  const { cakeTypes, cakeSizes, cakeBases } = useCakeData();
+  // Un tipo con la base nel nome si propone solo se quella base è accesa
+  // (tipoFattibile): spento il salame, sparisce la torta col salame.
+  const tipi = cakeTypes.filter((t) => tipoFattibile(t.id, cakeBases));
   return (
     <>
       <StepHeader stepKey="type" title="Che torta vuoi creare?" lead="Scegli la base, poi la rendiamo unica insieme." />
       <div className="opt-grid cols-2">
-        {cakeTypes.map((t) => {
+        {tipi.map((t) => {
           // "Da" = prezzo base + la taglia più economica fra quelle che il
           // cliente vedrà al passo persone. Con le taglie delle alte accese, per
           // le alte si parte dalla taglia alta più economica.

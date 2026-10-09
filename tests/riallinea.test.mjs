@@ -3,7 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { riallineaConfig, indicePasso, formeDelSito, CODICI_RIFIUTO } from '../src/lib/riallineaListino.js';
-import { listino, listinoDelSito, tortaBase } from './aiuti.mjs';
+import { validaOrdine } from '../supabase/functions/_shared/valida.ts';
+import { listino, listinoDelSito, OGGI, tortaBase } from './aiuti.mjs';
 
 const ALTE = ['piani', 'alta-gelato'];
 const opzioni = {
@@ -64,6 +65,59 @@ test('base sparita: si toglie anche il crumble; crumble spento: solo lui', () =>
     { patch: { baseId: '', crumbleId: '' }, passo: 'base' });
   assert.deepEqual(rialli({ baseId: 'crock', crumbleId: 'cacao' }, { codice: 'opzione_non_disponibile', campo: 'crumble', voce: 'cacao' }),
     { patch: { crumbleId: '' }, passo: 'crumble' });
+});
+
+// "Torta gelato con base Salame al cioccolato" (tipo crock): la base la
+// decide il tipo (BASE_OBBLIGATA nel configuratore) e il passo della base
+// non c'è. Se il salame si spegne, togliere solo la base non basta: il
+// configuratore la rimetteva da sé e il pagamento veniva rifiutato a ogni giro.
+const conBaseNelNome = { ...opzioni, baseObbligata: (t) => (t === 'crock' ? 'glutenfree' : '') };
+const salameSpento = () => {
+  const x = listino();
+  x.basi.find((b) => b.id === 'glutenfree').attivo = false;
+  return x;
+};
+
+test('tipo con la base nel nome: base spenta o rifiutata, se ne va anche il tipo', () => {
+  const crock = torta({ type: 'crock', baseId: 'glutenfree' });
+  const rifiuto = { codice: 'opzione_non_disponibile', campo: 'base', voce: 'glutenfree' };
+  const atteso = { patch: { type: '', baseId: '' }, passo: 'type' };
+  assert.deepEqual(riallineaConfig(crock, listinoDelSito(salameSpento()), rifiuto, conBaseNelNome), atteso);
+  // Listino del sito vecchio (il salame ancora acceso): conta il rifiuto del server.
+  assert.deepEqual(riallineaConfig(crock, S, rifiuto, conBaseNelNome), atteso);
+  // Rifiutata un'altra cosa, ma nel listino riletto il salame non c'è più.
+  assert.deepEqual(
+    riallineaConfig(crock, listinoDelSito(salameSpento()), { codice: 'opzione_non_disponibile', campo: 'covering', voce: 'panna' }, conBaseNelNome),
+    { patch: { type: '', baseId: '', coveringId: '' }, passo: 'type' },
+  );
+  // Salame acceso: il tipo resta, si sistema solo quello che il server ha rifiutato.
+  assert.deepEqual(
+    riallineaConfig(crock, S, { codice: 'opzione_non_disponibile', campo: 'covering', voce: 'panna' }, conBaseNelNome),
+    { patch: { coveringId: '' }, passo: 'covering' },
+  );
+  // Crock con un'altra base (scelta per un'intolleranza) e salame acceso: il tipo resta.
+  assert.deepEqual(
+    riallineaConfig(torta({ type: 'crock', baseId: 'classica' }), S, { codice: 'opzione_non_disponibile', campo: 'base', voce: 'classica' }, conBaseNelNome),
+    { patch: { baseId: '' }, passo: 'base' },
+  );
+  // Gli altri tipi non hanno basi nel nome: una base rifiutata si risceglie e basta.
+  assert.deepEqual(
+    riallineaConfig(torta({ baseId: 'glutenfree' }), listinoDelSito(salameSpento()), rifiuto, conBaseNelNome),
+    { patch: { baseId: '' }, passo: 'base' },
+  );
+});
+
+test('crock col salame spento: dal "no" del server a un pagamento che passa', () => {
+  const L = salameSpento();
+  const crock = torta({ type: 'crock', baseId: 'glutenfree' });
+  let rifiuto = null;
+  try { validaOrdine(crock, L, OGGI); } catch (e) { rifiuto = { codice: e.codice, campo: e.campo, voce: e.voce }; }
+  assert.deepEqual(rifiuto, { codice: 'opzione_non_disponibile', campo: 'base', voce: 'glutenfree' });
+  const { patch, passo } = riallineaConfig(crock, listinoDelSito(L), rifiuto, conBaseNelNome);
+  assert.equal(passo, 'type');
+  // Il cliente sceglie un altro tipo e, al passo della base che ora c'è, una base accesa.
+  const rifatta = { ...crock, ...patch, type: 'gelato', baseId: 'cacao' };
+  assert.equal(validaOrdine(rifatta, L, OGGI).canon.type, 'gelato');
 });
 
 test('gusti: tolti quelli spenti o rifiutati, mai più del massimo', () => {
