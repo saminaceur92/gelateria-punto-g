@@ -737,6 +737,11 @@ begin
   if not exists (select 1 from public.promemoria_compleanno where id = p_id) then
     raise exception 'Promemoria non trovato: ricarica la scheda.';
   end if;
+  -- La copia di prova ha i link per togliere FINTI: al cliente vero non va
+  -- mai (non potrebbe togliere il promemoria da quella mail).
+  if exists (select 1 from public.promemoria_compleanno where id = p_id and email = v_dest) then
+    raise exception 'Questo è l''indirizzo del cliente: la prova è per te. Per mandargliela davvero usa «Invia ora».';
+  end if;
   if not public.promemoria_configurato() then
     raise exception 'Invio non attivo: mancano le chiavi EmailJS in app_config.';
   end if;
