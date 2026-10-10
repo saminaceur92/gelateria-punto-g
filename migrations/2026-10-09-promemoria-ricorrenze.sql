@@ -718,9 +718,14 @@ begin
     n := n + 1;
   end loop;
 
+  -- Nessuna risposta in 5 ore: «non verificato». Solo per le mail spedite da
+  -- qui in avanti (tentativi > 0: il giro e «Invia ora» lo contano). Quelle
+  -- partite prima di questa migrazione hanno la colonna esito nuova, quindi
+  -- vuota: scriverci «EmailJS non ha risposto in tempo» sarebbe falso.
   update public.promemoria_compleanno
      set esito = 'non verificato'
-   where stato = 'inviato' and esito is null and inviato_il <= now() - interval '5 hours';
+   where stato = 'inviato' and esito is null and tentativi > 0
+     and inviato_il <= now() - interval '5 hours';
 
   return n;
 end $$;
