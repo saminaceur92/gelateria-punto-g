@@ -2112,7 +2112,7 @@ function Candle({ y, x = 0, z = 0 }) {
         <sphereGeometry args={[0.035, 16, 16]} />
         <meshBasicMaterial color="#ffce4a" />
       </mesh>
-      <pointLight position={[0, 0.5, 0]} color="#ffb347" intensity={1.2} distance={1.6} decay={2} />
+      {/* la luce della fiamma sta in CakeModel: c'è sempre, spenta se la candelina manca */}
     </group>
   );
 }
@@ -2268,11 +2268,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     for (let i = 0; i < layers; i++) bands.push(makeLayerGeo(shape, R, bandH * OV, i * 1.7 + 1));
     // panna arcobaleno → la stessa panna dipinta a settori di colore
     const rainbow = (g) => (g && creamRainbow ? paintRainbow(g) : g);
-    const capGeo = makeLayerGeo(shape, capR, capH * 1.6, capSeed);
+    // solo se serve: costruita e non usata, restava a occupare memoria
+    const capGeo = useCover ? makeLayerGeo(shape, capR, capH * 1.6, capSeed) : null;
     return {
       base: makeLayerGeo(shape, R * 0.985, baseH * 1.3, 0.3),
       bands,
-      cap: useCover ? (coverIsCream ? rainbow(capGeo) : capGeo) : null,
+      cap: capGeo && coverIsCream ? rainbow(capGeo) : capGeo,
       fill: fillingColor ? makeLayerGeo(shape, R * 1.015, 0.06, 8.2) : null,
       // guscio di panna che riveste i FIANCHI (copertura "Panna montata INTORNO")
       shell: wrapFull ? rainbow(makeLayerGeo(shape, wrapR, bodyH, 3.3)) : null,
@@ -2285,6 +2286,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
     shape, R, bandH, baseH, capH, layers, useCover, fillingColor, coverIsCream,
     wrapFull, extraCreamCap, wrapR, capR, capSeed, bodyH, creamRainbow,
   ]);
+  // Un gusto in più o in meno rifà tutti i dischi: quelli vecchi si liberano,
+  // come il piatto più sotto. Restavano occupati sulla scheda video, qualche
+  // centinaio di KB a ogni gusto aggiunto o tolto.
+  useEffect(() => () => {
+    for (const g of [geos.base, ...geos.bands, geos.cap, geos.fill, geos.shell, geos.creamCap]) g?.dispose();
+  }, [geos]);
 
   // ---- Piatto (vassoio) ORO, con forma dedicata ----
   const pShape = plateShape || (shape === 'quadrata' ? 'quadrata' : shape === 'rettangolare' ? 'rettangolare' : 'tonda');
@@ -2437,6 +2444,12 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // buco ellittico nella granella che segue il contenuto centrale (foto o scritta)
   const holeW = photo ? photoFoot.w / 2 + R * 0.05 : hasMessage ? msgBox.w / 2 + R * 0.05 : 0;
   const holeH = photo ? photoFoot.h / 2 + R * 0.05 : hasMessage ? msgBox.h / 2 + R * 0.05 : 0;
+  // Candelina: di solito al centro. Con la scritta sopra la foto si mette a
+  // lato della fascia, alla stessa profondità: al centro, vista di fronte (e
+  // quindi in ogni foto dell'ordine), copriva le lettere di mezzo.
+  const candelaAlLato = hasMessage && photo;
+  const candelaX = candelaAlLato ? (bandaFoto.u1 - 0.5) * photoFoot.w + 0.06 : 0;
+  const candelaZ = candelaAlLato ? ((bandaFoto.v0 + bandaFoto.v1) / 2 - 0.5) * photoFoot.h : 0;
 
   // La torta deve stare TUTTA nell'inquadratura. La camera è fissa e tarata
   // sulle torte normali: una "Alta" sforava e usciva decapitata dall'immagine.
@@ -2645,19 +2658,19 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
         />
       )}
 
-      {/* ---- Candelina ----
-              Di solito al centro. Con la scritta sopra la foto si mette a lato
-              della fascia, alla stessa profondità: al centro, vista di fronte
-              (e quindi in ogni foto dell'ordine), copriva le lettere di mezzo. */}
-      {candle && (hasMessage && photo ? (
-        <Candle
-          y={surfaceY}
-          x={(bandaFoto.u1 - 0.5) * photoFoot.w + 0.06}
-          z={((bandaFoto.v0 + bandaFoto.v1) / 2 - 0.5) * photoFoot.h}
-        />
-      ) : (
-        <Candle y={surfaceY} />
-      ))}
+      {/* ---- Candelina (dove, vedi candelaX/candelaZ) ---- */}
+      {candle && <Candle y={surfaceY} x={candelaX} z={candelaZ} />}
+      {/* La luce della fiamma c'è SEMPRE, spenta quando la candelina non c'è.
+          Aggiungerla e toglierla cambiava il numero delle luci della scena, e
+          la scheda video ricompilava i programmi di tutti i materiali: toccando
+          "Aggiungi candelina" la torta si bloccava per un attimo. */}
+      <pointLight
+        position={[candelaX, surfaceY + 0.5, candelaZ]}
+        color="#ffb347"
+        intensity={candle ? 1.2 : 0}
+        distance={1.6}
+        decay={2}
+      />
     </group>
   );
 }
@@ -2669,16 +2682,70 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
 const POSA_CAMERA = [0, 2.7, 5.0];
 const BERSAGLIO = [0, -0.04, 0];
 
-function Scene({ spin = true, ...props }) {
-  const [reduce, setReduce] = useState(false);
+/**
+ * Impronta della torta: cambia solo quando cambia qualcosa che si vede (forma,
+ * gusti, copertura, decorazioni, scritta, foto…), non a ogni render del
+ * configuratore. La foto è un data URL di qualche MB: nell'impronta va solo un
+ * suo riassunto, copiarla a ogni render costerebbe più di quel che si risparmia.
+ */
+function firmaTorta({ photo, ...resto }) {
+  return JSON.stringify(resto) + (photo ? `|foto ${photo.length} ${photo.slice(-48)}` : '');
+}
+
+function Scene({ spin = true, pausa, ...props }) {
+  const gl = useThree((s) => s.gl);
+  const invalidate = useThree((s) => s.invalidate);
+  const firma = firmaTorta(props);
+
+  // Le ombre si calcolano UNA volta per torta, non 60 volte al secondo: luce e
+  // torta stanno ferme, quando "gira" è la telecamera che le gira intorno, e
+  // l'ombra resta identica. Rifarle a ogni fotogramma (quella della luce e
+  // quella morbida sul piano) era lavoro buttato, e sui telefoni con la scheda
+  // video debole trascinava giù anche lo scorrimento della lista dei gusti.
+  useLayoutEffect(() => {
+    gl.shadowMap.autoUpdate = false;
+  }, [gl]);
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduce(mq.matches);
-    const on = (e) => setReduce(e.matches);
-    mq.addEventListener?.('change', on);
-    return () => mq.removeEventListener?.('change', on);
-  }, []);
+    gl.shadowMap.needsUpdate = true;
+    invalidate();
+  }, [gl, invalidate, firma]);
+
+  // I riflessi si disegnano una volta sola. Scritti direttamente qui dentro,
+  // drei rifaceva l'ambiente (sei facce più le sue sfocature) a OGNI render del
+  // configuratore — un gusto toccato, una lettera scritta nel nome — perché lo
+  // rifà quando cambiano i figli, e i figli JSX sono sempre oggetti nuovi. Era
+  // il blocco che si sentiva subito dopo aver scelto un gusto.
+  const ambiente = useMemo(
+    () => (
+      <Environment resolution={256}>
+        <Lightformer form="rect" intensity={3} position={[0, 5, 1]} scale={[8, 4, 1]} color="#ffffff" />
+        <Lightformer form="rect" intensity={1.4} position={[-4, 2, 2]} scale={[4, 6, 1]} color="#e9f2ef" />
+        <Lightformer form="rect" intensity={1.2} position={[4, 1, -2]} scale={[4, 6, 1]} color="#fff1dc" />
+        <Lightformer form="ring" intensity={1.5} position={[0, 3, -4]} scale={3} color="#ffffff" />
+      </Environment>
+    ),
+    []
+  );
+
+  // L'ombra morbida sul piano, come quella della luce: frames={1} la disegna
+  // una volta a ogni nuovo render, e il render si rifà solo quando cambia la
+  // torta (l'elemento è lo stesso finché l'impronta non cambia).
+  const ombraSulPiano = useMemo(
+    () => (
+      <ContactShadows
+        frames={1}
+        position={[0, -0.125, 0]}
+        opacity={0.4}
+        scale={3.6}
+        blur={2.6}
+        far={3}
+        resolution={512}
+        color="#233a36"
+      />
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [firma]
+  );
 
   return (
     <>
@@ -2706,31 +2773,18 @@ function Scene({ spin = true, ...props }) {
       <directionalLight position={[0, 2, -6]} intensity={0.5} color="#ffe6c8" />
 
       {/* environment auto-contenuto (nessun download esterno) per riflessi cremosi */}
-      <Environment resolution={256}>
-        <Lightformer form="rect" intensity={3} position={[0, 5, 1]} scale={[8, 4, 1]} color="#ffffff" />
-        <Lightformer form="rect" intensity={1.4} position={[-4, 2, 2]} scale={[4, 6, 1]} color="#e9f2ef" />
-        <Lightformer form="rect" intensity={1.2} position={[4, 1, -2]} scale={[4, 6, 1]} color="#fff1dc" />
-        <Lightformer form="ring" intensity={1.5} position={[0, 3, -4]} scale={3} color="#ffffff" />
-      </Environment>
+      {ambiente}
 
       <group position={[0, -0.28, 0]}>
         <CakeModel {...props} />
-        <ContactShadows
-          position={[0, -0.125, 0]}
-          opacity={0.4}
-          scale={3.6}
-          blur={2.6}
-          far={3}
-          resolution={512}
-          color="#233a36"
-        />
+        {ombraSulPiano}
       </group>
 
       <OrbitControls
         makeDefault
         enablePan={false}
         enableZoom={false}
-        autoRotate={spin && !reduce}
+        autoRotate={spin}
         autoRotateSpeed={1.1}
         enableDamping
         dampingFactor={0.08}
@@ -2738,23 +2792,131 @@ function Scene({ spin = true, ...props }) {
         maxPolarAngle={Math.PI * 0.48}
         target={BERSAGLIO}
       />
-      <RotazioneATempo />
+      <RotazioneATempo gira={spin} pausa={pausa} />
     </>
   );
 }
+
+// Mentre gira da sola, la torta si ridisegna 30 volte al secondo e non 60:
+// gira piano (un giro in quasi un minuto) e a ogni fotogramma il bordo si
+// sposta di mezzo pixel, la differenza non si vede. Il lavoro della scheda
+// video invece si dimezza — sui telefoni anche il calore e la batteria — e
+// resta spazio per lo scorrimento e per i tocchi.
+const FOTOGRAMMI_GIRO = 30;
 
 /**
  * La rotazione automatica di OrbitControls avanza di un passo a OGNI
  * fotogramma: sui telefoni a 120 Hz la torta girava al doppio, in risparmio
  * energetico (30 fps) a metà. Qui il passo si riporta al tempo vero, come a
  * 60 fotogrammi al secondo: stessa velocità su ogni schermo.
+ *
+ * Il disegno lo fa questo componente (useFrame con priorità 1: così
+ * react-three-fiber smette di disegnare da sé). Mentre la torta gira da sola
+ * disegna al ritmo di FOTOGRAMMI_GIRO, e niente durante la pausa per lo
+ * scorrimento (`pausa`, letta al volo). Quando qualcuno la trascina col dito,
+ * o quando è ferma e si ridisegna solo su richiesta, disegna ogni fotogramma.
  */
-function RotazioneATempo() {
+function RotazioneATempo({ gira, pausa }) {
   const controls = useThree((s) => s.controls);
+  const ultimo = useRef(-Infinity);
+  const trascina = useRef(false);
+  useEffect(() => {
+    if (!controls) return undefined;
+    const su = () => { trascina.current = true; };
+    const giu = () => { trascina.current = false; };
+    controls.addEventListener('start', su);
+    controls.addEventListener('end', giu);
+    return () => {
+      controls.removeEventListener('start', su);
+      controls.removeEventListener('end', giu);
+    };
+  }, [controls]);
   useFrame((_, dt) => {
     if (controls) controls.autoRotateSpeed = 1.1 * Math.min(4, dt * 60);
   });
+  useFrame(({ gl, scene, camera }) => {
+    if (gira && !trascina.current) {
+      if (pausa?.current) return;
+      // 4 ms di margine: a 60 Hz un fotogramma sì e uno no, a 120 Hz uno su quattro
+      const t = performance.now();
+      if (t - ultimo.current < 1000 / FOTOGRAMMI_GIRO - 4) return;
+      ultimo.current = t;
+    }
+    gl.render(scene, camera);
+  }, 1);
+  // Quando smette di girare si ferma SUBITO. Con lo smorzamento la telecamera
+  // scivolava ancora per mezzo secondo, un fotogramma dopo l'altro, proprio
+  // mentre si comincia a scorrere la lista: è lì che la pausa serve. Il pezzo
+  // di giro rimasto (poco più di un grado) si fa in un passo solo.
+  useEffect(() => {
+    if (gira || !controls) return;
+    const smorza = controls.enableDamping;
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = smorza;
+  }, [gira, controls]);
   return null;
+}
+
+/**
+ * Mentre si scorre, o si tocca qualcosa FUORI dalla torta (un gusto, un
+ * bottone), la torta smette di girare; riparte da sola poco dopo che il dito
+ * si è fermato. Sui telefoni la torta che gira e la lista che scorre si
+ * contendono la stessa scheda video, e la lista andava a scatti. Ferma, la
+ * torta si ridisegna solo quando cambia (il gusto appena scelto si vede
+ * subito) o quando la si gira col dito.
+ */
+const RIPRESA_DOPO_PAUSA = 1200; // ms senza scorrere né toccare
+
+function usePausaMentreSiScorre(stage) {
+  const [inPausa, setInPausa] = useState(false);
+  // Lo stesso stato in un ref: la rotazione lo legge a ogni fotogramma e si
+  // ferma al tocco stesso, senza aspettare che React ridisegni il componente
+  // (su un telefono in affanno erano tre o quattro fotogrammi pesanti in più).
+  const pausa = useRef(false);
+  useEffect(() => {
+    let timer = 0;
+    const riprendi = () => {
+      pausa.current = false;
+      setInPausa(false);
+    };
+    const attivita = (e) => {
+      // il dito SULLA torta serve a girarla: lì niente pausa
+      if (e.type === 'touchstart' && stage.current?.contains(e.target)) return;
+      if (!pausa.current) {
+        pausa.current = true;
+        setInPausa(true);
+      }
+      clearTimeout(timer);
+      timer = setTimeout(riprendi, RIPRESA_DOPO_PAUSA);
+    };
+    // In cattura: gli scroll non risalgono, ma la cattura li vede arrivare da
+    // qualsiasi contenitore (la lista del configuratore, la pagina). Passivi:
+    // non devono mai rallentare lo scorrimento che stanno proteggendo.
+    const opzioni = { capture: true, passive: true };
+    document.addEventListener('scroll', attivita, opzioni);
+    document.addEventListener('touchstart', attivita, opzioni);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('scroll', attivita, opzioni);
+      document.removeEventListener('touchstart', attivita, opzioni);
+    };
+  }, [stage]);
+  return [inPausa, pausa];
+}
+
+/** "Riduci movimento" nelle impostazioni del telefono: la torta non gira da sola. */
+function useMenoMovimento() {
+  const [riduci, setRiduci] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setRiduci(mq.matches);
+    const on = (e) => setRiduci(e.matches);
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  return riduci;
 }
 
 /**
@@ -2857,11 +3019,12 @@ export default function Cake3D(props) {
   const [spin, setSpin] = useState(true);
   const stage = useRef(null);
   const [info3D, setInfo3D] = useState('');
-  // La torta 3D si ridisegna 60 volte al secondo. Sulla home ce n'è una anche
-  // nella sezione "Crea la tua torta": senza questo controllo continuerebbe a
-  // lavorare pure quando è lontanissima dallo schermo, e il sito scatta mentre
-  // si scorre. Con `frameloop="never"` il disegno si ferma (resta l'ultimo
-  // fotogramma, che nessuno sta guardando) e riparte appena torna in vista.
+  // Mentre gira, la torta 3D si ridisegna di continuo. Sulla home ce n'è una
+  // anche nella sezione "Crea la tua torta": senza questo controllo
+  // continuerebbe a lavorare pure quando è lontanissima dallo schermo, e il
+  // sito scatta mentre si scorre. Con `frameloop="never"` il disegno si ferma
+  // (resta l'ultimo fotogramma, che nessuno sta guardando) e riparte appena
+  // torna in vista.
   const [inVista, setInVista] = useState(true);
   useEffect(() => {
     const el = stage.current;
@@ -2873,13 +3036,22 @@ export default function Cake3D(props) {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  const riduci = useMenoMovimento();
+  const [inPausa, pausa] = usePausaMentreSiScorre(stage);
+  // Gira se nessuno l'ha fermata (bottone, "riduci movimento") e se non si sta
+  // scorrendo.
+  const gira = spin && !riduci && !inPausa;
 
   return (
     <div className="cake3d-stage" ref={stage}>
       <Canvas
         shadows
         dpr={[1, 2]}
-        frameloop={inVista ? 'always' : 'never'}
+        // Mentre gira, il giro dei fotogrammi è continuo (ma se ne disegna uno
+        // su due, vedi RotazioneATempo). Ferma, il disegno è "su richiesta":
+        // un fotogramma quando la torta cambia o la si trascina col dito, e
+        // poi niente. Prima erano 60 al secondo sempre, anche ferma col bottone.
+        frameloop={!inVista ? 'never' : gira ? 'always' : 'demand'}
         gl={{ alpha: true, antialias: true, preserveDrawingBuffer: true }}
         // near/far stretti attorno alla torta (prima 0.1 e 1000, i valori di
         // base): la precisione della profondità migliora di dieci volte. Sui
@@ -2890,7 +3062,7 @@ export default function Cake3D(props) {
         onCreated={DIAG_3D ? ({ gl }) => setInfo3D(leggiInfo3D(gl)) : undefined}
       >
         <Suspense fallback={null}>
-          <Scene {...props} spin={spin} />
+          <Scene {...props} spin={gira} pausa={pausa} />
         </Suspense>
         <CaptureBridge />
       </Canvas>
