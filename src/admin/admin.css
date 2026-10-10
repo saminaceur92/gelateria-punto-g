@@ -335,6 +335,7 @@
   .prom-scheda-piede .adm-btn,
   .prom-dis-form .adm-btn { flex: 1; min-height: 44px; }
   .prom-dis-lista li .adm-btn { min-height: 44px; }
+  .adm-btn.prom-altri { min-height: 44px; }
   .prom-dis-campo { flex: 1 1 100%; }
   .prom-dis-campo input { font-size: 16px; min-height: 44px; }
 }
