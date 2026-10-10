@@ -1536,11 +1536,43 @@ function Granella({
     // poi, per ogni chicco, scivolo verso l'interno di una quantità a caso.
     const contorno = perimeterPts(shape, R, coverage, 240);
     const larghezza = Math.max(0.06, banda) * R; // spessore della fascia
+    // Quadrata e rettangolare hanno i lati dritti: lì il chicco entra
+    // PERPENDICOLARE al suo lato, e il riquadro di scritta e foto è un
+    // rettangolo. Spinto verso il centro, come sulla tonda, sui lati lunghi del
+    // rettangolo il chicco scivolava quasi lungo il lato: la fascia si
+    // assottigliava verso gli angoli e il vuoto in mezzo veniva a clessidra.
+    // E il buco ellittico attorno alla scritta faceva della granella un ovale.
+    const lati = shape === 'quadrata' || shape === 'rettangolare';
+    const conBuco = holeW > 0 && holeH > 0;
+    // Quanto può entrare un chicco, dal bordo verso il centro lungo (dx, dz),
+    // prima di toccare il riquadro di scritta o foto (±holeW × ±holeH), con un
+    // filo di stacco. Infinity se da lì non lo incontra.
+    const finoAlBuco = (px, pz, dx, dz) => {
+      let t0 = -Infinity;
+      let t1 = Infinity;
+      for (const [p, d, h] of [[px, dx, holeW], [pz, dz, holeH]]) {
+        if (Math.abs(d) < 1e-9) {
+          if (p < -h || p > h) return Infinity;
+        } else {
+          const a = (-h - p) / d;
+          const b = (h - p) / d;
+          t0 = Math.max(t0, Math.min(a, b));
+          t1 = Math.min(t1, Math.max(a, b));
+        }
+      }
+      return t1 >= Math.max(0, t0) ? Math.max(0, t0 - 0.015) : Infinity;
+    };
     // Stessa torta → stessi chicchi negli stessi posti, su PC come sul
     // telefono, e la foto dell'ordine uguale all'anteprima vista dal cliente.
     const caso = sequenzaCaso([shape, nChicchi, colors.join(','), round, sopraCiuffi ? 1 : 0].join('|'));
     let maxExt = 0;
-    for (const [px, pz] of contorno) maxExt = Math.max(maxExt, Math.hypot(px, pz));
+    let maxX = 0;
+    let maxZ = 0;
+    for (const [px, pz] of contorno) {
+      maxExt = Math.max(maxExt, Math.hypot(px, pz));
+      maxX = Math.max(maxX, Math.abs(px));
+      maxZ = Math.max(maxZ, Math.abs(pz));
+    }
     const sample = (i) => {
       // Ogni chicco ha la SUA fettina di contorno (i/n + un po' di caso): con
       // il caso puro venivano i grumi — archi fitti di granella e archi nudi —
@@ -1556,12 +1588,37 @@ function Granella({
       // Sopra i ciuffi invece no: la fascia è larga quanto un ciuffo e i chicchi
       // vanno distribuiti pari, se no si ammucchiano sul lato interno e la fila
       // di panna resta scoperta di fuori.
-      const l = Math.hypot(x0, z0) || 1e-3;
       const dentro = Math.pow(caso(), sopraCiuffi ? 1 : 0.7) * larghezza;
-      const k = Math.max(0, (l - dentro) / l);
+      let x;
+      let z;
+      if (lati) {
+        // normale del tratto di contorno, girata verso il centro
+        let nx = contorno[i0][1] - contorno[i1][1];
+        let nz = contorno[i1][0] - contorno[i0][0];
+        const ln = Math.hypot(nx, nz) || 1;
+        nx /= ln;
+        nz /= ln;
+        if (nx * x0 + nz * z0 > 0) { nx = -nx; nz = -nz; }
+        const d = conBuco ? Math.min(dentro, finoAlBuco(x0, z0, nx, nz)) : dentro;
+        x = x0 + nx * d;
+        z = z0 + nz * d;
+      } else {
+        const l = Math.hypot(x0, z0) || 1e-3;
+        const k = Math.max(0, (l - dentro) / l);
+        x = x0 * k;
+        z = z0 * k;
+      }
       // pizzico di disordine, altrimenti sembra tracciata col righello
       const j = () => (caso() - 0.5) * larghezza * 0.28;
-      return [x0 * k + j(), z0 * k + j(), dentro];
+      x += j();
+      z += j();
+      // Sui lati dritti la fascia ora arriva vicino al bordo: il disordine non
+      // deve portare il chicco oltre il contorno esterno, sopra lo spigolo.
+      if (lati) {
+        x = Math.max(-maxX, Math.min(maxX, x));
+        z = Math.max(-maxZ, Math.min(maxZ, z));
+      }
+      return [x, z, dentro];
     };
 
     const dummy = new THREE.Object3D();
@@ -1570,12 +1627,20 @@ function Granella({
     for (let i = 0; i < nChicchi; i++) {
       let [x, z, dentro] = sample(i);
       let dist = Math.hypot(x, z);
-      // buco centrale ellittico (per scritta/foto): granella solo nella corona esterna
-      if (holeW > 0 && holeH > 0) {
-        const inHole = () => (x * x) / (holeW * holeW) + (z * z) / (holeH * holeH) < 1;
+      // buco centrale (per scritta/foto): granella solo nella corona esterna.
+      // Ellittico sulla tonda e sul cuore, rettangolare sui lati dritti.
+      if (conBuco) {
+        const inHole = lati
+          ? () => Math.abs(x) < holeW && Math.abs(z) < holeH
+          : () => (x * x) / (holeW * holeW) + (z * z) / (holeH * holeH) < 1;
         let tries = 0;
         while (inHole() && tries < 30) { [x, z, dentro] = sample(i); tries++; }
-        if (inHole()) {
+        if (inHole() && lati) {
+          // fuori dal lato del riquadro più vicino, di un filo
+          const gap = 0.015 + caso() * 0.03;
+          if (holeW - Math.abs(x) < holeH - Math.abs(z)) x = Math.sign(x || 1) * (holeW + gap);
+          else z = Math.sign(z || 1) * (holeH + gap);
+        } else if (inHole()) {
           const e = Math.sqrt((x * x) / (holeW * holeW) + (z * z) / (holeH * holeH)) || 1e-3;
           const s = (1.05 + caso() * 0.12) / e;
           x *= s; z *= s;
@@ -2424,10 +2489,18 @@ function CakeModel({ shape, plateShape, tall, flavors, base, filling, covering, 
   // dentro, va SOPRA i ciuffi — è quello che si fa davvero, si spolvera sulla
   // panna appena fatta. Quindi la fascia sta esattamente sull'anello e i
   // chicchi si alzano fino alla sua cima.
+  //
+  // Quadrata e rettangolare senza panna e senza pezzi: la fascia sta vicino al
+  // bordo e larga quanto quella sopra i ciuffi, come con la panna (richiesta
+  // dei titolari). Larga un terzo del raggio e più dentro, sul rettangolo
+  // lasciava in mezzo solo una striscia.
+  const latiDritti = shape === 'quadrata' || shape === 'rettangolare';
   const granellaCoverage = hasRing
     ? ringInset + ringS / 2 / R
-    : (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * (pezziSopra.length ? 0.82 : 1);
-  const granellaBanda = hasRing ? ringS / R : pezziSopra.length ? 0.22 : 0.32;
+    : pezziSopra.length
+      ? (shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.88) * 0.82
+      : shape === 'tonda' ? 0.96 : shape === 'cuore' ? 0.9 : 0.95;
+  const granellaBanda = hasRing ? ringS / R : pezziSopra.length || latiDritti ? 0.22 : 0.32;
   const granellaSuiCiuffi = hasRing ? ringS * 0.9 : 0;
   // Riquadro scritta: TUTTE le decorazioni stanno sul contorno, quindi quando
   // c'è qualcosa sul bordo il centro si restringe allo stesso modo.
