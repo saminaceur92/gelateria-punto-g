@@ -82,7 +82,12 @@ test('configuratore: il flag nasce acceso e viaggia con la torta (banco e sito)'
   // Banco: dettagli = la config (promemoria compreso), interruttore → promemoria_ok.
   assert.match(src, /const \{ photo, \.\.\.dettagli \} = cfg;/);
   assert.match(src, /dettagli: \{\s*\n\s*\.\.\.dettagli,/);
-  assert.match(src, /promemoria_ok: config\.promemoria !== false/);
+  // Il flag vuol dire «avviso mostrato»: vero solo per le occasioni col
+  // promemoria, e al banco solo con l'interruttore su «Sì». Viaggia nei
+  // dettagli (cfg) e, al banco, anche in promemoria_ok.
+  assert.match(src, /const promemoria = Boolean\(avvisoPromemoria\(config\.occasion\)\) && \(!staff \|\| config\.promemoria !== false\);/);
+  assert.match(src, /const cfg = \{ \.\.\.config, [^\n]*promemoria \};/);
+  assert.match(src, /promemoria_ok: cfg\.promemoria,/);
   // Sito: tutta la config va a create-checkout, dove valida.ts tiene `promemoria`.
   assert.match(src, /config: \{ \.\.\.cfg,/);
 });

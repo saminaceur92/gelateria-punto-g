@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  occasioneConPromemoria, testiPromemoria, avvisoPromemoria, leggiLinkPromemoria,
+  occasioneConPromemoria, testiPromemoria, avvisoPromemoria, avvisoPromemoriaParti, leggiLinkPromemoria,
   anniversarioDi, stessaRicorrenza, raggruppaPromemoria, puoRimettere, festaDavanti, oggiISO,
 } from './promemoriaRegole.js';
 
@@ -25,6 +25,16 @@ test('parole e avviso per il cliente', () => {
   assert.match(avvisoPromemoria('Compleanno'), /^🎂 .*ricordarti il compleanno/);
   assert.equal(avvisoPromemoria('Laurea'), null);
   assert.equal(avvisoPromemoria(''), null);
+  // Nel riepilogo l'email non si vede: l'avviso dice l'indirizzo, non «qui».
+  assert.match(avvisoPromemoria('Compleanno'), /ti scriveremo qui per/);
+  assert.match(avvisoPromemoria('Compleanno', ' anna@example.com '), /ti scriveremo a anna@example\.com per/);
+  assert.match(avvisoPromemoria('Compleanno', '   '), /ti scriveremo qui per/);
+  assert.deepEqual(
+    Object.keys(avvisoPromemoriaParti('Anniversario', 'a@b.it')),
+    ['emoji', 'testo'],
+  );
+  assert.equal(avvisoPromemoriaParti('Anniversario').emoji, '🥂');
+  assert.equal(avvisoPromemoriaParti('Laurea', 'a@b.it'), null);
 });
 
 test('link dalla mail: togli, stop, prova, link rovinato', () => {

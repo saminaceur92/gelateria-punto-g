@@ -881,6 +881,9 @@
   color: var(--ink);
   line-height: 1.5;
 }
+/* L'emoji dell'avviso più grande del testo: il 🥂 di Windows, a corpo
+   piccolo e chiaro sul fondo beige, quasi non si vedeva. */
+.cfg-field .cfg-reminder-emoji { font-size: 1.35em; line-height: 1; vertical-align: -0.12em; }
 
 .cfg-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 480px) { .cfg-field-row { grid-template-columns: 1fr; } }

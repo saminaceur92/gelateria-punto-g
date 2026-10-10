@@ -32,12 +32,27 @@ export function testiPromemoria(occasione) {
 /**
  * Avviso mostrato al cliente quando lascia l'email: la mail dell'anno dopo è
  * promozionale, quindi va detto PRIMA. null = occasione senza promemoria.
+ * Con `email` dice l'indirizzo invece di «qui»: serve nel riepilogo, dove il
+ * campo dell'email non c'è e «qui» non indicava niente.
+ * Emoji e testo a parte: la pagina mostra l'emoji più grande (il 🥂 di
+ * Windows, piccolo e chiaro sul fondo beige, quasi non si vedeva).
  */
-export function avvisoPromemoria(occasione) {
+export function avvisoPromemoriaParti(occasione, email) {
   const occ = occasioneConPromemoria(occasione);
   if (!occ) return null;
   const t = TESTI[occ];
-  return `${t.emoji} Tra un anno ti scriveremo qui per ricordarti ${t.ricorrenza}, con la torta che hai scelto oggi. Ti basterà un clic per non riceverlo più.`;
+  const indirizzo = String(email ?? '').trim();
+  const dove = indirizzo ? `a ${indirizzo}` : 'qui';
+  return {
+    emoji: t.emoji,
+    testo: `Tra un anno ti scriveremo ${dove} per ricordarti ${t.ricorrenza}, con la torta che hai scelto oggi. Ti basterà un clic per non riceverlo più.`,
+  };
+}
+
+/** Lo stesso avviso in una riga sola, emoji in testa. */
+export function avvisoPromemoria(occasione, email) {
+  const a = avvisoPromemoriaParti(occasione, email);
+  return a ? `${a.emoji} ${a.testo}` : null;
 }
 
 const TOKEN = /^[0-9a-f]{32}$/i;
