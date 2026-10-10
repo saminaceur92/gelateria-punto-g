@@ -296,15 +296,18 @@ p {
 
 .nav-links {
   display: flex;
-  /* Il distacco si stringe con lo schermo: con "Ordina a domicilio" le voci
-     sono tante, e a distacco fisso andavano a capo dentro se stesse
-     ("La nostra / storia"). Ogni voce resta su UNA riga, sempre. */
-  gap: clamp(0.8rem, 2vw, 2rem);
+  /* Nove voci (c'è anche «Collabora con noi»), il logo e il bottone su una
+     riga che non va oltre i 1184px, perché la pagina si ferma a 1280: distacco
+     fisso di 16px e voci da 14px. Più larghe, la riga finiva sotto "Crea la
+     tua torta" e "Gelateria · Carpi" sotto il logo andava a capo.
+     Ogni voce resta su UNA riga, sempre (mai "La nostra / storia"): dove la
+     riga intera non ci sta c'è il menu a panino, vedi sotto. */
+  gap: 1rem;
   list-style: none;
 }
 
 .nav-links a {
-  font-size: 0.92rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--ink);
   position: relative;
@@ -343,9 +346,11 @@ p {
   justify-content: center;
 }
 
-/* Sotto i 1120px le voci non ci stanno più su una riga nemmeno strette:
-   si passa al menu a panino un po' prima di prima (920px). */
-@media (max-width: 1120px) {
+/* Logo, nove voci e bottone chiedono circa 1150px di riga: sotto i 1280px di
+   schermo non ci stanno più, e si passa al menu a panino (con otto voci
+   bastavano 1120px). Il ,98 copre gli schermi con lo zoom, che possono essere
+   larghi 1279,5px: con 1279 tondo lì il menu grande tornava, senza starci. */
+@media (max-width: 1279.98px) {
   .nav-links, .nav-cta .btn { display: none; }
   .nav-toggle { display: flex; }
 }
@@ -415,24 +420,6 @@ p {
   font-size: 1.05rem;
   font-family: var(--font-body);
   margin-top: 0.6rem;
-}
-
-/* «Collabora con noi»: voce secondaria, solo nel menu del telefono e sotto
-   "Crea la tua torta". Nel menu grande del computer non c'è: le otto voci
-   stanno già al pelo su una riga (vedi .nav-links). Piccola e sottolineata,
-   così non ruba la scena alle voci principali; alta 44px per il dito. */
-.mobile-menu-nav a.mobile-menu-sec {
-  font-family: var(--font-body);
-  font-size: 0.98rem;
-  font-weight: 600;
-  color: var(--cream); /* pieno: velato scende sotto il contrasto minimo sull'azzurro */
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 1rem;
-  margin-top: 0.2rem;
 }
 
 /* ===========================================================

@@ -11,7 +11,7 @@ import '../styles/collabora.css';
  * modulo che la manda ai titolari. È una pagina a sé apposta: è un link da
  * mandare a un ristorante o da mettere nella bio di Instagram, e il codice
  * del modulo si scarica solo qui. Ci si arriva dal riquadro in home
- * (#collabora), dal piè di pagina e dal menu del telefono.
+ * (#collabora), dal piè di pagina e dal menu in alto.
  *
  * I testi dicono CHI può scriverci, non promettono servizi (forniture,
  * catering, regali aziendali…): quelli li decidono i titolari, caso per caso.

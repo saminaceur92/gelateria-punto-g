@@ -20,6 +20,9 @@ const links = [
   // (#gallery) è solo un assaggio: chi cerca "Gallery" nel menu vuole vederle
   // tutte, non essere portato in fondo alla pagina.
   { href: '/galleria', label: 'Gallery', ev: 'nav_galleria' },
+  // Richiesta dei titolari: anche nel menu in alto, non solo in fondo alla
+  // pagina. Sta dove sta il suo riquadro in home, fra la gallery e i contatti.
+  { href: '/collabora', label: 'Collabora con noi', ev: 'nav_collabora' },
   { href: '#contatti', label: 'Contatti', ev: 'nav_contatti' },
 ];
 
@@ -113,11 +116,6 @@ export default function Navbar({ onOpenConfigurator }) {
                 }}
               >
                 Crea la tua torta
-              </a>
-              {/* Solo qui e non nell'array `links`: il menu grande del
-                  computer è già pieno, una nona voce andrebbe a capo. */}
-              <a className="mobile-menu-sec" href="/collabora" data-ev="nav_collabora" onClick={() => setOpen(false)}>
-                Collabora con noi
               </a>
             </nav>
           </motion.div>
