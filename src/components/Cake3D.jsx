@@ -2907,7 +2907,7 @@ function usePausaMentreSiScorre(stage) {
 
 /**
  * "Riduci movimento" nelle impostazioni del telefono: la torta non gira da
- * sola (gira solo se chi guarda tocca «Ruota»).
+ * sola (gira solo se chi guarda tocca «Gira»).
  */
 function useMenoMovimento() {
   // Letto subito, già al primo disegno: letto solo nell'effetto qui sotto, per
@@ -3023,7 +3023,7 @@ function CaptureBridge() {
 }
 
 export default function Cake3D(props) {
-  // La scelta fatta col bottone «Ferma / Ruota»: null finché chi guarda non lo
+  // La scelta fatta col bottone «Ferma / Gira»: null finché chi guarda non lo
   // tocca, e fino ad allora decide il telefono (vedi `vuoleGirare` più sotto).
   const [scelta, setScelta] = useState(null);
   const stage = useRef(null);
@@ -3083,14 +3083,17 @@ export default function Cake3D(props) {
         <CaptureBridge />
       </Canvas>
       {DIAG_3D && info3D && <pre className="cake3d-diag">{info3D}</pre>}
+      {/* «Gira» e non «Ruota»: al passo della foto c'è già «↻ Ruota», che gira
+          la foto di 90 gradi, e con la torta ferma si vedevano due bottoni
+          uguali. Niente aria-pressed: il testo dice già cosa fa il bottone, e
+          «premuto» faceva dire al lettore di schermo il contrario. */}
       <button
         type="button"
         className="cake3d-spin-toggle"
         onClick={() => setScelta(!vuoleGirare)}
-        aria-pressed={!vuoleGirare}
-        title={vuoleGirare ? 'Ferma la rotazione' : 'Riprendi la rotazione'}
+        title={vuoleGirare ? 'Ferma la rotazione' : 'Fai girare la torta'}
       >
-        {vuoleGirare ? '⏸ Ferma' : '↻ Ruota'}
+        {vuoleGirare ? '⏸ Ferma' : '↻ Gira'}
       </button>
     </div>
   );

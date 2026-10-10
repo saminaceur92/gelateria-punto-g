@@ -300,7 +300,9 @@ export async function raccogliDati() {
       mancanti.push(t.tabella);
       continue;
     }
-    const voci = ordinaPer(righe.filter((r) => r.attivo !== false), 'nome')
+    // Le voci con id 'nessuna' («Nessuna — Strati puri» fra gli inserti) sono
+    // la scelta di non mettere niente, non un prodotto: nel quaderno non vanno.
+    const voci = ordinaPer(righe.filter((r) => r.attivo !== false && r.id !== 'nessuna'), 'nome')
       .map((r) => ({
         nome: ripulisci(r.nome),
         descrizione: ripulisci(r.descrizione || ''),

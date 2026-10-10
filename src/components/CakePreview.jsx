@@ -4,6 +4,7 @@ import { useCakeData } from '../data/CakeDataProvider';
 import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
 import { misuraTesto, personeOf } from '../lib/misureTorta';
+import { descriviBase } from '../lib/rigaBase';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
@@ -60,20 +61,6 @@ function descriviCopertura(covering) {
   if (testo && base !== covering.id) testo = testo.replace('panna montata', 'panna vegetale montata');
   if (!testo) testo = String(covering.name || '').toLowerCase();
   return testo ? `coperto da ${testo}` : '';
-}
-
-// Riga della base: di solito "su base classica vaniglia". Ma certi nomi dicono
-// già da soli cosa c'è sotto, e con "su base" davanti si leggevano male: la
-// base di partenza usciva "su base senza base", quella croccante "su base base
-// croccante". Si guarda come comincia il NOME, non l'id, perché i nomi li
-// cambiano i titolari dalla dashboard: qualunque base "Senza…" si scrive così
-// com'è, una "Base…" non ripete la parola.
-function descriviBase(base) {
-  const nome = String(base?.name || '').trim().toLowerCase();
-  if (!nome) return '';
-  if (nome.startsWith('senza')) return nome;
-  if (/^base\b/.test(nome)) return `su ${nome}`;
-  return `su base ${nome}`;
 }
 
 // Riga della panna decorativa: i ciuffi (e la panna colorata) della
@@ -239,7 +226,8 @@ export default function CakePreview({ config }) {
     .filter(Boolean);
 
   const rigaCopertura = descriviCopertura(covering);
-  const rigaBase = descriviBase(b);
+  // «su base …», ma «senza base» per la base di partenza (vedi lib/rigaBase)
+  const rigaBase = descriviBase(b?.name);
   const rigaDecorazioni = descriviDecorazioni(decorazioni, decorationColorMap);
   // Le decorazioni che non si disegnano: si elencano sopra la torta, con la
   // precisazione che dipendono dalla gelateria. Non compaiono nella riga
