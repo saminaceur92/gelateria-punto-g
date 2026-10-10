@@ -35,6 +35,8 @@ export default function PromemoriaStop({ link, onClose }) {
   const [fase, setFase] = useState('carico');
   const [info, setInfo] = useState(null);
   const [lavoro, setLavoro] = useState(false);
+  // Cresce a ogni «Riprova» dopo un caricamento non riuscito: rilegge il link.
+  const [tentativo, setTentativo] = useState(0);
   const primario = useRef(null);
 
   useEffect(() => {
@@ -65,11 +67,13 @@ export default function PromemoriaStop({ link, onClose }) {
         // riepilogo non è arrivato (migrazione non ancora lanciata, rete lenta).
         setFase('domanda');
       } else {
-        setFase(r.stato === 'non_attivo' ? 'non_valido' : 'errore');
+        // Senza il riepilogo non si sa che festa è, né se è già tolta: si
+        // dice di riprovare, e «Riprova» lo rilegge (errore_carico).
+        setFase(r.stato === 'non_attivo' ? 'non_valido' : 'errore_carico');
       }
     });
     return () => { vivo = false; };
-  }, [link]);
+  }, [link, tentativo]);
 
   // Esc chiude, come le altre finestre del sito.
   useEffect(() => {
@@ -117,12 +121,15 @@ export default function PromemoriaStop({ link, onClose }) {
       icona: 'ko', titolo: 'Link non valido',
       testo: 'Questo link non risulta più attivo. Se continui a ricevere i promemoria scrivici e li togliamo subito.',
     };
-  } else if (fase === 'errore') {
+  } else if (fase === 'errore' || fase === 'errore_carico') {
     v = {
       icona: 'ko', titolo: 'Qualcosa non va',
       testo: 'Non riusciamo a collegarci in questo momento. Riprova fra qualche minuto: non è cambiato niente.',
-      // Si torna alla domanda: niente cambia senza un nuovo «Sì».
-      link: { testo: 'Riprova', fai: () => passaA(modo) },
+      link: fase === 'errore_carico'
+        // La pagina non si era caricata: si rilegge il link (festa, nome, già tolta…).
+        ? { testo: 'Riprova', fai: () => { setFase('carico'); setTentativo((n) => n + 1); } }
+        // Dopo il «Sì»: si torna alla domanda, niente cambia senza un nuovo «Sì».
+        : { testo: 'Riprova', fai: () => passaA(modo) },
     };
   } else if (fase === 'disiscritto') {
     v = {
