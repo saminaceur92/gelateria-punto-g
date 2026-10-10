@@ -62,7 +62,10 @@ const TABELLE_TORTA = [
   { tabella: 'tipi_torta', titolo: 'Tipi di torta' },
   { tabella: 'basi', titolo: 'Basi della torta' },
   { tabella: 'crumble', titolo: 'Crumble' },
-  { tabella: 'farciture', titolo: 'Farciture' },
+  // In dashboard la scheda ora si chiama «Inserto» (prima Farciture), come il
+  // passo del configuratore. Qui va al plurale, come le altre sezioni: ognuna
+  // elenca tutte le voci di quella scheda.
+  { tabella: 'farciture', titolo: 'Inserti' },
   { tabella: 'coperture', titolo: 'Coperture' },
   { tabella: 'decorazioni', titolo: 'Decorazioni' },
   { tabella: 'extra', titolo: 'Altri prodotti da ordinare' },
@@ -297,7 +300,9 @@ export async function raccogliDati() {
       mancanti.push(t.tabella);
       continue;
     }
-    const voci = ordinaPer(righe.filter((r) => r.attivo !== false), 'nome')
+    // Le voci con id 'nessuna' («Nessuna — Strati puri» fra gli inserti) sono
+    // la scelta di non mettere niente, non un prodotto: nel quaderno non vanno.
+    const voci = ordinaPer(righe.filter((r) => r.attivo !== false && r.id !== 'nessuna'), 'nome')
       .map((r) => ({
         nome: ripulisci(r.nome),
         descrizione: ripulisci(r.descrizione || ''),

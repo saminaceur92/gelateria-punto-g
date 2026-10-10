@@ -234,7 +234,9 @@ export default function Dashboard() {
             { key: 'colore', label: 'Colore (3D)', type: 'color' },
             { key: 'allergeni', label: 'Allergeni', type: 'checkboxes', options: ALLERGENI_OPTIONS },
           ],
-          newRow: () => ({ id: uuid(), nome: 'Nuova farcitura', descrizione: '', supplemento: 0, colore: '#c8842b', allergeni: '' }),
+          // La voce nuova nasce accesa: finché non la si rinomina, il nome di
+          // partenza lo vedono anche i clienti. Si chiama come la scheda.
+          newRow: () => ({ id: uuid(), nome: 'Nuovo inserto', descrizione: '', supplemento: 0, colore: '#c8842b', allergeni: '' }),
         },
       },
       {

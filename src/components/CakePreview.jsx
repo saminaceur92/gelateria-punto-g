@@ -4,6 +4,7 @@ import { useCakeData } from '../data/CakeDataProvider';
 import { CRUMBLE_BASE_ID, isTallType } from '../data/cakeOptions';
 import { messageFontStyle, DEFAULT_MESSAGE_FONT } from '../lib/messageFont';
 import { misuraTesto, personeOf } from '../lib/misureTorta';
+import { descriviBase } from '../lib/rigaBase';
 
 // Three.js è pesante: lo carichiamo solo quando la torta 3D serve davvero.
 const Cake3D = lazy(() => import('./Cake3D'));
@@ -225,6 +226,8 @@ export default function CakePreview({ config }) {
     .filter(Boolean);
 
   const rigaCopertura = descriviCopertura(covering);
+  // «su base …», ma «senza base» per la base di partenza (vedi lib/rigaBase)
+  const rigaBase = descriviBase(b?.name);
   const rigaDecorazioni = descriviDecorazioni(decorazioni, decorationColorMap);
   // Le decorazioni che non si disegnano: si elencano sopra la torta, con la
   // precisazione che dipendono dalla gelateria. Non compaiono nella riga
@@ -335,9 +338,9 @@ export default function CakePreview({ config }) {
           </p>
         ))}
 
-        {b && (
+        {rigaBase && (
           <p className="cake-card-base">
-            <em>su base {b.name.toLowerCase()}</em>
+            <em>{rigaBase}</em>
           </p>
         )}
 

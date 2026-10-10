@@ -2905,9 +2905,16 @@ function usePausaMentreSiScorre(stage) {
   return [inPausa, pausa];
 }
 
-/** "Riduci movimento" nelle impostazioni del telefono: la torta non gira da sola. */
+/**
+ * "Riduci movimento" nelle impostazioni del telefono: la torta non gira da
+ * sola (gira solo se chi guarda tocca «Gira»).
+ */
 function useMenoMovimento() {
-  const [riduci, setRiduci] = useState(false);
+  // Letto subito, già al primo disegno: letto solo nell'effetto qui sotto, per
+  // un attimo il bottone diceva «Ferma» su una torta che non doveva girare.
+  const [riduci, setRiduci] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  );
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -3016,7 +3023,9 @@ function CaptureBridge() {
 }
 
 export default function Cake3D(props) {
-  const [spin, setSpin] = useState(true);
+  // La scelta fatta col bottone «Ferma / Gira»: null finché chi guarda non lo
+  // tocca, e fino ad allora decide il telefono (vedi `vuoleGirare` più sotto).
+  const [scelta, setScelta] = useState(null);
   const stage = useRef(null);
   const [info3D, setInfo3D] = useState('');
   // Mentre gira, la torta 3D si ridisegna di continuo. Sulla home ce n'è una
@@ -3038,9 +3047,16 @@ export default function Cake3D(props) {
   }, []);
   const riduci = useMenoMovimento();
   const [inPausa, pausa] = usePausaMentreSiScorre(stage);
-  // Gira se nessuno l'ha fermata (bottone, "riduci movimento") e se non si sta
-  // scorrendo.
-  const gira = spin && !riduci && !inPausa;
+  // Se la torta deve girare: da sola sì, tranne con "riduci movimento" nelle
+  // impostazioni del telefono. Il bottone però vince anche su quello, perché è
+  // una scelta esplicita di chi guarda. Prima, con "riduci movimento", il
+  // bottone diceva «Ferma» su una torta già ferma, e toccarlo non la faceva
+  // partire mai.
+  const vuoleGirare = scelta ?? !riduci;
+  // Gira se deve girare e se non si sta scorrendo. Il bottone invece dice solo
+  // `vuoleGirare`: la pausa dello scorrimento dura un attimo, e con quella
+  // l'etichetta lampeggerebbe a ogni tocco sulla lista.
+  const gira = vuoleGirare && !inPausa;
 
   return (
     <div className="cake3d-stage" ref={stage}>
@@ -3067,14 +3083,17 @@ export default function Cake3D(props) {
         <CaptureBridge />
       </Canvas>
       {DIAG_3D && info3D && <pre className="cake3d-diag">{info3D}</pre>}
+      {/* «Gira» e non «Ruota»: al passo della foto c'è già «↻ Ruota», che gira
+          la foto di 90 gradi, e con la torta ferma si vedevano due bottoni
+          uguali. Niente aria-pressed: il testo dice già cosa fa il bottone, e
+          «premuto» faceva dire al lettore di schermo il contrario. */}
       <button
         type="button"
         className="cake3d-spin-toggle"
-        onClick={() => setSpin((s) => !s)}
-        aria-pressed={!spin}
-        title={spin ? 'Ferma la rotazione' : 'Riprendi la rotazione'}
+        onClick={() => setScelta(!vuoleGirare)}
+        title={vuoleGirare ? 'Ferma la rotazione' : 'Fai girare la torta'}
       >
-        {spin ? '⏸ Ferma' : '↻ Ruota'}
+        {vuoleGirare ? '⏸ Ferma' : '↻ Gira'}
       </button>
     </div>
   );

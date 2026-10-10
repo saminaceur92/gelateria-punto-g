@@ -137,7 +137,7 @@ export default function QuadernoGenera({ doc, onPubblicato }) {
           <h3>🧾 Genera il quaderno dai dati del gestionale</h3>
           <p>
             Costruisce il PDF ufficiale degli allergeni partendo dalla scheda <strong>Gusti e allergeni</strong>
-            {' '}(più basi, crumble, farciture, coperture, decorazioni ed extra). Sono gli stessi dati che vedono i
+            {' '}(più basi, crumble, inserti, coperture, decorazioni ed extra). Sono gli stessi dati che vedono i
             clienti sul sito: così il documento e la pagina non possono dire cose diverse.
           </p>
         </div>
