@@ -170,6 +170,11 @@ begin
   assert not has_function_privilege('anon', 'public.invia_promemoria_compleanno(boolean)', 'execute'), '8: anon lancia il giro';
   assert not has_function_privilege('anon', 'public.invia_un_promemoria(uuid, text, text)', 'execute'), '8: anon spedisce';
   assert not has_function_privilege('anon', 'public.invia_promemoria_ora(uuid)', 'execute'), '8: anon usa «Invia ora»';
+  assert not has_function_privilege('anon', 'public.leggi_esiti_promemoria()', 'execute')
+     and not has_function_privilege('authenticated', 'public.leggi_esiti_promemoria()', 'execute'),
+         '8: la lettura degli esiti si può lanciare da fuori';
+  assert exists (select 1 from cron.job where jobname = 'promemoria-esiti'),
+         '8: manca il lavoro che legge tutto il giorno le risposte di EmailJS';
   assert has_function_privilege('anon', 'public.togli_promemoria(text)', 'execute'), '8: il link «togli» non funziona';
   assert has_function_privilege('authenticated', 'public.togli_ricorrenza_staff(uuid)', 'execute'), '8: lo staff non toglie';
 

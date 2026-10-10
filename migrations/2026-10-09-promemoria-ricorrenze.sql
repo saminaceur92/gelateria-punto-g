@@ -23,7 +23,11 @@
 --     · se EmailJS risponde «troppe richieste» (429) si riprova: in quel caso
 --       nessuna mail è partita, quindi non nasce un doppione. Se la risposta è
 --       incerta (errore del server di EmailJS, rete lenta) NON si riprova:
---       meglio una mail persa che due.
+--       meglio una mail persa che due;
+--     · la risposta di EmailJS si legge tutto il giorno, ogni 10 minuti: anche
+--       un «Invia ora» del pomeriggio rifiutato da EmailJS risulta «errore» e
+--       si può rimettere in coda (prima restava «inviato» per sempre, e lo
+--       staff credeva che fosse arrivata).
 --  2. «TOGLI SOLO QUESTO»: nella mail c'è un link nuovo (?togli=) che ferma solo
 --     quella ricorrenza, senza disiscrivere l'indirizzo da tutto. Lo staff fa
 --     lo stesso dal gestionale, e può disiscrivere o riattivare un indirizzo.
@@ -501,31 +505,40 @@ begin
 end $$;
 
 -- ── 7. Il giro automatico ────────────────────────────────────
--- Cambia la firma (parametro per le prove): via la vecchia senza parametri.
-drop function if exists public.invia_promemoria_compleanno();
 
-create or replace function public.invia_promemoria_compleanno(p_ignora_orario boolean default false)
+-- (a) Cosa ha risposto EmailJS. pg_net tiene le risposte solo 6 ore: chi non
+--     le legge in tempo non saprà mai se una mail è partita. Per questo la
+--     lettura sta in una funzione a sé, che gira TUTTO IL GIORNO (lavoro
+--     'promemoria-esiti', qui sotto) e non solo con il giro del mattino: un
+--     «Invia ora» del pomeriggio rifiutato da EmailJS (per esempio con il
+--     template appena cambiato) risultava «inviato» per sempre, e lo staff non
+--     poteva nemmeno rimetterlo in coda.
+create or replace function public.leggi_esiti_promemoria()
 returns integer
 language plpgsql
 security definer
 set search_path = public, net
 as $$
 declare
-  r        record;
-  st       integer;
-  err      text;
-  v_corpo  text;
-  v_req    bigint;
-  v_motivo text;
+  r       record;
+  st      integer;
+  err     text;
+  v_corpo text;
+  n       integer := 0;
 begin
-  -- Un giro alla volta: due giri sovrapposti (cron + una chiamata a mano)
-  -- leggerebbero le stesse righe e manderebbero la stessa mail due volte.
+  -- Mai insieme al giro o a «Invia ora» (stesso lucchetto): un 429 letto
+  -- mentre il giro sta rispedendo la stessa mail la rimetterebbe in coda una
+  -- volta di troppo. Se è occupato non aspetta: ci pensa il giro, che legge
+  -- gli esiti da sé, o il prossimo passaggio. Dentro il giro, che il
+  -- lucchetto ce l'ha già, la richiesta passa subito (in Postgres chi tiene
+  -- un lucchetto di questo tipo lo può chiedere di nuovo).
   if not pg_try_advisory_xact_lock(hashtext('punto_gi_promemoria')) then
     return 0;
   end if;
 
-  -- (a) Cosa ha risposto EmailJS agli invii delle ultime ore. pg_net tiene le
-  --     risposte solo 6 ore: per questo il giro passa spesso.
+  -- Ogni aggiornamento qui sotto ricontrolla che la riga sia ancora la mail
+  -- spedita con QUELLA richiesta: se nel frattempo qualcuno l'ha cambiata
+  -- (es. dal pannello vecchio), si lascia stare.
   for r in
     select id, net_req, tentativi
       from public.promemoria_compleanno
@@ -539,21 +552,23 @@ begin
      where h.id = r.net_req;
 
     if st between 200 and 299 then
-      update public.promemoria_compleanno set esito = 'ok ' || st where id = r.id;
+      update public.promemoria_compleanno set esito = 'ok ' || st
+       where id = r.id and stato = 'inviato' and net_req = r.net_req;
     elsif st = 429 then
       -- EmailJS era occupato e l'ha RIFIUTATA: nessuna mail è partita, quindi
-      -- riprovare non crea doppioni. Al massimo 3 volte.
+      -- riprovare non crea doppioni. Al massimo 3 volte, e sempre dal giro
+      -- (fra le 9 e le 12), anche se era un «Invia ora» del pomeriggio.
       if r.tentativi < 3 then
         update public.promemoria_compleanno
            set stato = 'in_attesa', invio_previsto = least(invio_previsto, current_date),
                inviato_il = null, net_req = null,
-               nota = 'EmailJS era occupato (429): riprovo fra poco'
-         where id = r.id;
+               nota = 'EmailJS era occupato (429): non è partita, riprovo da solo al prossimo giro (fra le 9 e le 12)'
+         where id = r.id and stato = 'inviato' and net_req = r.net_req;
       else
         update public.promemoria_compleanno
            set stato = 'errore', esito = 'EmailJS 429', inviato_il = null, net_req = null,
                nota = 'EmailJS occupato per 3 volte: non è partita. Rimetti in coda più tardi.'
-         where id = r.id;
+         where id = r.id and stato = 'inviato' and net_req = r.net_req;
       end if;
     elsif st between 400 and 499 then
       -- Rifiuto netto (template sbagliato, chiavi, API non abilitata…): la mail
@@ -564,20 +579,52 @@ begin
              nota = 'EmailJS l''ha rifiutata (' || st
                     || coalesce(': ' || left(nullif(coalesce(nullif(v_corpo, ''), err), ''), 150), '')
                     || '): non è partita'
-       where id = r.id;
+       where id = r.id and stato = 'inviato' and net_req = r.net_req;
     elsif st is not null then
       -- Errore del server di EmailJS: forse è partita, forse no. Non si
       -- riprova da soli (sarebbe un possibile doppione).
-      update public.promemoria_compleanno set esito = 'incerto: EmailJS ' || st where id = r.id;
+      update public.promemoria_compleanno set esito = 'incerto: EmailJS ' || st
+       where id = r.id and stato = 'inviato' and net_req = r.net_req;
     elsif err is not null then
       -- Rete lenta o caduta: stesso discorso, esito sconosciuto.
-      update public.promemoria_compleanno set esito = 'incerto: ' || left(err, 150) where id = r.id;
+      update public.promemoria_compleanno set esito = 'incerto: ' || left(err, 150)
+       where id = r.id and stato = 'inviato' and net_req = r.net_req;
+    else
+      continue; -- nessuna risposta ancora: si riguarda al prossimo passaggio
     end if;
+    n := n + 1;
   end loop;
 
   update public.promemoria_compleanno
      set esito = 'non verificato'
    where stato = 'inviato' and esito is null and inviato_il <= now() - interval '5 hours';
+
+  return n;
+end $$;
+
+-- Cambia la firma (parametro per le prove): via la vecchia senza parametri.
+drop function if exists public.invia_promemoria_compleanno();
+
+create or replace function public.invia_promemoria_compleanno(p_ignora_orario boolean default false)
+returns integer
+language plpgsql
+security definer
+set search_path = public, net
+as $$
+declare
+  r        record;
+  v_req    bigint;
+  v_motivo text;
+begin
+  -- Un giro alla volta: due giri sovrapposti (cron + una chiamata a mano)
+  -- leggerebbero le stesse righe e manderebbero la stessa mail due volte.
+  if not pg_try_advisory_xact_lock(hashtext('punto_gi_promemoria')) then
+    return 0;
+  end if;
+
+  -- (a) Prima gli esiti degli invii precedenti: così un 429 si riprova già in
+  --     questo giro. Il lucchetto è lo stesso, e il giro ce l'ha già.
+  perform public.leggi_esiti_promemoria();
 
   if not p_ignora_orario and not public.promemoria_ora_di_invio() then return 0; end if;
   -- EmailJS non configurato: non spedisce nulla (la coda resta lì, non si perde niente).
@@ -635,9 +682,8 @@ begin
   return 0;
 end $$;
 
--- Ogni 2 minuti fra le 7 e le 11:58 UTC (9-14 d'estate, 8-13 d'inverno, ora
--- italiana). Le mail partono solo fra le 9 e le 12 italiane; dopo, il giro
--- legge soltanto le risposte di EmailJS.
+-- Il giro: ogni 2 minuti fra le 7 e le 11:58 UTC (9-14 d'estate, 8-13
+-- d'inverno, ora italiana). Le mail partono solo fra le 9 e le 12 italiane.
 do $$
 begin
   perform cron.unschedule('promemoria-compleanno');
@@ -645,6 +691,19 @@ exception when others then
   null;
 end $$;
 select cron.schedule('promemoria-compleanno', '*/2 7-11 * * *', $$ select public.invia_promemoria_compleanno(); $$);
+
+-- Gli esiti: ogni 10 minuti, tutto il giorno (anche quello di un «Invia ora»
+-- fatto nel pomeriggio). Non spedisce niente: legge e basta. Passa ai minuti
+-- 5, 15, 25…, mentre il giro passa ai minuti pari: così non partono mai nello
+-- stesso istante e nessuno dei due salta un turno per il lucchetto dell'altro.
+-- (Le copie di «Prova» non vanno nella coda: il loro esito non si segue.)
+do $$
+begin
+  perform cron.unschedule('promemoria-esiti');
+exception when others then
+  null;
+end $$;
+select cron.schedule('promemoria-esiti', '5,15,25,35,45,55 * * * *', $$ select public.leggi_esiti_promemoria(); $$);
 
 -- ── 8. Azioni dello staff (gestionale) ───────────────────────
 -- Tutte controllano is_staff() da sé. Quando dicono di no, lo dicono con un
@@ -1030,6 +1089,7 @@ create policy "promemoria_stop_read_auth" on public.promemoria_stop
 -- Interne: le chiamano solo il giro, i trigger e le funzioni qui sopra (che
 -- girano come proprietario, quindi non serve concederle a nessuno).
 revoke execute on function public.invia_promemoria_compleanno(boolean)      from public, anon, authenticated;
+revoke execute on function public.leggi_esiti_promemoria()                  from public, anon, authenticated;
 revoke execute on function public.invia_un_promemoria(uuid, text, text)     from public, anon, authenticated;
 revoke execute on function public.accoda_promemoria(uuid)                   from public, anon, authenticated;
 revoke execute on function public.crea_promemoria_compleanno()              from public, anon, authenticated;
@@ -1080,8 +1140,13 @@ select 'Giro automatico ogni 2 minuti, mail fra le 9 e le 12 (deve dire ok)' as 
        case when (select schedule from cron.job where jobname = 'promemoria-compleanno') = '*/2 7-11 * * *'
             then 'ok' else 'NO — ERRORE' end as valore
 union all
-select 'Giri dei promemoria programmati (deve dire 1)',
-       (select count(*)::text from cron.job where command ilike '%invia_promemoria_compleanno%')
+select 'Esiti di EmailJS letti ogni 10 minuti, tutto il giorno (deve dire ok)',
+       case when (select schedule from cron.job where jobname = 'promemoria-esiti') = '5,15,25,35,45,55 * * * *'
+            then 'ok' else 'NO — ERRORE' end
+union all
+select 'Lavori dei promemoria programmati, giro + esiti (deve dire 2)',
+       (select count(*)::text from cron.job
+         where command ilike '%invia_promemoria_compleanno%' or command ilike '%leggi_esiti_promemoria%')
 union all
 select 'Trigger sugli ordini: crea e aggiorna i promemoria (deve dire ok)',
        case when exists (select 1 from pg_trigger where tgname = 'crea_promemoria_compleanno_trg'
@@ -1099,6 +1164,7 @@ select 'Promemoria senza data della festa (deve dire 0)',
 union all
 select 'Il sito pubblico può lanciare il giro o spedire mail? (deve dire no)',
        case when has_function_privilege('anon', 'public.invia_promemoria_compleanno(boolean)', 'execute')
+              or has_function_privilege('anon', 'public.leggi_esiti_promemoria()', 'execute')
               or has_function_privilege('anon', 'public.invia_un_promemoria(uuid, text, text)', 'execute')
               or has_function_privilege('anon', 'public.invia_promemoria_ora(uuid)', 'execute')
               or has_function_privilege('anon', 'public.prova_promemoria(uuid, text, text)', 'execute')

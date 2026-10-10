@@ -35,7 +35,7 @@ luglio/agosto 2026):
 4. `migrations/2026-08-10-dominio-definitivo.sql`;
 5. **`migrations/2026-10-09-promemoria-ricorrenze.sql`** — anniversario, «togli solo questo»,
    regole contro i doppioni. Va lanciata **tutta insieme**; si può rilanciare senza danni. In fondo
-   stampa un controllo: ogni riga deve dire quello che c'è scritto fra parentesi (ok / no / sì / 0 / 1).
+   stampa un controllo: ogni riga deve dire quello che c'è scritto fra parentesi (ok / no / sì / 0 / 2).
 
 Facoltativo ma consigliato, subito dopo la 5: `migrations/2026-10-09-promemoria-ricorrenze-prova.sql`.
 Prova tutto sul database vero con ordini finti e **annulla da sola** quello che ha scritto: deve
@@ -196,15 +196,21 @@ on conflict (key) do update set value = excluded.value;
 - **Disiscrizione da tutto**: dal link «Non voglio più nessun promemoria», oppure dallo staff nella
   sezione **Disiscritti** del gestionale. Vale per l'indirizzo email, anche sugli ordini futuri. Si
   può **riattivare** dalla stessa sezione, solo se è il cliente a chiederlo.
-- **Esito degli invii**: il gestionale mostra cosa ha risposto EmailJS. Se EmailJS è occupato
-  (troppe richieste) la mail viene riprovata da sola, fino a 3 volte: in quel caso non era partita.
-  Se la risposta è incerta (errore del server di EmailJS, rete lenta) **non** si riprova da sola,
-  per non rischiare una mail doppia: lo staff vede «esito incerto». Se EmailJS rifiuta la mail
-  (template sbagliato, chiavi…) va sistemato il problema e poi «Rimetti in coda».
+- **Esito degli invii**: il gestionale mostra cosa ha risposto EmailJS, entro una decina di minuti
+  e a qualunque ora (anche dopo un «Invia ora» del pomeriggio); finché la risposta non è letta, sulla
+  mail c'è scritto «Risposta di EmailJS in arrivo» (ricarica la scheda dopo qualche minuto). Se
+  EmailJS è occupato (troppe richieste) la mail viene riprovata da sola al giro successivo fra le 9
+  e le 12, fino a 3 volte: in quel caso non era partita. Se la risposta è incerta (errore del server
+  di EmailJS, rete lenta) **non** si riprova da sola, per non rischiare una mail doppia: lo staff
+  vede «esito incerto». Se EmailJS rifiuta la mail (template sbagliato, chiavi…) la mail risulta
+  «errore»: va sistemato il problema e poi «Rimetti in coda». Le copie di **Prova** non vanno nella
+  coda: se non arrivano, controlla il template su EmailJS.
 - **Il giro** passa ogni 2 minuti fra le 7 e le 12 UTC; spedisce solo fra le 9 e le 12 italiane, una
-  mail per volta (EmailJS accetta una richiesta al secondo). Il piano gratuito di EmailJS ha **200
-  mail al mese** in tutto, conferme d'ordine comprese: nei mesi di punta conviene controllarlo nel
-  pannello di EmailJS.
+  mail per volta (EmailJS accetta una richiesta al secondo). Un secondo lavoro, ogni 10 minuti per
+  tutto il giorno (ai minuti 5, 15, 25…, così non si sovrappone mai al giro), legge soltanto le
+  risposte di EmailJS (pg_net le tiene 6 ore). Il piano gratuito di EmailJS ha **200 mail al mese**
+  in tutto, conferme d'ordine comprese: nei mesi di punta conviene controllarlo nel pannello di
+  EmailJS.
 - **Foto nella mail: possibile.** Dal 26/07/2026 le foto delle torte vengono salvate nello spazio
   file di Supabase (bucket `torte`) e hanno un indirizzo web vero. Il template attuale non la usa:
   per aggiungerla servono una riga `<img src="{{foto}}">` nel template e il parametro `foto` nella

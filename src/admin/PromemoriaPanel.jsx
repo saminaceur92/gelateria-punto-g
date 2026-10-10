@@ -57,8 +57,18 @@ const giorniA = (iso) => {
 
 const quandoTesto = (gg) => (gg < 0 ? 'in ritardo' : gg === 0 ? 'oggi' : gg === 1 ? 'domani' : `tra ${gg} giorni`);
 
+// La risposta di EmailJS la legge il database ogni 10 minuti, a qualunque ora
+// (prima di allora `esito` è vuoto): dopo un «Invia ora» lo si dice, così
+// nessuno dà per arrivata una mail che EmailJS potrebbe ancora rifiutare.
+const ESITO_IN_ARRIVO_MS = 5 * 60 * 60 * 1000; // oltre, il database scrive «non verificato»
+
 // Cosa ha risposto EmailJS, in parole (colonna `esito`, dopo la migrazione).
-function testoEsito(esito) {
+function testoEsito(r) {
+  const { esito } = r;
+  // `null` (non `undefined`): la colonna c'è, cioè la migrazione è fatta.
+  if (esito === null && r.inviato_il && Date.now() - Date.parse(r.inviato_il) < ESITO_IN_ARRIVO_MS) {
+    return 'Risposta di EmailJS in arrivo: entro 10 minuti la vedi qui (ricarica la scheda).';
+  }
   if (!esito) return null;
   if (esito.startsWith('ok')) return 'EmailJS l’ha presa in carico ✓';
   if (esito.startsWith('incerto')) {
@@ -72,7 +82,7 @@ function testoEsito(esito) {
 function Mail({ r, busy, configurato, migrata, onProva, onAzione }) {
   const s = STATI[r.stato] || STATI.annullato;
   const gg = r.stato === 'in_attesa' ? giorniA(r.invio_previsto) : null;
-  const esito = r.stato === 'inviato' ? testoEsito(r.esito) : null;
+  const esito = r.stato === 'inviato' ? testoEsito(r) : null;
   const inCoda = r.stato === 'in_attesa';
   return (
     <li className="prom-mail">
