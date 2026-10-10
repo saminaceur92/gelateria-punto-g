@@ -41,6 +41,12 @@ Facoltativo ma consigliato, subito dopo la 5: `migrations/2026-10-09-promemoria-
 Prova tutto sul database vero con ordini finti e **annulla da sola** quello che ha scritto: deve
 finire con l'errore voluto **«PROVE SUPERATE»**. Non parte nessuna mail e nessun messaggio Telegram.
 
+> Se dopo la 5 si rilancia `migrations/2026-10-09-dashboard-ottobre.sql`, nel suo controllo finale
+> la riga «16 · nessun automatismo parte quando si salva una nota» dice «da controllare»: è il
+> trigger dei promemoria (`sincronizza_promemoria_trg`), che scatta solo quando sull'ordine
+> cambiano stato, data di ritiro, email, nome, occasione o interruttore dei promemoria, **mai**
+> quando si salva una nota. Va bene così.
+
 Finché non ci sono le chiavi EmailJS (passo 3) **non parte nessuna mail**: la coda si riempie e
 basta, non si perde niente.
 
