@@ -203,9 +203,20 @@ on conflict (key) do update set value = excluded.value;
     altri promemoria restano e l'indirizzo **non** viene disiscritto. Vale **per sempre**: se
     riordina per la stessa festa (stessa email, stessa occasione, stesso giorno ±3, in qualunque
     anno, anche al banco) non nascono promemoria nuovi. Le feste tolte stanno nella tabella
-    `promemoria_tolti`: se il cliente cambia idea e chiede di riaverlo, dal SQL Editor
-    `delete from public.promemoria_tolti where email = 'indirizzo@del.cliente' and occasione = 'Compleanno';`
-    (vale dal prossimo ordine per quella festa);
+    `promemoria_tolti`. Se il cliente cambia idea e chiede di riaverla, dal SQL Editor (al posto
+    di `indirizzo@del.cliente` la sua email: maiuscole e spazi non contano; per l'anniversario
+    `'Anniversario'` al posto di `'Compleanno'`):
+
+    ```sql
+    delete from public.promemoria_tolti
+     where email = lower(trim('indirizzo@del.cliente')) and occasione = 'Compleanno'
+    returning email, occasione, festa;
+    ```
+
+    Deve comparire la festa restituita (una riga per ogni festa tolta da quell'indirizzo per
+    quell'occasione). Se non compare niente, l'indirizzo è scritto diverso da quello dell'ordine
+    e non è cambiato niente. Vale dal prossimo ordine per quella festa, anche se poi si rilancia
+    la migrazione;
   - lo staff, dal gestionale: «Non mandare questa» (una sola mail) o «Togli questa ricorrenza»
     (le mail in arrivo di quella festa, compreso un eventuale secondo ordine per la stessa festa).
     Quella dello staff vale per l'anno in corso e si annulla con «Rimetti in coda»; per toglierla

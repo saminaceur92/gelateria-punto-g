@@ -99,13 +99,28 @@ end $$;
 -- della coda spariscono se l'ordine viene eliminato: la scelta del cliente no.
 --  festa = la data della festa della mail da cui l'ha tolta; vale lo stesso
 --          giorno (±3, come la regola della stessa festa) di ogni anno.
-create table if not exists public.promemoria_tolti (
-  email     text not null,
-  occasione text not null,
-  festa     date not null,
-  creato_il timestamptz not null default now(),
-  primary key (email, occasione, festa)
-);
+-- Se una versione precedente di questa migrazione è già girata (senza questa
+-- tabella), le feste tolte allora dal cliente ci entrano adesso: UNA volta
+-- sola, quando la tabella nasce. Ai rilanci no: una festa restituita al
+-- cliente (riga cancellata a mano, vedi docs/PROMEMORIA-COMPLEANNO.md)
+-- tornerebbe tolta senza che nessuno se ne accorga.
+do $$
+begin
+  if to_regclass('public.promemoria_tolti') is null then
+    create table public.promemoria_tolti (
+      email     text not null,
+      occasione text not null,
+      festa     date not null,
+      creato_il timestamptz not null default now(),
+      primary key (email, occasione, festa)
+    );
+    insert into public.promemoria_tolti (email, occasione, festa)
+    select distinct p.email, p.occasione, p.anniversario
+      from public.promemoria_compleanno p
+     where p.nota = 'tolto dal cliente' and p.anniversario is not null
+    on conflict do nothing;
+  end if;
+end $$;
 alter table public.promemoria_tolti enable row level security;
 -- La scrive solo togli_promemoria (qui sotto); lo staff può leggerla.
 revoke all on public.promemoria_tolti from anon, authenticated;
@@ -113,14 +128,6 @@ grant select on public.promemoria_tolti to authenticated;
 drop policy if exists "promemoria_tolti_read_staff" on public.promemoria_tolti;
 create policy "promemoria_tolti_read_staff" on public.promemoria_tolti
   for select to authenticated using (public.is_staff());
-
--- Se una versione precedente di questa migrazione è già girata, le feste già
--- tolte dal cliente entrano nella tabella.
-insert into public.promemoria_tolti (email, occasione, festa)
-select distinct p.email, p.occasione, p.anniversario
-  from public.promemoria_compleanno p
- where p.nota = 'tolto dal cliente' and p.anniversario is not null
-on conflict do nothing;
 
 -- ── 2. Regole di base ────────────────────────────────────────
 
