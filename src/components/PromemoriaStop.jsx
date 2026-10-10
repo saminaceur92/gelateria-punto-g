@@ -22,7 +22,9 @@ const INFO_PROVA = { occasione: null, anniversario: null, nome: null, in_coda: 2
 function dataFesta(iso) {
   if (!iso) return '';
   try {
-    return ` del ${new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
+    const data = new Date(`${String(iso).slice(0, 10)}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+    // spazio che non va a capo: «15» e «agosto» restano sulla stessa riga
+    return ` del ${data.replace(' ', ' ')}`;
   } catch {
     return '';
   }
@@ -75,12 +77,14 @@ export default function PromemoriaStop({ link, onClose }) {
     return () => { vivo = false; };
   }, [link, tentativo]);
 
-  // Esc chiude, come le altre finestre del sito.
+  // Esc chiude, come le altre finestre del sito; ma non mentre la risposta del
+  // database è in arrivo («Un attimo…»): la richiesta partirebbe lo stesso e
+  // il cliente non vedrebbe mai se è andata.
   useEffect(() => {
-    const tasto = (e) => { if (e.key === 'Escape') onClose(); };
+    const tasto = (e) => { if (e.key === 'Escape' && !lavoro) onClose(); };
     window.addEventListener('keydown', tasto);
     return () => window.removeEventListener('keydown', tasto);
-  }, [onClose]);
+  }, [onClose, lavoro]);
 
   // A ogni passo il fuoco va sul bottone principale (tastiera e lettori di schermo).
   useEffect(() => {
@@ -109,6 +113,9 @@ export default function PromemoriaStop({ link, onClose }) {
   const t = info?.occasione ? testiPromemoria(info.occasione) : null;
   const festa = t ? `${t.ricorrenza}${dataFesta(info.anniversario)}` : 'questa ricorrenza';
   const ciao = info?.nome ? `Ciao ${info.nome}, ` : '';
+  // Senza nome (pagina di prova, riepilogo non arrivato) la frase comincia
+  // da sola: con la maiuscola.
+  const conCiao = (resto) => (ciao ? `${ciao}${resto}` : `${resto.charAt(0).toUpperCase()}${resto.slice(1)}`);
   const cambiIdea = 'Se cambi idea, dillo allo staff al prossimo ordine.';
   const linkStop = { testo: 'Non voglio più nessun promemoria', fai: () => passaA('stop') };
 
@@ -139,7 +146,7 @@ export default function PromemoriaStop({ link, onClose }) {
   } else if (modo === 'togli' && fase === 'domanda') {
     v = {
       icona: 'domanda', titolo: 'Togliamo questo promemoria?',
-      testo: `${ciao}non ti ricorderemo più ${festa}. Gli altri promemoria, se ne hai, restano attivi.`,
+      testo: conCiao(`non ti ricorderemo più ${festa}. Gli altri promemoria, se ne hai, restano attivi.`),
       si: 'Sì, togli solo questo', no: 'No, lascialo', link: linkStop,
     };
   } else if (modo === 'togli' && fase === 'fatto') {
@@ -157,7 +164,7 @@ export default function PromemoriaStop({ link, onClose }) {
   } else if (modo === 'stop' && fase === 'domanda') {
     v = {
       icona: 'domanda', titolo: 'Non vuoi più nessun promemoria?',
-      testo: `${ciao}non ti scriveremo più per compleanni e anniversari. Le conferme dei tuoi ordini continueranno ad arrivare.`,
+      testo: conCiao('non ti scriveremo più per compleanni e anniversari. Le conferme dei tuoi ordini continueranno ad arrivare.'),
       si: 'Sì, non scrivetemi più', no: 'No, annulla',
       // Prima di togliere tutto, la scelta più leggera (se questa festa non è già tolta).
       link: info && !info.tolto
@@ -180,7 +187,7 @@ export default function PromemoriaStop({ link, onClose }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="prom-titolo"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && !lavoro && onClose()}
       style={{ display: 'flex', padding: '1rem', overflowY: 'auto' }}
     >
       <div
@@ -211,7 +218,9 @@ export default function PromemoriaStop({ link, onClose }) {
             <Icona size={52} aria-hidden="true" />
           </div>
         )}
-        <h2 id="prom-titolo" style={{ margin: '0 0 0.5rem', fontFamily: 'var(--font-display, sans-serif)', color: 'var(--ink, #32281f)', lineHeight: 1.2 }}>
+        {/* Corpo proprio: il titolo h2 del sito arriva a 70 px sul computer, e
+            qui andava su tre righe accanto a una spiegazione da 15 px. */}
+        <h2 id="prom-titolo" style={{ margin: '0 0 0.5rem', fontFamily: 'var(--font-display, sans-serif)', fontSize: 'clamp(1.6rem, 4vw, 2.2rem)', color: 'var(--ink, #32281f)', lineHeight: 1.2 }}>
           {v.titolo}
         </h2>
         {v.testo && (
