@@ -125,7 +125,7 @@ test('una mail in errore tiene la festa «in arrivo» solo finché si può ancor
     { id: 3, ordine_id: 'V', email: 'v@x.it', tipo: 'secondo', stato: 'errore', invio_previsto: '2026-09-28', anniversario: '2026-10-12' },
     // fra 3 giorni: si può ancora sistemare
     { id: 4, ordine_id: 'F', email: 'f@x.it', tipo: 'secondo', stato: 'errore', invio_previsto: '2026-09-29', anniversario: '2026-10-13' },
-    // in coda resta attiva comunque (la ferma il giro)
+    // in coda: attiva come sempre
     { id: 5, ordine_id: 'Q', email: 'q@x.it', tipo: 'secondo', stato: 'in_attesa', invio_previsto: '2026-10-09', anniversario: '2026-10-23' },
   ], oggi);
   assert.deepEqual(s.filter((x) => x.attiva).map((x) => x.ordineId), ['F', 'Q']);

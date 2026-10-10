@@ -23,8 +23,8 @@ tecnica già usata per le notifiche Telegram.
 - **una mail già partita non riparte mai**: né da «Invia ora», né da «Rimetti in coda»;
 - **una mail rimessa in coda** (da «Rimetti in coda», da «Riattiva» o da sola, quando EmailJS
   risponde «troppe richieste») parte solo se l'ordine vuole ancora il promemoria: non annullato,
-  interruttore acceso, occasione col promemoria. Altrimenti resta ferma con il motivo scritto
-  sotto, e riparte da sola quando l'ordine torna a volerlo.
+  interruttore acceso, occasione col promemoria. Altrimenti resta ferma (nel gestionale c'è
+  scritto il motivo) e riparte da sola quando l'ordine torna a volerlo.
 
 ---
 
