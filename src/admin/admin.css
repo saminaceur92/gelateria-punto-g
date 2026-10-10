@@ -288,20 +288,66 @@
 .qg-hint { margin: .6rem 0 0; }
 .qg-migrazione { margin-top: .9rem; }
 
-/* ───────── Scheda Promemoria compleanno ───────── */
+/* ───────── Scheda Promemoria compleanni e anniversari ─────────
+   Una scheda per festa (un ordine), con dentro le sue due mail. Il badge
+   color legno segnala un altro ordine per la stessa festa. */
 .prom-title { margin: 1.4rem 0 .6rem; font-size: .95rem; color: var(--v-deep); }
 .prom-title:first-of-type { margin-top: .8rem; }
-.prom-list { display: flex; flex-direction: column; gap: .5rem; }
-.prom-row { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: .6rem .8rem; background: #fff; }
-.prom-when, .prom-who { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
-.prom-when { min-width: 130px; }
-.prom-who { flex: 1; min-width: 160px; }
-.prom-who span, .prom-when span { font-size: .78rem; }
-.prom-who span { word-break: break-all; }
-.prom-tipo { font-size: .78rem; color: #777; white-space: nowrap; }
+.prom-testa-destra { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; flex-shrink: 0; }
+.prom-avviso { margin: .5rem 0; font-size: .86rem; line-height: 1.5; color: #6b4a1f; background: rgba(192,137,76,.08); border: 1px solid rgba(192,137,76,.45); border-radius: 10px; padding: .6rem .85rem; }
+.prom-avviso code { font-size: .8rem; }
+/* minmax(0, 1fr): senza, una nota con un pezzo lungo senza spazi (un link di
+   EmailJS) allargava la colonna e tagliava a destra tutte le schede. */
+.prom-schede { display: grid; gap: .7rem; grid-template-columns: minmax(0, 1fr); }
+.prom-scheda { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: .8rem .95rem; }
+.prom-scheda-chiusa { background: #fcfbf8; }
+.prom-scheda-testa { display: flex; align-items: flex-start; justify-content: space-between; gap: .4rem .8rem; flex-wrap: wrap; }
+.prom-festa { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.prom-festa-titolo { font-weight: 700; font-size: .95rem; color: var(--v-deep); }
+.prom-chi { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem .5rem; min-width: 0; font-size: .88rem; }
+.prom-chi .adm-muted { font-size: .8rem; word-break: break-all; }
+.prom-doppione { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: rgba(192,137,76,.14); color: #7a4f1e; white-space: nowrap; cursor: help; }
+.prom-mails { list-style: none; margin: .6rem 0 0; padding: 0; }
+.prom-mail { display: flex; align-items: center; gap: .5rem .8rem; flex-wrap: wrap; padding: .6rem 0; border-top: 1px dashed var(--line); }
+.prom-when { display: flex; flex-direction: column; gap: .1rem; min-width: 150px; }
+.prom-when span { font-size: .78rem; }
 .prom-badge { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
-.prom-nota { font-size: .78rem; font-style: italic; }
-.prom-actions { display: flex; gap: .4rem; margin-left: auto; }
+.prom-nota { flex: 1 1 180px; font-size: .78rem; font-style: italic; line-height: 1.4; overflow-wrap: anywhere; }
+.prom-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-left: auto; }
+.prom-scheda-piede { display: flex; justify-content: flex-end; padding-top: .6rem; border-top: 1px solid var(--line); }
+.prom-altri { margin-top: .6rem; }
+/* Esito delle azioni: fisso in basso sullo schermo, così si legge anche
+   toccando una festa lontana dalla cima. Non "sticky": html, body e #root
+   hanno overflow-x: hidden (global.css), e lì dentro sticky non aggancia.
+   Si chiude con la ×; le conferme spariscono da sole. */
+.prom-esito { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(560px, calc(100% - 2rem)); z-index: 60; display: flex; align-items: center; gap: .5rem; margin: 0; box-shadow: 0 12px 30px -10px rgba(0,0,0,.45); }
+.prom-esito > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.prom-esito-x { flex-shrink: 0; min-width: 44px; min-height: 44px; margin: -.5rem -.7rem -.5rem 0; border: 0; background: none; color: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.prom-spiega { margin: 0 0 .7rem; max-width: 70ch; line-height: 1.5; }
+.prom-dis-form { display: flex; align-items: flex-end; gap: .5rem; flex-wrap: wrap; margin-bottom: .8rem; }
+.prom-dis-campo { display: flex; flex-direction: column; gap: .25rem; flex: 0 1 320px; font-size: .8rem; font-weight: 600; color: #6b5d4f; }
+.prom-dis-campo input { padding: .5rem .7rem; border: 1px solid var(--line); border-radius: 9px; font-size: .9rem; font-weight: 400; }
+.prom-dis-campo input:focus { outline: 2px solid var(--v); border-color: var(--v); }
+.prom-dis-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+.prom-dis-lista li { display: flex; align-items: center; gap: .3rem .8rem; flex-wrap: wrap; padding: .5rem .8rem; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.prom-dis-email { font-weight: 600; word-break: break-all; }
+.prom-dis-lista li .adm-btn { margin-left: auto; }
+
+@media (max-width: 640px) {
+  /* Telefono: data sopra, poi stato e nota, bottoni a tutta riga e alti 44px
+     (si toccano col dito al banco). 16px negli input: sotto, iOS ingrandisce. */
+  .prom-testa-destra { align-items: stretch; width: 100%; }
+  .prom-testa-destra .adm-btn { min-height: 44px; }
+  .prom-scheda { padding: .75rem .8rem; }
+  .prom-nota { flex-basis: 100%; }
+  .prom-mail .prom-actions .adm-btn { flex: 1 1 auto; min-height: 44px; }
+  .prom-scheda-piede .adm-btn,
+  .prom-dis-form .adm-btn { flex: 1; min-height: 44px; }
+  .prom-dis-lista li .adm-btn { min-height: 44px; }
+  .adm-btn.prom-altri { min-height: 44px; }
+  .prom-dis-campo { flex: 1 1 100%; }
+  .prom-dis-campo input { font-size: 16px; min-height: 44px; }
+}
 
 /* ───────── Scheda Statistiche ─────────
    Tutto in CSS: niente librerie di grafici per disegnare trenta barrette. */
