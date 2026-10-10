@@ -57,29 +57,43 @@ export async function infoPromemoria(token) {
   }
 }
 
+// Le due azioni del link rispondono come infoPromemoria: { stato } con
+//   'ok'         fatto;
+//   'non_valido' il database non conosce il link (scaduto, rovinato);
+//   'errore'     la rete o il database non hanno risposto: non è cambiato
+//                niente, e la pagina dice di riprovare fra qualche minuto
+//                (prima diceva «link non valido», e il cliente credeva di non
+//                potersi più togliere).
+
 /**
  * «Non ricordarmi più questa ricorrenza»: ferma solo quella festa, senza
- * disiscrivere l'indirizzo. → { ok, tolti, occasione, anniversario }
+ * disiscrivere l'indirizzo. → { stato, ok, tolti, occasione, anniversario }
  */
 export async function togliPromemoria(token) {
-  if (!supabase || !token) return { ok: false };
+  if (!supabase || !token) return { stato: 'errore', ok: false };
   try {
     const { data, error } = await supabase.rpc('togli_promemoria', { p_token: token });
-    if (error || !data) return { ok: false };
-    return { ...data, ok: data.ok === true };
+    if (error || !data) return { stato: 'errore', ok: false };
+    if (data.ok !== true) return { ...data, stato: 'non_valido', ok: false };
+    return { ...data, stato: 'ok', ok: true };
   } catch {
-    return { ok: false };
+    return { stato: 'errore', ok: false };
   }
 }
 
-/** Disiscrizione da tutti i promemoria (link «non voglio più nessun promemoria»). */
+/**
+ * Disiscrizione da tutti i promemoria (link «non voglio più nessun
+ * promemoria»). → { stato: 'ok' | 'non_valido' | 'errore' }
+ */
 export async function stopPromemoria(token) {
-  if (!supabase || !token) return false;
+  if (!supabase || !token) return { stato: 'errore' };
   try {
     const { data, error } = await supabase.rpc('stop_promemoria', { p_token: token });
-    return !error && data === true;
+    if (error) return { stato: 'errore' };
+    if (data === true) return { stato: 'ok' };
+    return { stato: data === false ? 'non_valido' : 'errore' };
   } catch {
-    return false;
+    return { stato: 'errore' };
   }
 }
 

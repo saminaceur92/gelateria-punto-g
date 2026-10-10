@@ -88,12 +88,11 @@ export default function PromemoriaStop({ link, onClose }) {
     setLavoro(true);
     if (link.prova) {
       setFase('fatto');
-    } else if (modo === 'togli') {
-      const r = await togliPromemoria(link.token);
-      setFase(r.ok ? 'fatto' : 'errore');
     } else {
-      const ok = await stopPromemoria(link.token);
-      setFase(ok ? 'fatto' : 'non_valido');
+      // «Link non valido» solo se il database non conosce il link; se la rete
+      // o il database non rispondono, «riprova fra qualche minuto».
+      const r = modo === 'togli' ? await togliPromemoria(link.token) : await stopPromemoria(link.token);
+      setFase(r.stato === 'ok' ? 'fatto' : r.stato === 'non_valido' ? 'non_valido' : 'errore');
     }
     setLavoro(false);
   }
@@ -119,6 +118,8 @@ export default function PromemoriaStop({ link, onClose }) {
     v = {
       icona: 'ko', titolo: 'Qualcosa non va',
       testo: 'Non riusciamo a collegarci in questo momento. Riprova fra qualche minuto: non è cambiato niente.',
+      // Si torna alla domanda: niente cambia senza un nuovo «Sì».
+      link: { testo: 'Riprova', fai: () => passaA(modo) },
     };
   } else if (fase === 'disiscritto') {
     v = {
