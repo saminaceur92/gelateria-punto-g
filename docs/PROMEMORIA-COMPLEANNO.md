@@ -157,6 +157,11 @@ Nel gestionale, scheda **🎂 Promemoria**:
 - **🥂 Prova la mail di anniversario** (in alto) manda la versione anniversario, anche se in coda ci
   sono solo compleanni.
 
+L'indirizzo va scritto la prima volta (per esempio quello della gelateria): poi il gestionale
+propone l'ultimo usato su quel dispositivo. Non propone mai l'indirizzo con cui si entra col
+codice (`staff-…@codici.gelateriapuntogi.it`): è tecnico e non riceve mail, e il database lo
+rifiuta.
+
 Controlla oggetto, emoji e frasi; il bottone «Rifai questa torta» apre il configuratore; i due link
 in fondo aprono la pagina di prova («da qui non si toglie niente»).
 

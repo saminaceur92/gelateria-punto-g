@@ -57,6 +57,34 @@ const giorniA = (iso) => {
 
 const quandoTesto = (gg) => (gg < 0 ? 'in ritardo' : gg === 0 ? 'oggi' : gg === 1 ? 'domani' : `tra ${gg} giorni`);
 
+// Le copie di «Prova» devono arrivare a una casella vera. Al gestionale si
+// entra col codice, e l'utente con cui si entra ha un indirizzo TECNICO
+// (staff-…@codici.gelateriapuntogi.it, vedi supabase/functions/staff-login)
+// che non riceve niente: proporlo voleva dire mandare la prova nel vuoto e
+// consumare la quota di EmailJS. Si propone invece l'ultimo indirizzo usato
+// per una prova su questo dispositivo, oppure niente.
+const CHIAVE_PROVA = 'puntogi-promemoria-ultima-prova';
+const casellaTecnica = (email) => /@codici\.gelateriapuntogi\.it$/i.test(String(email || '').trim());
+const NO_CASELLA_TECNICA = 'Questo è l’indirizzo tecnico del codice dello staff: non riceve mail. Scrivi un indirizzo vero (per esempio quello della gelateria).';
+
+function indirizzoProva(user) {
+  try {
+    const ultimo = window.localStorage.getItem(CHIAVE_PROVA);
+    if (ultimo && !casellaTecnica(ultimo)) return ultimo;
+  } catch {
+    // Archivio del browser bloccato (navigazione privata, impostazioni): campo vuoto.
+  }
+  return user?.email && !casellaTecnica(user.email) ? user.email : '';
+}
+
+function ricordaIndirizzoProva(email) {
+  try {
+    window.localStorage.setItem(CHIAVE_PROVA, email);
+  } catch {
+    // Non si ricorda: la prossima volta il campo è vuoto, niente di grave.
+  }
+}
+
 // La risposta di EmailJS la legge il database ogni 10 minuti, a qualunque ora
 // (prima di allora `esito` è vuoto): dopo un «Invia ora» lo si dice, così
 // nessuno dà per arrivata una mail che EmailJS potrebbe ancora rifiutare.
@@ -254,15 +282,21 @@ export default function PromemoriaPanel() {
 
   // Prova: una copia a un indirizzo a scelta, con i link per togliere finti:
   // il promemoria del cliente non cambia.
-  function prova(r, occasione) {
+  async function prova(r, occasione) {
     const dest = window.prompt(
       occasione === 'Anniversario'
         ? 'Versione ANNIVERSARIO: a quale indirizzo mando la copia di prova?\n(nessun promemoria del cliente cambia)'
         : 'A quale indirizzo mando la copia di prova?\n(il promemoria del cliente non cambia)',
-      user?.email || '',
+      indirizzoProva(user),
     );
-    if (!dest) return;
-    azione(() => provaPromemoria(r.id, dest.trim(), occasione));
+    const email = (dest || '').trim();
+    if (!email) return;
+    if (casellaTecnica(email)) {
+      setMsg('');
+      setErr(NO_CASELLA_TECNICA);
+      return;
+    }
+    if (await azione(() => provaPromemoria(r.id, email, occasione))) ricordaIndirizzoProva(email);
   }
 
   async function disiscrivi(e) {

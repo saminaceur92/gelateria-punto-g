@@ -864,6 +864,11 @@ begin
   if v_dest !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
     raise exception 'Indirizzo non valido.';
   end if;
+  -- Gli utenti dello staff hanno un indirizzo tecnico (staff-…@codici…, vedi
+  -- staff-login) che non riceve niente: la prova finirebbe nel vuoto.
+  if v_dest like '%@codici.gelateriapuntogi.it' then
+    raise exception 'Questo è l''indirizzo tecnico del codice dello staff: non riceve mail. Scrivi un indirizzo vero (per esempio quello della gelateria).';
+  end if;
   if not exists (select 1 from public.promemoria_compleanno where id = p_id) then
     raise exception 'Promemoria non trovato: ricarica la scheda.';
   end if;

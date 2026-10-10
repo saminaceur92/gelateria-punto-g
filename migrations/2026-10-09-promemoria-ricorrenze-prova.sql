@@ -183,6 +183,13 @@ begin
   assert not exists (select 1 from public.promemoria_stop where email = 'zz-f@promemoria.invalid')
      and exists (select 1 from public.promemoria_compleanno where ordine_id = v_f3 and stato = 'in_attesa'),
          '7: riattiva: ' || v_t;
+  -- La prova non va alla casella tecnica del codice dello staff (non riceve niente).
+  begin
+    perform public.prova_promemoria(v_id, 'staff-zz@codici.gelateriapuntogi.it');
+    raise exception '7: la prova è partita verso la casella tecnica dello staff';
+  exception when others then
+    if sqlerrm not like 'Questo è l''indirizzo tecnico%' then raise; end if;
+  end;
 
   -- 8. Permessi.
   assert not has_function_privilege('anon', 'public.invia_promemoria_compleanno(boolean)', 'execute'), '8: anon lancia il giro';
