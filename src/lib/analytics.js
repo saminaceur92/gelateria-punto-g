@@ -168,7 +168,7 @@ export const EV = Object.freeze({
   FOTO_APERTA: 'foto_aperta',
   PREFERISCO_SCRIVERE: 'preferisco_scrivere',
   // «Collabora con noi»: da dove si arriva alla pagina /collabora.
-  // NAV_COLLABORA è solo il menu del telefono (in quello grande non c'è).
+  // NAV_COLLABORA: la voce del menu, sia quello grande sia quello del telefono.
   NAV_COLLABORA: 'nav_collabora',
   COLLABORA_HOME: 'collabora_home',
   COLLABORA_FOOTER: 'collabora_footer',

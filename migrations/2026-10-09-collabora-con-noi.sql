@@ -475,7 +475,7 @@ begin
   insert into public.statistiche_eventi (chiave, etichetta, tipo, gruppo, ordine) values
     ('whatsapp_collabora', 'WhatsApp — pagina Collabora con noi',     'click', 'contatti',  10),
     ('collabora_inviata',  'Proposta di collaborazione inviata',       'click', 'contatti',  11),
-    ('nav_collabora',      'Menù del telefono — Collabora con noi',    'click', 'contenuti', 16),
+    ('nav_collabora',      'Menù — Collabora con noi',                 'click', 'contenuti', 16),
     ('collabora_home',     'Collabora con noi — riquadro nella home',  'click', 'contenuti', 17),
     ('collabora_footer',   'Collabora con noi — piè di pagina',        'click', 'contenuti', 18)
   on conflict (chiave) do update
