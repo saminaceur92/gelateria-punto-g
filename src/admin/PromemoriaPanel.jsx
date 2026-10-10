@@ -262,6 +262,14 @@ export default function PromemoriaPanel() {
 
   useEffect(() => { ricarica(); }, [ricarica]);
 
+  // Le conferme spariscono da sole dopo qualche secondo; gli errori restano
+  // finché non si chiudono o non si fa un'altra azione.
+  useEffect(() => {
+    if (!msg) return undefined;
+    const t = setTimeout(() => setMsg(''), 8000);
+    return () => clearTimeout(t);
+  }, [msg]);
+
   const schede = useMemo(() => raggruppaPromemoria(rows), [rows]);
   const attive = schede.filter((s) => s.attiva);
   const storico = schede.filter((s) => !s.attiva);
@@ -290,7 +298,12 @@ export default function PromemoriaPanel() {
       indirizzoProva(user),
     );
     const email = (dest || '').trim();
-    if (!email) return;
+    if (!email) {
+      // Prova annullata: via anche l'avviso di prima (es. «casella tecnica»),
+      // che altrimenti restava lì come se riguardasse questa.
+      setErr(''); setMsg('');
+      return;
+    }
     if (casellaTecnica(email)) {
       setMsg('');
       setErr(NO_CASELLA_TECNICA);
@@ -339,8 +352,6 @@ export default function PromemoriaPanel() {
       </header>
 
       {errLista && <div className="adm-error" role="alert">⚠️ {errLista}</div>}
-      {err && <div className="adm-error" role="alert">⚠️ {err}</div>}
-      {msg && <div className="adm-info" role="status">{msg}</div>}
       {!errLista && !configurato && (
         <div className="adm-error">
           ⚠️ Invio non ancora attivo: mancano le chiavi EmailJS in <code>app_config</code>. I
@@ -451,6 +462,19 @@ export default function PromemoriaPanel() {
             </>
           )}
         </>
+      )}
+
+      {/* Esito dell'ultima azione: fisso in basso sullo schermo (.prom-esito),
+          così si vede dalla festa appena toccata. In cima alla scheda, da
+          telefono, finiva centinaia di pixel più su: un «no» del database non
+          si vedeva e sembrava partita la mail. */}
+      {(err || msg) && (
+        <div className={`prom-esito ${err ? 'adm-error' : 'adm-info'}`} role={err ? 'alert' : 'status'}>
+          <span>{err ? `⚠️ ${err}` : msg}</span>
+          <button type="button" className="prom-esito-x" aria-label="Chiudi l’avviso" onClick={() => { setErr(''); setMsg(''); }}>
+            ×
+          </button>
+        </div>
       )}
     </section>
   );
