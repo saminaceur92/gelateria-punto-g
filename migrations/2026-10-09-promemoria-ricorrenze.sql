@@ -29,8 +29,10 @@
 --       si può rimettere in coda (prima restava «inviato» per sempre, e lo
 --       staff credeva che fosse arrivata).
 --  2. «TOGLI SOLO QUESTO»: nella mail c'è un link nuovo (?togli=) che ferma solo
---     quella ricorrenza, senza disiscrivere l'indirizzo da tutto. Lo staff fa
---     lo stesso dal gestionale, e può disiscrivere o riattivare un indirizzo.
+--     quella ricorrenza, senza disiscrivere l'indirizzo da tutto, e vale PER
+--     SEMPRE: anche gli ordini futuri per la stessa festa non la ricordano più.
+--     Lo staff dal gestionale toglie le mail in arrivo di una festa, e può
+--     disiscrivere o riattivare un indirizzo.
 --  3. ANNIVERSARIO: anche l'occasione «Anniversario» crea i due promemoria, per
 --     gli ordini NUOVI fatti col sito che mostra l'avviso. Le mail partono
 --     solo dopo aver aggiornato il template EmailJS (docs/PROMEMORIA-COMPLEANNO.md;
@@ -89,6 +91,37 @@ begin
   end if;
 end $$;
 
+-- Le feste tolte dal cliente col link «Non ricordarmi più questa ricorrenza».
+-- La pagina gli dice «non ti ricorderemo più il compleanno del 3 novembre»:
+-- deve valere anche gli anni dopo, quando ordina di nuovo per la stessa festa
+-- (al banco l'interruttore dei promemoria è acceso di partenza e lui l'avviso
+-- non lo vede). Sta in una tabella a sé, come i disiscritti, perché le righe
+-- della coda spariscono se l'ordine viene eliminato: la scelta del cliente no.
+--  festa = la data della festa della mail da cui l'ha tolta; vale lo stesso
+--          giorno (±3, come la regola della stessa festa) di ogni anno.
+create table if not exists public.promemoria_tolti (
+  email     text not null,
+  occasione text not null,
+  festa     date not null,
+  creato_il timestamptz not null default now(),
+  primary key (email, occasione, festa)
+);
+alter table public.promemoria_tolti enable row level security;
+-- La scrive solo togli_promemoria (qui sotto); lo staff può leggerla.
+revoke all on public.promemoria_tolti from anon, authenticated;
+grant select on public.promemoria_tolti to authenticated;
+drop policy if exists "promemoria_tolti_read_staff" on public.promemoria_tolti;
+create policy "promemoria_tolti_read_staff" on public.promemoria_tolti
+  for select to authenticated using (public.is_staff());
+
+-- Se una versione precedente di questa migrazione è già girata, le feste già
+-- tolte dal cliente entrano nella tabella.
+insert into public.promemoria_tolti (email, occasione, festa)
+select distinct p.email, p.occasione, p.anniversario
+  from public.promemoria_compleanno p
+ where p.nota = 'tolto dal cliente' and p.anniversario is not null
+on conflict do nothing;
+
 -- ── 2. Regole di base ────────────────────────────────────────
 
 -- Quali occasioni hanno il promemoria. Confronto "largo": se in dashboard
@@ -124,6 +157,34 @@ as $$
            or (a_email = b_email and a_occasione = b_occasione
                and abs(a_anniversario - b_anniversario) <= 3),
            false);
+$$;
+
+-- La stessa festa in anni diversi: stesso giorno dell'anno, 3 giorni o meno di
+-- differenza. La data b si porta nell'anno di a (e in quello prima e dopo, per
+-- le feste a cavallo di Capodanno: 30 dicembre e 2 gennaio sono vicine). Il
+-- 29 febbraio, negli anni che non ce l'hanno, diventa il 28.
+create or replace function public.promemoria_stesso_giorno_anno(a date, b date)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select coalesce(bool_or(
+           abs(a - (b + make_interval(years => (extract(year from a) - extract(year from b))::int + k))::date) <= 3),
+         false)
+    from generate_series(-1, 1) as k;
+$$;
+
+-- Questa festa (indirizzo, occasione, data) il cliente l'ha tolta per sempre?
+create or replace function public.promemoria_festa_tolta(p_email text, p_occasione text, p_festa date)
+returns boolean
+language sql
+stable
+set search_path = public
+as $$
+  select exists (select 1 from public.promemoria_tolti t
+                  where t.email = p_email and t.occasione = p_occasione
+                    and public.promemoria_stesso_giorno_anno(p_festa, t.festa));
 $$;
 
 -- Le parole che cambiano nella mail: diventano variabili del template EmailJS.
@@ -212,6 +273,9 @@ begin
   if exists (select 1 from public.promemoria_stop s where s.email = v_email) then return 0; end if;
 
   v_anniv := (o.ritiro_data + interval '1 year')::date;
+  -- Festa tolta dal cliente col link della mail, anche anni fa: non si
+  -- ricorda più (gli altri promemoria dello stesso indirizzo sì).
+  if public.promemoria_festa_tolta(v_email, v_occ, v_anniv) then return 0; end if;
   -- Stesso token per le due mail dello stesso ordine.
   select min(token) into v_token from public.promemoria_compleanno where ordine_id = o.id;
   v_token := coalesce(v_token, replace(gen_random_uuid()::text, '-', ''));
@@ -293,6 +357,8 @@ begin
      and coalesce(new.dettagli ->> 'promemoria', '') <> 'true' then 'occasione cambiata'
     when new.ritiro_data is null then 'data di ritiro tolta'
     when v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then 'email tolta dall''ordine'
+    -- Corretta la data (o l'email): ora è una festa che il cliente ha tolto.
+    when public.promemoria_festa_tolta(v_email, v_occ, v_anniv) then 'tolto dal cliente (stessa ricorrenza)'
   end;
 
   if v_motivo is not null then
@@ -315,12 +381,14 @@ begin
                                else p.invio_previsto end
    where p.ordine_id = new.id and p.stato <> 'inviato' and p.inviato_il is null;
 
-  -- Ripartono solo quelli che aveva fermato questo stesso trigger.
+  -- Ripartono solo quelli che aveva fermato questo stesso trigger (o il giro,
+  -- per una festa tolta dal cliente che, con la correzione, non è più quella).
   update public.promemoria_compleanno p
      set stato = 'in_attesa', nota = null
    where p.ordine_id = new.id and p.stato = 'annullato' and p.inviato_il is null
      and p.nota in ('ordine annullato', 'promemoria spento sull''ordine', 'occasione cambiata',
-                    'data di ritiro tolta', 'email tolta dall''ordine');
+                    'data di ritiro tolta', 'email tolta dall''ordine',
+                    'tolto dal cliente (stessa ricorrenza)');
 
   -- Se non ce n'erano (es. occasione diventata Compleanno) li crea adesso.
   perform public.accoda_promemoria(new.id);
@@ -457,11 +525,14 @@ begin
   -- Giro fermo a lungo: non spedire promemoria ormai fuori tempo.
   if not p_manuale and r.invio_previsto < current_date - 7 then return 'fuori tempo'; end if;
 
-  -- Il cliente ha tolto questa festa (anche da un altro ordine per la stessa festa).
-  if exists (select 1 from public.promemoria_compleanno q
-              where q.id <> r.id and q.stato = 'annullato' and q.nota like 'tolto dal cliente%'
-                and public.promemoria_stessa_ricorrenza(q.ordine_id, q.email, q.occasione, q.anniversario,
-                                                        r.ordine_id, r.email, r.occasione, r.anniversario)) then
+  -- Il cliente ha tolto questa festa dal link della mail: quest'anno o in un
+  -- anno qualsiasi, anche da un altro ordine per la stessa festa (per esempio
+  -- una data di ritiro corretta dopo, che porta l'ordine su quella festa).
+  if public.promemoria_festa_tolta(r.email, r.occasione, r.anniversario)
+     or exists (select 1 from public.promemoria_compleanno q
+                 where q.id <> r.id and q.stato = 'annullato' and q.nota like 'tolto dal cliente%'
+                   and public.promemoria_stessa_ricorrenza(q.ordine_id, q.email, q.occasione, q.anniversario,
+                                                           r.ordine_id, r.email, r.occasione, r.anniversario)) then
     return 'tolto dal cliente (stessa ricorrenza)';
   end if;
 
@@ -986,6 +1057,10 @@ end $$;
 
 -- Cosa mostra la pagina PRIMA di chiedere conferma. Mai l'email in chiaro:
 -- il token basta a chi ha la mail, e la mail queste cose le dice già.
+--  in_coda = mail di questa festa ancora da partire (quest'anno o, se il
+--            cliente ha già riordinato, l'anno dopo): «togli» le ferma tutte;
+--  tolto   = il cliente l'ha già tolta per sempre (quelle tolte dallo staff
+--            valgono solo per quell'anno: il cliente può ancora toglierla lui).
 create or replace function public.info_promemoria(p_token text)
 returns jsonb
 language plpgsql
@@ -1011,18 +1086,23 @@ begin
     'nome',         nullif(split_part(trim(coalesce(r.nome, '')), ' ', 1), ''),
     'in_coda',      (select count(*) from public.promemoria_compleanno q
                       where q.stato in ('in_attesa', 'errore')
-                        and public.promemoria_stessa_ricorrenza(q.ordine_id, q.email, q.occasione, q.anniversario,
-                                                                r.ordine_id, r.email, r.occasione, r.anniversario)),
-    'tolto',        exists (select 1 from public.promemoria_compleanno q
-                             where q.stato = 'annullato' and q.nota like 'tolto dal%'
-                               and public.promemoria_stessa_ricorrenza(q.ordine_id, q.email, q.occasione, q.anniversario,
-                                                                       r.ordine_id, r.email, r.occasione, r.anniversario)),
+                        and (q.ordine_id = r.ordine_id
+                             or (q.email = r.email and q.occasione = r.occasione
+                                 and public.promemoria_stesso_giorno_anno(q.anniversario, r.anniversario)))),
+    'tolto',        public.promemoria_festa_tolta(r.email, r.occasione, r.anniversario)
+                    or exists (select 1 from public.promemoria_compleanno q
+                                where q.stato = 'annullato' and q.nota = 'tolto dal cliente'
+                                  and public.promemoria_stessa_ricorrenza(q.ordine_id, q.email, q.occasione, q.anniversario,
+                                                                          r.ordine_id, r.email, r.occasione, r.anniversario)),
     'disiscritto',  exists (select 1 from public.promemoria_stop s where s.email = r.email)
   );
 end $$;
 
--- «Non ricordarmi più questa ricorrenza»: solo quella festa. L'indirizzo NON
--- entra fra i disiscritti, gli altri promemoria restano.
+-- «Non ricordarmi più questa ricorrenza»: solo quella festa, ma PER SEMPRE
+-- (stesso indirizzo, stessa occasione, stesso giorno ±3 di ogni anno): si
+-- fermano le mail in arrivo, anche di un ordine già fatto per l'anno dopo, e
+-- gli ordini futuri per quella festa non ne creano più. L'indirizzo NON entra
+-- fra i disiscritti: gli altri promemoria restano.
 create or replace function public.togli_promemoria(p_token text)
 returns jsonb
 language plpgsql
@@ -1042,11 +1122,16 @@ begin
    limit 1;
   if not found then return jsonb_build_object('ok', false); end if;
 
+  insert into public.promemoria_tolti (email, occasione, festa)
+  values (r.email, r.occasione, r.anniversario)
+  on conflict do nothing;
+
   update public.promemoria_compleanno q
      set stato = 'annullato', nota = 'tolto dal cliente'
    where q.stato in ('in_attesa', 'errore')
-     and public.promemoria_stessa_ricorrenza(q.ordine_id, q.email, q.occasione, q.anniversario,
-                                             r.ordine_id, r.email, r.occasione, r.anniversario);
+     and (q.ordine_id = r.ordine_id
+          or (q.email = r.email and q.occasione = r.occasione
+              and public.promemoria_stesso_giorno_anno(q.anniversario, r.anniversario)));
   get diagnostics n = row_count;
 
   return jsonb_build_object('ok', true, 'occasione', r.occasione,
@@ -1100,6 +1185,8 @@ revoke execute on function public.promemoria_testi(text)                    from
 revoke execute on function public.promemoria_ora_di_invio()                 from public, anon, authenticated;
 revoke execute on function public.promemoria_stessa_ricorrenza(uuid, text, text, date, uuid, text, text, date)
                                                                             from public, anon, authenticated;
+revoke execute on function public.promemoria_stesso_giorno_anno(date, date) from public, anon, authenticated;
+revoke execute on function public.promemoria_festa_tolta(text, text, date)  from public, anon, authenticated;
 
 -- Gestionale: solo con una sessione del personale.
 revoke execute on function public.invia_promemoria_ora(uuid)               from public, anon;

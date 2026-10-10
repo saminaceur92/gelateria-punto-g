@@ -189,9 +189,16 @@ on conflict (key) do update set value = excluded.value;
   partenza) e va detto a voce.
 - **Togliere un promemoria**:
   - il cliente, dal link «Non ricordarmi più questa ricorrenza»: si ferma solo quella festa, gli
-    altri promemoria restano e l'indirizzo **non** viene disiscritto;
+    altri promemoria restano e l'indirizzo **non** viene disiscritto. Vale **per sempre**: se
+    riordina per la stessa festa (stessa email, stessa occasione, stesso giorno ±3, in qualunque
+    anno, anche al banco) non nascono promemoria nuovi. Le feste tolte stanno nella tabella
+    `promemoria_tolti`: se il cliente cambia idea e chiede di riaverlo, dal SQL Editor
+    `delete from public.promemoria_tolti where email = 'indirizzo@del.cliente' and occasione = 'Compleanno';`
+    (vale dal prossimo ordine per quella festa);
   - lo staff, dal gestionale: «Non mandare questa» (una sola mail) o «Togli questa ricorrenza»
-    (tutta la festa, compreso un eventuale secondo ordine per la stessa festa).
+    (le mail in arrivo di quella festa, compreso un eventuale secondo ordine per la stessa festa).
+    Quella dello staff vale per l'anno in corso e si annulla con «Rimetti in coda»; per toglierla
+    anche negli anni dopo deve essere il cliente a usare il link nella mail.
   Una festa tolta dal cliente non si può rimettere in coda dal gestionale.
 - **Disiscrizione da tutto**: dal link «Non voglio più nessun promemoria», oppure dallo staff nella
   sezione **Disiscritti** del gestionale. Vale per l'indirizzo email, anche sugli ordini futuri. Si

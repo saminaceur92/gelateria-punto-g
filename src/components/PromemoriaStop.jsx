@@ -5,7 +5,8 @@ import { testiPromemoria } from '../lib/promemoriaRegole';
 
 /**
  * Pagina dei due link in fondo alle mail dei promemoria (compleanno e anniversario):
- *   ?togli=<token>  «Non ricordarmi più questa ricorrenza» → solo quella festa
+ *   ?togli=<token>  «Non ricordarmi più questa ricorrenza» → solo quella festa,
+ *                   per sempre (anche se il cliente riordina per la stessa festa)
  *   ?stop=<token>   «Non voglio più nessun promemoria»     → tutto l'indirizzo
  * Prima di cambiare qualcosa chiede SEMPRE un clic di conferma: alcuni filtri
  * antivirus (Safe Links e simili) aprono da soli i link delle mail, e prima
@@ -53,8 +54,10 @@ export default function PromemoriaStop({ link, onClose }) {
         setInfo(r.info);
         if (r.info.disiscritto) setFase('disiscritto');
         else if (link.modo === 'stop') setFase('domanda');
-        else if (r.info.in_coda > 0) setFase('domanda');
-        else setFase(r.info.tolto ? 'gia_tolto' : 'niente');
+        // Già tolta per sempre: lo si dice. Altrimenti si chiede, anche se le
+        // mail di quest'anno sono già arrivate tutte: «togli» vale anche per
+        // gli anni prossimi.
+        else setFase(r.info.tolto ? 'gia_tolto' : 'domanda');
       } else if (r.stato === 'non_valido') {
         setFase('non_valido');
       } else if (link.modo === 'stop') {
@@ -131,7 +134,7 @@ export default function PromemoriaStop({ link, onClose }) {
   } else if (modo === 'togli' && fase === 'fatto') {
     v = {
       icona: 'ok', titolo: 'Fatto',
-      testo: `Non ti ricorderemo più ${festa}. Gli altri promemoria restano attivi.`,
+      testo: `Non ti ricorderemo più ${festa}, nemmeno negli anni prossimi. Gli altri promemoria restano attivi.`,
       link: linkStop,
     };
   } else if (fase === 'gia_tolto') {
@@ -140,19 +143,13 @@ export default function PromemoriaStop({ link, onClose }) {
       testo: `Questo promemoria era già stato tolto: per ${festa} non ti scriveremo più.`,
       link: linkStop,
     };
-  } else if (fase === 'niente') {
-    v = {
-      icona: 'ok', titolo: 'Nessuna mail in arrivo',
-      testo: `Per ${festa} non ti scriveremo altro: i promemoria di quest’anno sono già arrivati tutti.`,
-      link: linkStop,
-    };
   } else if (modo === 'stop' && fase === 'domanda') {
     v = {
       icona: 'domanda', titolo: 'Non vuoi più nessun promemoria?',
       testo: `${ciao}non ti scriveremo più per compleanni e anniversari. Le conferme dei tuoi ordini continueranno ad arrivare.`,
       si: 'Sì, non scrivetemi più', no: 'No, annulla',
-      // Prima di togliere tutto, la scelta più leggera (se c'è ancora qualcosa da togliere).
-      link: info?.in_coda > 0 && !info?.tolto
+      // Prima di togliere tutto, la scelta più leggera (se questa festa non è già tolta).
+      link: info && !info.tolto
         ? { testo: t ? `Togli solo ${festa}` : 'Togli solo questa ricorrenza', fai: () => passaA('togli') }
         : null,
     };

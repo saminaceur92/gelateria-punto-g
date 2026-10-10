@@ -152,6 +152,24 @@ begin
          '6: è stato tolto anche l''altro compleanno';
   assert not exists (select 1 from public.promemoria_stop where email = 'zz-f@promemoria.invalid'),
          '6: «togli» ha disiscritto l''indirizzo da tutto';
+  -- … e vale per sempre: il cliente riordina per la stessa festa (2 giorni
+  -- dopo, l'anno prossimo) e il nuovo ordine non crea promemoria.
+  insert into public.ordini (cliente_nome, cliente_telefono, cliente_email, ritiro_data, ritiro_ora,
+                             stato, tipo, riepilogo, dettagli, totale, created_at, promemoria_ok)
+  values ('ZZ Prova Promemoria', '000 000 0010', 'zz-f@promemoria.invalid',
+          (v_100 + interval '1 year')::date + 2, '16:00', 'da_fare', 'Semifreddo',
+          'PROVA dei promemoria (si annulla da sola)', '{"occasion":"Compleanno","promemoria":true}', 1, v_quando, true)
+  returning id into v_id;
+  assert not exists (select 1 from public.promemoria_compleanno where ordine_id = v_id),
+         '6: la festa tolta dal cliente è tornata in coda con un ordine nuovo';
+  v_j := public.info_promemoria(v_tok);
+  assert (v_j ->> 'tolto')::boolean and (v_j ->> 'in_coda')::int = 0,
+         '6: dopo «togli» il link non dice «già tolto»: ' || v_j::text;
+  assert public.promemoria_stesso_giorno_anno(date '2029-02-28', date '2028-02-29')
+     and public.promemoria_stesso_giorno_anno(date '2029-03-03', date '2028-02-29')
+     and not public.promemoria_stesso_giorno_anno(date '2029-03-04', date '2028-02-29')
+     and public.promemoria_stesso_giorno_anno(date '2028-01-02', date '2026-12-30'),
+         '6: «stessa festa negli anni» sbagliata (29 febbraio o Capodanno)';
 
   -- 7. Staff: togli una ricorrenza, disiscrivi e riattiva un indirizzo.
   select id into v_id from public.promemoria_compleanno where ordine_id = v_f3 and tipo = 'primo';
