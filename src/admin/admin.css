@@ -206,9 +206,10 @@
 /* pre-wrap: le note scritte su più righe restano su più righe; anywhere: un
    link lunghissimo va a capo invece di allargare la card. */
 .ord-lab-preview { margin: .5rem 0 0; font-size: .85rem; color: #8a5a00; background: #fff7e6; border: 1px solid #f0d9a8; border-radius: 8px; padding: .35rem .6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-/* Note del CLIENTE in evidenza nella card: azzurro del negozio, così non si
-   confondono con l'ambra delle note di laboratorio, che sono dello staff. */
-.ord-note-cliente { margin: .5rem 0 0; font-size: .88rem; color: var(--ink); background: #eef6fb; border: 1px solid #b9d9ea; border-left: 4px solid var(--v-deep); border-radius: 8px; padding: .45rem .65rem; }
+/* Note del CLIENTE in evidenza nella card: un riquadro come quello delle note
+   di laboratorio, ma azzurro del negozio, così non si confondono con l'ambra
+   delle note dello staff. */
+.ord-note-cliente { margin: .5rem 0 0; font-size: .88rem; color: var(--ink); background: #eef6fb; border: 1px solid #9fcbe2; border-radius: 8px; padding: .45rem .65rem; }
 .ord-note-cliente p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
 .ord-note-tit { display: block; margin-bottom: .15rem; font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--v-deep); }
 .ord-lab { margin: .7rem 0 0; }
@@ -593,8 +594,8 @@
 .adm-badge-new.adm-badge-calmo { animation: none; background: #9a6a2f; }
 .collab-lista { display: flex; flex-direction: column; gap: .8rem; }
 .collab-card { display: grid; gap: .7rem; border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; background: #fff; }
-/* Da leggere: filetto legno a sinistra, si trova a colpo d'occhio */
-.collab-card.collab-nuova { border-color: #e2c49c; box-shadow: inset 4px 0 0 #c0894c; }
+/* Da leggere: fondo panna caldo e bordo legno, oltre al badge «Nuova» */
+.collab-card.collab-nuova { border-color: #e2c49c; background: #fffaf3; }
 .collab-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .collab-chi { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
 .collab-chi strong { font-size: 1rem; overflow-wrap: anywhere; }

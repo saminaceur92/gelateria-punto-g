@@ -103,8 +103,7 @@
   border: 1px solid rgba(44, 118, 153, 0.14);
   border-radius: var(--radius);
   padding: clamp(1.25rem, 3.5vw, 2.2rem);
-  /* Il filetto legno in alto, come una targhetta sul banco. */
-  box-shadow: inset 0 4px 0 var(--orange), var(--shadow);
+  box-shadow: var(--shadow);
 }
 
 .clb-form { display: grid; gap: 1.3rem; }
