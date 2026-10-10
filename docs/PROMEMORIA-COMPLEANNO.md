@@ -201,8 +201,11 @@ on conflict (key) do update set value = excluded.value;
 - **Togliere un promemoria**:
   - il cliente, dal link «Non ricordarmi più questa ricorrenza»: si ferma solo quella festa, gli
     altri promemoria restano e l'indirizzo **non** viene disiscritto. Vale **per sempre**: se
-    riordina per la stessa festa (stessa email, stessa occasione, stesso giorno ±3, in qualunque
-    anno, anche al banco) non nascono promemoria nuovi. Le feste tolte stanno nella tabella
+    riordina per la stessa festa (stessa email, stessa occasione, stesso giorno con 6 giorni di
+    margine, in qualunque anno, anche al banco) non nascono promemoria nuovi. Il margine è di 6
+    giorni perché la torta si ritira spesso nel fine settimana, che ogni anno cade in un giorno
+    diverso. Il prezzo: un'altra festa dello stesso indirizzo e della stessa occasione a 6 giorni
+    o meno (per esempio due fratelli) viene tolta insieme. Le feste tolte stanno nella tabella
     `promemoria_tolti`. Se il cliente cambia idea e chiede di riaverla, dal SQL Editor (al posto
     di `indirizzo@del.cliente` la sua email: maiuscole e spazi non contano; per l'anniversario
     `'Anniversario'` al posto di `'Compleanno'`):

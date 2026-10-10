@@ -98,7 +98,8 @@ end $$;
 -- non lo vede). Sta in una tabella a sé, come i disiscritti, perché le righe
 -- della coda spariscono se l'ordine viene eliminato: la scelta del cliente no.
 --  festa = la data della festa della mail da cui l'ha tolta; vale lo stesso
---          giorno (±3, come la regola della stessa festa) di ogni anno.
+--          giorno di ogni anno, con 6 giorni di margine (perché 6, lo dice
+--          promemoria_stesso_giorno_anno qui sotto).
 -- Se una versione precedente di questa migrazione è già girata (senza questa
 -- tabella), le feste tolte allora dal cliente ci entrano adesso: UNA volta
 -- sola, quando la tabella nasce. Ai rilanci no: una festa restituita al
@@ -166,20 +167,33 @@ as $$
            false);
 $$;
 
--- La stessa festa in anni diversi: stesso giorno dell'anno, 3 giorni o meno di
--- differenza. La data b si porta nell'anno di a (e in quello prima e dopo, per
--- le feste a cavallo di Capodanno: 30 dicembre e 2 gennaio sono vicine). Il
--- 29 febbraio, negli anni che non ce l'hanno, diventa il 28.
+-- La stessa festa in anni diversi (serve alla festa tolta dal cliente «per
+-- sempre»): stesso giorno dell'anno, 6 giorni o meno di differenza. Non 3
+-- come per i doppioni dello stesso anno: la torta si ritira spesso nel fine
+-- settimana vicino alla festa, e il giorno della settimana slitta di anno in
+-- anno (festa il 3 novembre, torta il sabato dopo: il 7 nel 2026, il 3 nel
+-- 2029). Con 3 giorni circa un anno su quattro la festa tolta non veniva
+-- riconosciuta e le mail tornavano; 6 copre ogni slittamento del fine
+-- settimana. Il prezzo: un'altra festa dello stesso indirizzo e della stessa
+-- occasione a 6 giorni o meno (per esempio due fratelli) si toglie insieme.
+-- Meglio una mail persa che una di troppo.
+-- Le date si confrontano come se ogni anno avesse 365 giorni (il 29 febbraio
+-- vale il 28: negli anni bisestili non allunga di un giorno le distanze a
+-- cavallo di fine febbraio), e «in cerchio»: 30 dicembre e 2 gennaio sono a
+-- 3 giorni.
 create or replace function public.promemoria_stesso_giorno_anno(a date, b date)
 returns boolean
 language sql
 immutable
 set search_path = public
 as $$
-  select coalesce(bool_or(
-           abs(a - (b + make_interval(years => (extract(year from a) - extract(year from b))::int + k))::date) <= 3),
-         false)
-    from generate_series(-1, 1) as k;
+  with g as (
+    select extract(doy from make_date(2027, extract(month from a)::int,
+             least(extract(day from a)::int, case when extract(month from a) = 2 then 28 else 31 end)))::int as ga,
+           extract(doy from make_date(2027, extract(month from b)::int,
+             least(extract(day from b)::int, case when extract(month from b) = 2 then 28 else 31 end)))::int as gb
+  )
+  select coalesce(least(abs(ga - gb), 365 - abs(ga - gb)) <= 6, false) from g;
 $$;
 
 -- Questa festa (indirizzo, occasione, data) il cliente l'ha tolta per sempre?
@@ -1111,7 +1125,7 @@ begin
 end $$;
 
 -- «Non ricordarmi più questa ricorrenza»: solo quella festa, ma PER SEMPRE
--- (stesso indirizzo, stessa occasione, stesso giorno ±3 di ogni anno): si
+-- (stesso indirizzo, stessa occasione, stesso giorno ±6 di ogni anno): si
 -- fermano le mail in arrivo, anche di un ordine già fatto per l'anno dopo, e
 -- gli ordini futuri per quella festa non ne creano più. L'indirizzo NON entra
 -- fra i disiscritti: gli altri promemoria restano.
