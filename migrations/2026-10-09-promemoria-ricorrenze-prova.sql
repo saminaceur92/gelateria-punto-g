@@ -196,6 +196,18 @@ begin
   assert not exists (select 1 from public.promemoria_stop where email = 'zz-f@promemoria.invalid')
      and exists (select 1 from public.promemoria_compleanno where ordine_id = v_f3 and stato = 'in_attesa'),
          '7: riattiva: ' || v_t;
+  -- Promemoria spento sull'ordine (es. dal Table Editor): «Rimetti in coda» non
+  -- lo fa ripartire; riacceso, riparte da solo.
+  update public.ordini set promemoria_ok = false where id = v_f3;
+  begin
+    perform public.rimetti_in_coda_promemoria(v_id);
+    raise exception '7: «Rimetti in coda» ha rimesso in coda una mail col promemoria spento sull''ordine';
+  exception when others then
+    if sqlerrm not like 'Non lo rimetto in coda: promemoria spento%' then raise; end if;
+  end;
+  update public.ordini set promemoria_ok = true where id = v_f3;
+  assert (select stato = 'in_attesa' from public.promemoria_compleanno where id = v_id),
+         '7: promemoria riacceso sull''ordine, ma la mail non è ripartita';
   -- La prova non va alla casella tecnica del codice dello staff (non riceve niente).
   begin
     perform public.prova_promemoria(v_id, 'staff-zz@codici.gelateriapuntogi.it');

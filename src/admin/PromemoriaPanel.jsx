@@ -169,7 +169,7 @@ function Mail({ r, busy, configurato, migrata, onProva, onAzione }) {
             type="button"
             className="adm-btn"
             disabled={busy}
-            title={migrata ? 'Torna in coda (il database controlla che non sia un doppione)' : 'Torna in coda'}
+            title={migrata ? 'Torna in coda (il database ricontrolla l’ordine e che non sia un doppione)' : 'Torna in coda'}
             onClick={() => onAzione(() => rimettiInCoda(r.id))}
           >
             Rimetti in coda

@@ -20,7 +20,11 @@ tecnica già usata per le notifiche Telegram.
   aggiornano da soli;
 - **chi ha già ordinato** negli ultimi 60 giorni (stessa email o stesso telefono), o ha già una
   torta prenotata per quella festa, non riceve il promemoria;
-- **una mail già partita non riparte mai**: né da «Invia ora», né da «Rimetti in coda».
+- **una mail già partita non riparte mai**: né da «Invia ora», né da «Rimetti in coda»;
+- **una mail rimessa in coda** (da «Rimetti in coda», da «Riattiva» o da sola, quando EmailJS
+  risponde «troppe richieste») parte solo se l'ordine vuole ancora il promemoria: non annullato,
+  interruttore acceso, occasione col promemoria. Altrimenti resta ferma con il motivo scritto
+  sotto, e riparte da sola quando l'ordine torna a volerlo.
 
 ---
 

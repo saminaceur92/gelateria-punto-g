@@ -18,6 +18,8 @@
 --       l'ordine torna fra quelli da fare). Email, data o occasione corrette
 --       sull'ordine → i promemoria non ancora partiti si aggiornano;
 --     · «Invia ora» e «Rimetti in coda» non rimandano MAI una mail già partita;
+--     · una mail rimessa in coda (a mano, con «Riattiva» o da sola dopo un
+--       429) parte solo se l'ordine vuole ancora il promemoria;
 --     · due giri non possono sovrapporsi; una mail per giro (EmailJS accetta
 --       una richiesta al secondo), e solo fra le 9 e le 12 ora italiana;
 --     · se EmailJS risponde «troppe richieste» (429) si riprova: in quel caso
@@ -148,6 +150,37 @@ as $$
   end;
 $$;
 
+-- L'ordine vuole i promemoria? NULL se sì, altrimenti il motivo (finisce
+-- nella nota delle righe). Le regole dell'ordine stanno solo qui: le usano la
+-- messa in coda (accoda_promemoria), il trigger che segue le correzioni
+-- dell'ordine (sincronizza_promemoria_ordine) e il controllo prima di ogni
+-- invio (promemoria_ostacolo: giro, «Invia ora», «Rimetti in coda», nuovo
+-- tentativo dopo un 429). dettagli.promemoria lo scrive il sito nuovo:
+--   true  = il cliente ha visto l'avviso "tra un anno ti scriveremo" (anche
+--           per l'anniversario), oppure lo staff al banco ha lasciato acceso
+--           l'interruttore "Promemoria tra un anno";
+--   false = lo staff l'ha spento (ordine di prova, cliente che non lo vuole).
+-- Gli ordini fatti col sito VECCHIO non ce l'hanno: per il compleanno vale
+-- come prima, l'anniversario invece no (quel cliente l'avviso non l'ha visto).
+create or replace function public.promemoria_motivo_ordine(o public.ordini)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select case
+    when coalesce(o.stato, '') = 'annullato' then 'ordine annullato'
+    when o.promemoria_ok is not true
+      or coalesce(o.dettagli ->> 'promemoria', '') = 'false' then 'promemoria spento sull''ordine'
+    when public.promemoria_occasione(o.dettagli ->> 'occasion') is null then 'occasione cambiata'
+    when public.promemoria_occasione(o.dettagli ->> 'occasion') <> 'Compleanno'
+     and coalesce(o.dettagli ->> 'promemoria', '') <> 'true' then 'occasione cambiata'
+    when o.ritiro_data is null then 'data di ritiro tolta'
+    when lower(coalesce(nullif(trim(o.cliente_email), ''), nullif(trim(o.email), ''), ''))
+         !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then 'email tolta dall''ordine'
+  end;
+$$;
+
 -- Due righe parlano della STESSA festa se sono dello stesso ordine, oppure se
 -- hanno stessa email, stessa occasione e date a 3 giorni o meno (doppio
 -- pagamento, due torte per la stessa festa, ordine rifatto). Vale sia per
@@ -256,13 +289,7 @@ as $$
 $$;
 
 -- ── 3. Mettere in coda i due promemoria di un ordine ─────────
--- dettagli.promemoria lo scrive il sito nuovo (configuratore):
---   true  = il cliente ha visto l'avviso "tra un anno ti scriveremo"
---           (anche per l'anniversario), oppure lo staff al banco ha lasciato
---           acceso l'interruttore "Promemoria tra un anno";
---   false = lo staff l'ha spento (ordine di prova, cliente che non lo vuole).
--- Gli ordini fatti col sito VECCHIO non ce l'hanno: per il compleanno vale
--- come prima, l'anniversario invece no (quel cliente l'avviso non l'ha visto).
+-- Solo se l'ordine li vuole (promemoria_motivo_ordine, qui sopra).
 create or replace function public.accoda_promemoria(p_ordine_id uuid)
 returns integer
 language plpgsql
@@ -283,14 +310,11 @@ begin
   v_email := lower(coalesce(nullif(trim(o.cliente_email), ''), nullif(trim(o.email), ''), ''));
   v_occ   := public.promemoria_occasione(o.dettagli ->> 'occasion');
 
-  if o.promemoria_ok is not true                                        then return 0; end if;
-  if coalesce(o.dettagli ->> 'promemoria', '') = 'false'                then return 0; end if;
-  if coalesce(o.stato, '') = 'annullato'                                then return 0; end if;
-  if v_occ is null or o.ritiro_data is null                             then return 0; end if;
-  if v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'       then return 0; end if;
+  -- Annullato, interruttore spento, occasione senza promemoria, anniversario
+  -- dal sito vecchio, niente data o email: niente promemoria.
+  if public.promemoria_motivo_ordine(o) is not null                     then return 0; end if;
   -- Come deciso a luglio: lo storico precedente al 26/07/2026 resta fuori.
   if o.created_at < timestamptz '2026-07-26 15:00:00+00'                then return 0; end if;
-  if v_occ <> 'Compleanno' and coalesce(o.dettagli ->> 'promemoria', '') <> 'true' then return 0; end if;
   if exists (select 1 from public.promemoria_stop s where s.email = v_email) then return 0; end if;
 
   v_anniv := (o.ritiro_data + interval '1 year')::date;
@@ -369,18 +393,12 @@ declare
   v_data   boolean := old.ritiro_data is distinct from new.ritiro_data;
   v_motivo text;
 begin
-  v_motivo := case
-    when coalesce(new.stato, '') = 'annullato' then 'ordine annullato'
-    when new.promemoria_ok is not true
-      or coalesce(new.dettagli ->> 'promemoria', '') = 'false' then 'promemoria spento sull''ordine'
-    when v_occ is null then 'occasione cambiata'
-    when v_occ <> 'Compleanno'
-     and coalesce(new.dettagli ->> 'promemoria', '') <> 'true' then 'occasione cambiata'
-    when new.ritiro_data is null then 'data di ritiro tolta'
-    when v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then 'email tolta dall''ordine'
-    -- Corretta la data (o l'email): ora è una festa che il cliente ha tolto.
-    when public.promemoria_festa_tolta(v_email, v_occ, v_anniv) then 'tolto dal cliente (stessa ricorrenza)'
-  end;
+  -- L'ordine non li vuole più (annullato, interruttore spento, occasione…).
+  v_motivo := public.promemoria_motivo_ordine(new);
+  -- Corretta la data (o l'email): ora è una festa che il cliente ha tolto.
+  if v_motivo is null and public.promemoria_festa_tolta(v_email, v_occ, v_anniv) then
+    v_motivo := 'tolto dal cliente (stessa ricorrenza)';
+  end if;
 
   if v_motivo is not null then
     update public.promemoria_compleanno
@@ -518,7 +536,8 @@ end $$;
 
 -- ── 6. Si può spedire? Le regole in un posto solo ────────────
 -- Restituisce NULL se la mail può partire, altrimenti il motivo (finisce
--- nella nota della riga). La usano il giro automatico e «Invia ora».
+-- nella nota della riga). La usano il giro automatico (anche per le mail
+-- tornate in coda da sole dopo un 429), «Invia ora» e «Rimetti in coda».
 -- p_manuale = true («Invia ora»): decide lo staff, quindi non contano il
 -- ritardo e "ha già ordinato"; tutto il resto sì.
 create or replace function public.promemoria_ostacolo(p_id uuid, p_manuale boolean default false)
@@ -529,18 +548,30 @@ security definer
 set search_path = public
 as $$
 declare
-  r     record;
-  v_tel text;
+  r        record;
+  o        public.ordini%rowtype;
+  v_tel    text;
+  v_motivo text;
 begin
-  select p.id, p.ordine_id, p.email, p.tipo, p.occasione, p.anniversario, p.invio_previsto,
-         o.stato as stato_ordine, o.cliente_telefono
+  select p.id, p.ordine_id, p.email, p.tipo, p.occasione, p.anniversario, p.invio_previsto
     into r
     from public.promemoria_compleanno p
-    join public.ordini o on o.id = p.ordine_id
    where p.id = p_id;
   if not found then return 'promemoria non trovato'; end if;
+  select * into o from public.ordini where id = r.ordine_id;
+  if not found then return 'promemoria non trovato'; end if;
 
-  if coalesce(r.stato_ordine, '') = 'annullato' then return 'ordine annullato'; end if;
+  -- L'ordine vuole ancora i promemoria? Le stesse regole di quando sono nati:
+  -- una mail rimessa in coda a mano, o da sola dopo un 429, non parte se nel
+  -- frattempo il promemoria è stato spento sull'ordine o l'occasione è
+  -- cambiata (prima partiva lo stesso).
+  v_motivo := public.promemoria_motivo_ordine(o);
+  if v_motivo is not null then return v_motivo; end if;
+  -- Occasione passata fra compleanno e anniversario mentre la mail era già
+  -- partita (poi respinta con un 429): partirebbe con le parole sbagliate.
+  if r.occasione is distinct from public.promemoria_occasione(o.dettagli ->> 'occasion') then
+    return 'occasione cambiata';
+  end if;
   if exists (select 1 from public.promemoria_stop s where s.email = r.email) then return 'disiscritto'; end if;
   if r.anniversario <= current_date then return 'ricorrenza già passata'; end if;
   -- Giro fermo a lungo: non spedire promemoria ormai fuori tempo.
@@ -578,7 +609,7 @@ begin
   -- Ha già ordinato (stessa email o stesso telefono, ordini non annullati):
   -- negli ultimi 60 giorni, oppure ha già una torta prenotata per questa festa.
   if not p_manuale then
-    v_tel := right(regexp_replace(coalesce(r.cliente_telefono, ''), '\D', '', 'g'), 10);
+    v_tel := right(regexp_replace(coalesce(o.cliente_telefono, ''), '\D', '', 'g'), 10);
     if exists (
       select 1 from public.ordini o2
        where o2.id <> r.ordine_id
@@ -1065,8 +1096,19 @@ begin
     raise exception '% non risulta disiscritto.', v;
   end if;
 
-  -- Ripartono le mail fermate dalla disiscrizione, se la festa è ancora davanti.
-  -- I controlli del giro valgono comunque (doppioni, una mail al giorno…).
+  -- Le mail fermate dalla disiscrizione il cui ordine nel frattempo non vuole
+  -- più promemoria (spento, occasione cambiata, annullato…) restano ferme,
+  -- ma col motivo vero: se l'ordine torna a volerli ripartono da sole
+  -- (sincronizza_promemoria_ordine). Prima ripartivano e la mail partiva.
+  update public.promemoria_compleanno p
+     set nota = public.promemoria_motivo_ordine(o)
+    from public.ordini o
+   where o.id = p.ordine_id and p.email = v and p.stato = 'annullato' and p.nota = 'disiscritto'
+     and p.inviato_il is null and p.anniversario > current_date + 2
+     and public.promemoria_motivo_ordine(o) is not null;
+
+  -- Le altre ripartono, se la festa è ancora davanti. I controlli del giro
+  -- valgono comunque (doppioni, una mail al giorno…).
   update public.promemoria_compleanno
      set stato = 'in_attesa', nota = null, invio_previsto = greatest(invio_previsto, current_date)
    where email = v and stato = 'annullato' and nota = 'disiscritto' and inviato_il is null
@@ -1213,6 +1255,7 @@ revoke execute on function public.promemoria_stessa_ricorrenza(uuid, text, text,
                                                                             from public, anon, authenticated;
 revoke execute on function public.promemoria_stesso_giorno_anno(date, date) from public, anon, authenticated;
 revoke execute on function public.promemoria_festa_tolta(text, text, date)  from public, anon, authenticated;
+revoke execute on function public.promemoria_motivo_ordine(public.ordini)   from public, anon, authenticated;
 
 -- Gestionale: solo con una sessione del personale.
 revoke execute on function public.invia_promemoria_ora(uuid)               from public, anon;
