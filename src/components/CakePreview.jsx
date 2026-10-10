@@ -62,6 +62,20 @@ function descriviCopertura(covering) {
   return testo ? `coperto da ${testo}` : '';
 }
 
+// Riga della base: di solito "su base classica vaniglia". Ma certi nomi dicono
+// già da soli cosa c'è sotto, e con "su base" davanti si leggevano male: la
+// base di partenza usciva "su base senza base", quella croccante "su base base
+// croccante". Si guarda come comincia il NOME, non l'id, perché i nomi li
+// cambiano i titolari dalla dashboard: qualunque base "Senza…" si scrive così
+// com'è, una "Base…" non ripete la parola.
+function descriviBase(base) {
+  const nome = String(base?.name || '').trim().toLowerCase();
+  if (!nome) return '';
+  if (nome.startsWith('senza')) return nome;
+  if (/^base\b/.test(nome)) return `su ${nome}`;
+  return `su base ${nome}`;
+}
+
 // Riga della panna decorativa: i ciuffi (e la panna colorata) della
 // DECORAZIONE, che c'è solo se scelta — mai di serie.
 function descriviPannaDeco(decorationId, colore, coveringId) {
@@ -225,6 +239,7 @@ export default function CakePreview({ config }) {
     .filter(Boolean);
 
   const rigaCopertura = descriviCopertura(covering);
+  const rigaBase = descriviBase(b);
   const rigaDecorazioni = descriviDecorazioni(decorazioni, decorationColorMap);
   // Le decorazioni che non si disegnano: si elencano sopra la torta, con la
   // precisazione che dipendono dalla gelateria. Non compaiono nella riga
@@ -335,9 +350,9 @@ export default function CakePreview({ config }) {
           </p>
         ))}
 
-        {b && (
+        {rigaBase && (
           <p className="cake-card-base">
-            <em>su base {b.name.toLowerCase()}</em>
+            <em>{rigaBase}</em>
           </p>
         )}
 
