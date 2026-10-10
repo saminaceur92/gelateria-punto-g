@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   occasioneConPromemoria, testiPromemoria, avvisoPromemoria, leggiLinkPromemoria,
-  anniversarioDi, stessaRicorrenza, raggruppaPromemoria, puoRimettere,
+  anniversarioDi, stessaRicorrenza, raggruppaPromemoria, puoRimettere, festaDavanti, oggiISO,
 } from './promemoriaRegole.js';
 
 test('occasioni del sito (lette da Supabase il 09/10/2026) e nomi rinominati', () => {
@@ -70,7 +70,7 @@ test('una scheda per festa, con le due mail in ordine e il badge del doppione', 
     { id: 5, ordine_id: 'D', email: 'z@x.it', tipo: 'primo', stato: 'errore', invio_previsto: '2027-07-20' },
     { id: 6, ordine_id: 'E', email: 'y@x.it', tipo: 'secondo', stato: 'inviato', invio_previsto: '2027-06-01', inviato_il: '2027-06-01T07:00:00Z' },
   ];
-  const s = raggruppaPromemoria(rows);
+  const s = raggruppaPromemoria(rows, '2027-01-01'); // «oggi» fisso: la prova non scade
   assert.deepEqual(s.map((x) => x.ordineId), ['B', 'D', 'A', 'C', 'E']);
   const a = s.find((x) => x.ordineId === 'A');
   assert.deepEqual(a.righe.map((r) => r.tipo), ['primo', 'secondo']);
@@ -96,4 +96,46 @@ test('«Rimetti in coda» solo dove ha senso', () => {
   assert.ok(!puoRimettere({ stato: 'annullato', nota: 'tolto dal cliente' }));
   assert.ok(!puoRimettere({ stato: 'annullato', nota: 'tolto dal cliente (stessa ricorrenza)' }));
   assert.ok(!puoRimettere({ stato: 'annullato', nota: 'disiscritto' }));
+});
+
+test('feste già passate o troppo vicine: niente «Rimetti in coda», come dice il database', () => {
+  const oggi = '2026-10-10';
+  // rimetti_in_coda_promemoria vuole la festa ad almeno 3 giorni da oggi.
+  assert.ok(festaDavanti({ anniversario: '2026-10-13' }, oggi));
+  assert.ok(!festaDavanti({ anniversario: '2026-10-12' }, oggi));
+  assert.ok(!festaDavanti({ anniversario: '2026-09-30' }, oggi));
+  assert.ok(festaDavanti({}, oggi), 'data sconosciuta: decide il database');
+  assert.ok(puoRimettere({ stato: 'errore', anniversario: '2026-10-13' }, oggi));
+  assert.ok(!puoRimettere({ stato: 'errore', anniversario: '2026-10-12' }, oggi));
+  assert.ok(!puoRimettere({ stato: 'errore', anniversario: '2026-09-30' }, oggi));
+  assert.ok(!puoRimettere({ stato: 'annullato', nota: 'ha già ordinato', anniversario: '2026-09-30' }, oggi));
+  assert.ok(!puoRimettere({ stato: 'annullato', nota: 'ricorrenza già passata', anniversario: '2026-09-30' }, oggi));
+  // riga di prima della migrazione: la festa si ricava dalla data d'invio (30/09)
+  assert.ok(!puoRimettere({ stato: 'annullato', nota: 'fuori tempo', tipo: 'primo', invio_previsto: '2026-08-31' }, oggi));
+  assert.ok(puoRimettere({ stato: 'annullato', nota: 'tolto dal gestionale', anniversario: '2027-03-01' }, oggi));
+});
+
+test('una mail in errore tiene la festa «in arrivo» solo finché si può ancora rimettere in coda', () => {
+  const oggi = '2026-10-10';
+  const s = raggruppaPromemoria([
+    // festa del 30/09, passata: la «30 giorni prima» in errore, la «14 giorni prima» annullata
+    { id: 1, ordine_id: 'P', email: 'p@x.it', tipo: 'primo', stato: 'errore', invio_previsto: '2026-08-31', anniversario: '2026-09-30' },
+    { id: 2, ordine_id: 'P', email: 'p@x.it', tipo: 'secondo', stato: 'annullato', nota: 'ricorrenza già passata', invio_previsto: '2026-09-16', anniversario: '2026-09-30' },
+    // fra 2 giorni: il database non la rimette più in coda
+    { id: 3, ordine_id: 'V', email: 'v@x.it', tipo: 'secondo', stato: 'errore', invio_previsto: '2026-09-28', anniversario: '2026-10-12' },
+    // fra 3 giorni: si può ancora sistemare
+    { id: 4, ordine_id: 'F', email: 'f@x.it', tipo: 'secondo', stato: 'errore', invio_previsto: '2026-09-29', anniversario: '2026-10-13' },
+    // in coda resta attiva comunque (la ferma il giro)
+    { id: 5, ordine_id: 'Q', email: 'q@x.it', tipo: 'secondo', stato: 'in_attesa', invio_previsto: '2026-10-09', anniversario: '2026-10-23' },
+  ], oggi);
+  assert.deepEqual(s.filter((x) => x.attiva).map((x) => x.ordineId), ['F', 'Q']);
+  assert.deepEqual(s.filter((x) => !x.attiva).map((x) => x.ordineId).sort(), ['P', 'V']);
+  assert.equal(s.find((x) => x.ordineId === 'F').prossima, '2026-09-29');
+  assert.equal(s.find((x) => x.ordineId === 'P').prossima, null);
+});
+
+test('«oggi» col calendario del dispositivo', () => {
+  assert.equal(oggiISO(new Date(2026, 9, 10, 0, 30)), '2026-10-10');
+  assert.equal(oggiISO(new Date(2027, 0, 1, 23, 59)), '2027-01-01');
+  assert.match(oggiISO(), /^\d{4}-\d{2}-\d{2}$/);
 });
