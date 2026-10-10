@@ -86,14 +86,17 @@ export default function PromemoriaStop({ link, onClose }) {
   async function conferma() {
     if (lavoro) return;
     setLavoro(true);
-    if (link.prova) {
-      setFase('fatto');
-    } else {
+    let stato = 'ok';
+    if (!link.prova) {
       // «Link non valido» solo se il database non conosce il link; se la rete
       // o il database non rispondono, «riprova fra qualche minuto».
       const r = modo === 'togli' ? await togliPromemoria(link.token) : await stopPromemoria(link.token);
-      setFase(r.stato === 'ok' ? 'fatto' : r.stato === 'non_valido' ? 'non_valido' : 'errore');
+      stato = r.stato;
     }
+    // Festa appena tolta: se poi il cliente passa a «nessun promemoria», non
+    // gli si propone di nuovo di toglierla (lo riporterebbe alla stessa domanda).
+    if (stato === 'ok' && modo === 'togli') setInfo((i) => (i ? { ...i, tolto: true } : i));
+    setFase(stato === 'ok' ? 'fatto' : stato === 'non_valido' ? 'non_valido' : 'errore');
     setLavoro(false);
   }
 
