@@ -115,6 +115,9 @@ end $$;
 -- manda l'anteprima della torta finita (`immagine`, la stessa della dashboard).
 -- Se una delle due manca o non è un URL pubblico, manda comunque l'altra.
 -- Nessun errore Telegram deve mai bloccare il salvataggio dell'ordine.
+-- ⚠️ Superata da 2026-10-12-foto-telegram-riprova.sql (le foto non arrivate
+-- si rispediscono): rilanciando questo file la funzione torna quella senza
+-- riprove, quindi dopo va rilanciata anche quella del 12/10.
 create or replace function public.telegram_foto_ordine()
 returns trigger
 language plpgsql

@@ -36,6 +36,9 @@ update public.decorazioni as v
 -- ── 2. Telegram: didascalie entro il limite ─────────────────
 -- Stessa funzione della migrazione 2026-08-29-foto-telegram-e-locale.sql, con
 -- il nome del cliente a massimo 120 caratteri e il nome del file a 60.
+-- ⚠️ Superata da 2026-10-12-foto-telegram-riprova.sql (le foto non arrivate
+-- si rispediscono): rilanciando questo file la funzione torna quella senza
+-- riprove, quindi dopo va rilanciata anche quella del 12/10.
 create or replace function public.telegram_foto_ordine()
 returns trigger
 language plpgsql
