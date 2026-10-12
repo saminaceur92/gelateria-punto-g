@@ -46,8 +46,9 @@ set local lock_timeout = '5s';
 -- ── 1. Com'è andata la foto, ordine per ordine ───────────────
 -- telegram_foto_stato: null = niente da mandare (o ordine di prima di oggi),
 -- 'in_corso' = spedita, la risposta si legge al prossimo giro,
--- 'arrivate' = Telegram ha detto ok, 'non_arrivate' = tentativi finiti,
--- 'forse_arrivate' = Telegram l'ha ricevuta ma non ha mai risposto in tempo.
+-- 'arrivate' = Telegram ha detto ok, 'non_arrivate' = tentativi finiti e
+-- nessuna è arrivata, 'forse_arrivate' = Telegram ne ha ricevuta almeno una
+-- senza rispondere in tempo (rispedirla a mano farebbe un doppione).
 -- telegram_foto_forse: quante volte si è già rispedito dopo una risposta
 -- arrivata troppo tardi (la foto forse c'era già): al massimo una.
 alter table public.ordini add column if not exists telegram_foto_req       bigint;
@@ -289,10 +290,12 @@ begin
           continue;
         end if;
         -- Tempo scaduto DOPO l'invio (pg_net misura un tempo di richiesta e
-        -- risposta diverso da zero): Telegram la foto l'ha ricevuta e forse
-        -- l'ha già pubblicata.
-        v_forse := v_err like '%HTTP Request/Response time: %'
-                   and v_err !~ 'HTTP Request/Response time: 0(\.0*)? ms';
+        -- risposta diverso da zero), o connessione caduta a richiesta già
+        -- partita: Telegram la foto l'ha ricevuta e forse l'ha già pubblicata.
+        v_forse := coalesce((v_err like '%HTTP Request/Response time: %'
+                             and v_err !~ 'HTTP Request/Response time: 0(\.0*)? ms')
+                            or v_err ~* '^(server returned nothing|failure when receiving|transferred a partial file)',
+                            false);
         -- La spiegazione di Telegram ("description") o quella di pg_net.
         begin
           v_errore := case when v_tipo like 'application/json%' then v_corpo::jsonb ->> 'description' end;
@@ -317,9 +320,11 @@ begin
       continue;
     end if;
 
+    -- Tentativi finiti. Se uno di quelli andati male può essere arrivato
+    -- lo stesso, la foto è "forse_arrivate": rispedirla a mano farebbe un doppione.
     if r.tentativi >= 6 then
       update public.ordini
-         set telegram_foto_stato = 'non_arrivate',
+         set telegram_foto_stato = case when v_forse or r.forse >= 1 then 'forse_arrivate' else 'non_arrivate' end,
              telegram_foto_errore = coalesce(v_errore, telegram_foto_errore)
        where id = r.id;
       continue;
@@ -361,7 +366,7 @@ begin
   -- Oltre le 6 ore dall'ultimo invio pg_net non ha più la risposta: chi è
   -- ancora "in corso" un esito non lo avrà mai.
   update public.ordini
-     set telegram_foto_stato  = 'non_arrivate',
+     set telegram_foto_stato  = case when telegram_foto_forse >= 1 then 'forse_arrivate' else 'non_arrivate' end,
          telegram_foto_errore = coalesce(telegram_foto_errore, 'nessun esito entro 6 ore')
    where telegram_foto_stato = 'in_corso'
      and coalesce(telegram_foto_il, created_at) <= now() - interval '6 hours';
