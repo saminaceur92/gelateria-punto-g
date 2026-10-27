@@ -129,10 +129,13 @@ test('extra: id, quantità, passo', () => {
 });
 
 test('scritta, stile e occasione', () => {
-  rifiuta({ message: 'x'.repeat(25) }, [422, 'scelta_non_valida', 'message']);
-  assert.equal(valida({ message: 'x'.repeat(24) }).canon.message, 'x'.repeat(24));
-  // 12 emoji = 24 unità, come le conta il maxLength dell'input.
-  assert.ok(valida({ message: '🎂'.repeat(12) }));
+  // Niente più limite di 24: resta solo il tetto tecnico di 200 (maxLength dell'input).
+  const lunga = 'Tanti auguri alla nonna Maria per i suoi novant\'anni da tutti i nipoti!';
+  assert.equal(valida({ message: lunga }).canon.message, lunga);
+  rifiuta({ message: 'x'.repeat(201) }, [422, 'scelta_non_valida', 'message']);
+  assert.equal(valida({ message: 'x'.repeat(200) }).canon.message, 'x'.repeat(200));
+  // 100 emoji = 200 unità, come le conta il maxLength dell'input.
+  assert.ok(valida({ message: '🎂'.repeat(100) }));
   rifiuta({ messageFont: 'comic-sans' }, [409, 'opzione_non_disponibile', 'message']);
   assert.equal(valida({ messageFont: 'caveat' }).canon.messageFont, 'corsivo', 'font vecchio rimappato');
   assert.equal(valida({ message: '', messageFont: 'comic-sans' }).canon.messageFont, 'corsivo', 'senza scritta lo stile non conta');
