@@ -67,8 +67,9 @@ export function coloreScritta(L) {
 /**
  * Corpo massimo della scritta sopra la foto, in frazione dell'altezza della
  * fascia: più la scritta è lunga, più piccola (richiesta dei titolari). Fino
- * a 4 caratteri 0.80, poi cala dritto fino a 0.40 a 24 caratteri, il massimo
- * del configuratore. Così un nome corto non copre la foto.
+ * a 4 caratteri 0.80, poi cala dritto fino a 0.40 a 24 caratteri e da lì
+ * resta 0.40 (oltre, è adattaScritta a rimpicciolire per farla stare).
+ * Così un nome corto non copre la foto.
  */
 export function tettoPerLunghezza(n) {
   const t = Math.min(1, Math.max(0, (n - 4) / 20));

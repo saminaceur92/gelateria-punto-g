@@ -86,6 +86,7 @@ test('il caso più pesante sta nei limiti di Stripe; il testo assurdo è rifiuta
     decorations: ['fiocchi', 'macarons', 'smarties', 'drip', 'perline'], decorationColors: { fiocchi: 'Rosso', perline: 'Oro' },
     extras: { 'salame-dolce': 2, 'cabaret-10': 1, 'cabaret-15': 1, 'cabaret-20': 1 },
     allergies: ['latte', 'frutta a guscio', 'glutine', 'uova', 'soia'], diets: ['vegan'], gift: true,
+    message: 'Tanti auguri alla nostra nonna Maria per i suoi splendidi novant\'anni! '.repeat(3).slice(0, 200),
   };
   const v = validaOrdine(pesante, LISTINO, OGGI);
   const p = prezzoOrdine(v);

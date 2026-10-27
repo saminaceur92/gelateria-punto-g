@@ -73,7 +73,11 @@ const MAX_DECORAZIONI = 5;
 // Id dell'opzione "niente decorazioni": non finisce mai nella lista delle
 // scelte (lista vuota = nessuna decorazione), serve solo come card da toccare.
 const NO_DECO = 'nessuna';
-const MAX_MESSAGE = 24; // si deve leggere bene nel centro della torta
+// Scritta: nessun limite mostrato al cliente (richiesta dei titolari, 10/2026).
+// Se è troppo lunga la si adatta e si chiama il cliente per conferma (avviso
+// sotto il campo). Resta solo un tetto tecnico che nessuno raggiunge davvero,
+// uguale a MAX_SCRITTA in valida.ts, per i metadata di Stripe (vedi MAX_NOTE).
+const MAX_MESSAGE = 200;
 // Note e indirizzo: tetti uguali a quelli del server (MAX_NOTE e
 // MAX_INDIRIZZO in supabase/functions/_shared/valida.ts). Il testo viaggia
 // nei metadata di Stripe, che hanno un limite (al massimo 50 pezzi da 500
@@ -2612,7 +2616,7 @@ function StepMessage({ config, set, staff }) {
       </div>
 
       <div className="cfg-field">
-        <label>Scritta sulla torta (max {MAX_MESSAGE} caratteri)</label>
+        <label>Scritta sulla torta</label>
         <input
           type="text"
           maxLength={MAX_MESSAGE}
@@ -2620,7 +2624,17 @@ function StepMessage({ config, set, staff }) {
           value={config.message}
           onChange={(e) => set({ message: e.target.value })}
         />
-        <p className="hint">{config.message.length}/{MAX_MESSAGE} caratteri</p>
+        {config.message && (
+          <div className="cfg-avviso cfg-avviso-dolce" role="note">
+            <span className="cfg-avviso-ico" aria-hidden="true">✏️</span>
+            <div>
+              <p>
+                Se la scritta è troppo lunga potrebbe subire qualche variazione per stare bene
+                sulla torta: in quel caso ti chiameremo per confermarla insieme.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {config.message && (
